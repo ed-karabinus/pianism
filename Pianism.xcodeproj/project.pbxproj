@@ -172,6 +172,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				0A0000000000000000000070 /* XCLocalSwiftPackageReference "Packages/PianismFeatures" */,
+				0A0000000000000000000073 /* XCLocalSwiftPackageReference "Packages/PianismCore" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0A0000000000000000000003 /* Products */;
@@ -305,6 +306,10 @@
 		0A0000000000000000000070 /* XCLocalSwiftPackageReference "Packages/PianismFeatures" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/PianismFeatures;
+		};
+		0A0000000000000000000073 /* XCLocalSwiftPackageReference "Packages/PianismCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/PianismCore;
 		};
 /* End XCLocalSwiftPackageReference section */
 
