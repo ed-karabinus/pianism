@@ -8,3 +8,4 @@ Never edit an accepted record's decision; supersede it with a new one.
 | # | Decision | Status |
 | --- | --- | --- |
 | [1](0001-platform-independent-core.md) | A platform-independent core, tested on Linux | Accepted |
+| [2](0002-project-structure.md) | Thin Xcode project plus local Swift packages | Accepted |
