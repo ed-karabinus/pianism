@@ -55,6 +55,16 @@ jobs:
           xcrun simctl bootstatus "$udid" -b
       - name: Build and test
         run: make test-app
+      - name: Export screenshots
+        if: always()
+        run: make evidence
+      - name: Upload screenshots (visual evidence for review)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: build/evidence
+          retention-days: 14
       - name: Upload test results
         if: failure()
         uses: actions/upload-artifact@v4

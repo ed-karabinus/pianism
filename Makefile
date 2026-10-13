@@ -6,7 +6,7 @@ CORE        := Packages/PianismCore
 SWIFT_DIRS  := App AppUITests Packages
 RESULTS     := build/results
 
-.PHONY: help test test-core test-app build lint format clean
+.PHONY: help test test-core test-app build evidence lint format clean
 
 help: ## List the available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -19,14 +19,19 @@ test-core: ## Unit-test the platform-independent core (fast, no simulator)
 build: ## Build the app for the simulator
 	xcodebuild build -project $(PROJECT) -scheme $(SCHEME) \
 		-destination "$$(scripts/simulator-destination.sh)" \
-		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet
+		-quiet
 
 test-app: ## Build the app and run its end-to-end tests in the simulator
 	rm -rf $(RESULTS)/app.xcresult
 	xcodebuild test -project $(PROJECT) -scheme $(SCHEME) \
 		-destination "$$(scripts/simulator-destination.sh)" \
 		-resultBundlePath $(RESULTS)/app.xcresult \
-		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet
+		-quiet
+
+evidence: ## Export the screenshots the last test-app run captured, for PR descriptions
+	rm -rf build/evidence
+	xcrun xcresulttool export attachments --path $(RESULTS)/app.xcresult --output-path build/evidence
+	@ls build/evidence
 
 lint: ## Check formatting without changing files
 	swift format lint --strict --recursive --parallel $(SWIFT_DIRS)

@@ -1,16 +1,36 @@
-## What and why
+<!-- Title: "<Requirement ID>: <what changes>", e.g. "SES-3: Ask 'Still practicing?' after 90 minutes" -->
 
-<!-- Requirement ID(s) and one or two sentences. -->
+## Problem
 
-## How it was tested
+<!-- What is wrong or missing, for the user or the codebase. Cite the requirement ID or spec section. -->
 
-<!-- Tests added or changed, and anything checked by hand. Screenshots for UI changes. -->
+## Fix
 
-## Definition of done
+<!-- What this PR changes and why this approach; alternatives rejected, briefly. -->
+
+**Where to start reading:**
+
+1. <!-- the file that explains the change best -->
+
+## Testing
+
+<!-- Evidence, not claims. -->
+
+- **Automated:** <!-- tests added or changed, by name, plus the summary line of `make test` -->
+- **Visual:** <!-- screenshots or a recording for any UI change (before and after when something changed). `make evidence` exports the screenshots the UI tests captured. Otherwise: "No UI change." -->
+- **Manual:** <!-- anything checked by hand or on a device, or "None needed." -->
+
+## Issue
+
+<!-- "Closes #N". Requirement IDs covered. Anything deferred, with its follow-up issue. -->
+
+---
+
+### Definition of done
 
 - [ ] Each acceptance criterion maps to a named test (or a device-checklist item)
 - [ ] `make lint test` passes locally; zero warnings
-- [ ] New views have previews in light, dark and AX5; controls have VoiceOver labels
-- [ ] New strings are in the String Catalog
+- [ ] UI changes have screenshots above; new views have previews in light, dark and AX5
+- [ ] New controls have VoiceOver labels; new strings are in the String Catalog
 - [ ] No new third-party dependency (or an approved ADR is linked)
 - [ ] No test was weakened, skipped or deleted (or it's explained above)
