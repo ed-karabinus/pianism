@@ -5,6 +5,9 @@ SCHEME      := Pianism
 CORE        := Packages/PianismCore
 SWIFT_DIRS  := App AppUITests Packages
 RESULTS     := build/results
+# Xcode 26 compiles package dependencies with -suppress-warnings, which clashes with the packages'
+# own .treatAllWarnings(as: .error). Turning suppression off keeps warnings visible, and fatal, everywhere.
+XCODE_FLAGS := SWIFT_SUPPRESS_WARNINGS=NO -quiet
 DEVICES     ?= iPhone iPad
 
 .PHONY: help test test-core test-app build evidence lint format clean
@@ -20,7 +23,7 @@ test-core: ## Unit-test the platform-independent core (fast, no simulator)
 build: ## Build the app for the simulator
 	xcodebuild build -project $(PROJECT) -scheme $(SCHEME) \
 		-destination "$$(scripts/simulator-destination.sh)" \
-		-quiet
+		$(XCODE_FLAGS)
 
 test-app: ## Build the app and run its end-to-end tests on each simulator in DEVICES (default: iPhone iPad)
 	@for device in $(DEVICES); do \
@@ -29,7 +32,7 @@ test-app: ## Build the app and run its end-to-end tests on each simulator in DEV
 		xcodebuild test -project $(PROJECT) -scheme $(SCHEME) \
 			-destination "$$(scripts/simulator-destination.sh $$device)" \
 			-resultBundlePath $(RESULTS)/app-$$device.xcresult \
-			-quiet || exit 1; \
+			$(XCODE_FLAGS) || exit 1; \
 	done
 
 evidence: ## Export the screenshots the last test-app run captured, one folder per device
