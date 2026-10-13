@@ -10,3 +10,4 @@ Never edit an accepted record's decision; supersede it with a new one.
 | [1](0001-platform-independent-core.md) | A platform-independent core, tested on Linux | Accepted |
 | [2](0002-project-structure.md) | Thin Xcode project plus local Swift packages | Accepted |
 | [3](0003-running-session-storage.md) | The running session lives in the App Group, not the synced store | Accepted |
+| [4](0004-synced-data-model.md) | Finished sessions and tags in SwiftData, mapped to core values and synced through CloudKit | Proposed |
