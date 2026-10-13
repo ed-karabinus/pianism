@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Linux jobs are cheap (1x minutes) and carry most of the testing.
+  # Building the core on Linux also enforces ADR 0001: no Apple-only imports.
+  core:
+    name: Core tests (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.4.0-noble
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test PianismCore
+        run: swift test --package-path Packages/PianismCore -Xswiftc -warnings-as-errors
+
+  lint:
+    name: Format check
+    runs-on: ubuntu-latest
+    container: swift:6.4.0-noble
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: swift-format
+        run: swift format lint --strict --recursive --parallel Packages
