@@ -7,7 +7,9 @@ SWIFT_DIRS  := App AppUITests Packages
 RESULTS     := build/results
 # Xcode 26 compiles package dependencies with -suppress-warnings, which clashes with the packages'
 # own .treatAllWarnings(as: .error). Turning suppression off keeps warnings visible, and fatal, everywhere.
-XCODE_FLAGS := SWIFT_SUPPRESS_WARNINGS=NO -quiet
+# CI sets QUIET= to keep xcodebuild's full output in the job log.
+QUIET       ?= -quiet
+XCODE_FLAGS := SWIFT_SUPPRESS_WARNINGS=NO $(QUIET)
 DEVICES     ?= iPhone iPad
 
 .PHONY: help test test-core test-app build evidence lint format clean

@@ -40,7 +40,7 @@ jobs:
     name: Build and end-to-end tests (iOS Simulator)
     needs: [core, lint]
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
       - name: Select the newest stable Xcode
@@ -48,16 +48,20 @@ jobs:
           xcode=$(ls -d /Applications/Xcode_*.app | grep -vi beta | sort -V | tail -1)
           sudo xcode-select -s "$xcode"
           xcodebuild -version
-      - name: Boot iPhone and iPad simulators
+      # One simulator at a time: the runner is small, and separate steps keep a log and a time per device.
+      - name: End-to-end tests on iPhone
+        timeout-minutes: 20
         run: |
-          for device in iPhone iPad; do
-            udid=$(scripts/simulator-destination.sh "$device" | sed 's/.*id=//')
-            echo "$device: $udid"
-            xcrun simctl boot "$udid"
-            xcrun simctl bootstatus "$udid" -b
-          done
-      - name: Build and test on iPhone and iPad
-        run: make test-app
+          udid=$(scripts/simulator-destination.sh iPhone | sed 's/.*id=//')
+          xcrun simctl boot "$udid" && xcrun simctl bootstatus "$udid" -b
+          make test-app DEVICES=iPhone QUIET=
+          xcrun simctl shutdown "$udid"
+      - name: End-to-end tests on iPad
+        timeout-minutes: 20
+        run: |
+          udid=$(scripts/simulator-destination.sh iPad | sed 's/.*id=//')
+          xcrun simctl boot "$udid" && xcrun simctl bootstatus "$udid" -b
+          make test-app DEVICES=iPad QUIET=
       - name: Export screenshots
         if: always()
         run: make evidence
