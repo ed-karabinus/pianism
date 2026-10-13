@@ -38,3 +38,12 @@ Option 3.
 - Bad: adding a *target* (the widget extension in M3) still means editing `project.pbxproj` once,
   carefully, in its own reviewed PR.
 - Bad: local packages need their own `Package.swift` upkeep (platforms, dependencies).
+
+## Platform baseline (updated 2026-10-13)
+
+Owner decisions after the plan review: **iOS 26 minimum**, **universal for iPhone and iPad**.
+`Config/Shared.xcconfig` sets the deployment target and device family. Both packages use
+`swift-tools-version: 6.2`, declare `.iOS(.v26)`, and set `.treatAllWarnings(as: .error)` on every
+target, so warnings are fatal wherever a package is built from. This replaced a command-line
+override that clashed with Xcode 26's `-suppress-warnings` for dependency packages. End-to-end
+tests run on both an iPhone and an iPad simulator.

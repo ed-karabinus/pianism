@@ -23,11 +23,12 @@ which keeps that boundary honest. See [docs/adr](docs/adr) for the reasoning beh
 
 ## Getting started
 
-Requirements: Xcode 16 or later (developed on Xcode 27), an iOS 18+ simulator.
+Requirements: Xcode 26 or later (developed on Xcode 27), iOS 26+ iPhone and iPad simulators.
 
 ```sh
 make test-core   # core unit tests, a few seconds
-make test-app    # build the app and run end-to-end tests in the simulator
+make test-app    # build the app and run end-to-end tests on iPhone and iPad simulators
+make test-app DEVICES=iPhone   # just one, when iterating
 make lint        # formatting check
 ```
 
