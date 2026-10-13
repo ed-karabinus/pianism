@@ -60,6 +60,21 @@ public struct SessionRecorder: Sendable {
         try change { session, now in try session.stop(at: now) }
     }
 
+    /// Moves an ended session into `history` and clears it from the store, so a new one can start
+    /// (ADR 0003). Returns the moved session, or `nil` if none had ended.
+    ///
+    /// Safe to repeat after a crash between the two steps: history saves by ID, and the store is
+    /// cleared only while it still holds that session.
+    @discardableResult
+    public func archive(to history: any SessionHistory) throws -> PracticeSession? {
+        guard let ended = try store.current(), ended.state == .ended else { return nil }
+        try history.save(ended)
+        try store.update { stored in
+            if stored?.id == ended.id { stored = nil }
+        }
+        return ended
+    }
+
     /// Applies `apply` to the stored session at the current time.
     ///
     /// The time is read inside the update, after any change from another process has been
