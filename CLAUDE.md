@@ -13,10 +13,11 @@ to the owner.
 | Command | What it does |
 | --- | --- |
 | `make test-core` | Unit tests for `PianismCore` (seconds, no simulator) |
-| `make test-app` | Builds the app and runs end-to-end tests in the simulator |
+| `make test-app` | Builds the app and runs end-to-end tests on iPhone and iPad simulators (`DEVICES=iPhone` for one) |
 | `make test` | Both of the above |
 | `make lint` / `make format` | Check / apply swift-format |
 | `make build` | Simulator build only |
+| `make evidence` | Exports the screenshots the last `test-app` run captured, for the PR's Testing section |
 
 Run `make lint test` before every push. CI runs the same commands.
 

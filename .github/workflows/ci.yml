@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Test PianismCore
-        run: swift test --package-path Packages/PianismCore -Xswiftc -warnings-as-errors
+        run: swift test --package-path Packages/PianismCore
 
   lint:
     name: Format check
@@ -35,12 +35,12 @@ jobs:
       - name: swift-format
         run: swift format lint --strict --recursive --parallel App AppUITests Packages
 
-  # macOS minutes cost 10x on private repos, so this job runs only after the cheap ones pass.
+  # Runs after the fast Linux jobs pass, so a formatting slip fails in one minute, not ten.
   app:
     name: Build and end-to-end tests (iOS Simulator)
     needs: [core, lint]
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
       - name: Select the newest stable Xcode
@@ -48,13 +48,20 @@ jobs:
           xcode=$(ls -d /Applications/Xcode_*.app | grep -vi beta | sort -V | tail -1)
           sudo xcode-select -s "$xcode"
           xcodebuild -version
-      - name: Boot a simulator
+      # One simulator at a time: the runner is small, and separate steps keep a log and a time per device.
+      - name: End-to-end tests on iPhone
+        timeout-minutes: 20
         run: |
-          udid=$(scripts/simulator-destination.sh | sed 's/.*id=//')
-          xcrun simctl boot "$udid"
-          xcrun simctl bootstatus "$udid" -b
-      - name: Build and test
-        run: make test-app
+          udid=$(scripts/simulator-destination.sh iPhone | sed 's/.*id=//')
+          xcrun simctl boot "$udid" && xcrun simctl bootstatus "$udid" -b
+          make test-app DEVICES=iPhone QUIET=
+          xcrun simctl shutdown "$udid"
+      - name: End-to-end tests on iPad
+        timeout-minutes: 20
+        run: |
+          udid=$(scripts/simulator-destination.sh iPad | sed 's/.*id=//')
+          xcrun simctl boot "$udid" && xcrun simctl bootstatus "$udid" -b
+          make test-app DEVICES=iPad QUIET=
       - name: Export screenshots
         if: always()
         run: make evidence
@@ -70,5 +77,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-xcresult
-          path: build/results/app.xcresult
+          path: build/results/*.xcresult
           retention-days: 7

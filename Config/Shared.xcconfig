@@ -2,8 +2,9 @@
 // Build settings live in these files, not in project.pbxproj, so changes are reviewable.
 
 SDKROOT = iphoneos
-IPHONEOS_DEPLOYMENT_TARGET = 18.0
-TARGETED_DEVICE_FAMILY = 1
+IPHONEOS_DEPLOYMENT_TARGET = 26.0
+// 1 = iPhone, 2 = iPad. The iPad on a music stand is a primary use.
+TARGETED_DEVICE_FAMILY = 1,2
 
 SWIFT_VERSION = 6.0
 SWIFT_STRICT_CONCURRENCY = complete
