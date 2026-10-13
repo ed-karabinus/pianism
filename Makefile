@@ -1,17 +1,37 @@
-# Every command an engineer or an agent needs. CI runs the same commands.
+# Every command an engineer or an agent needs. CI runs these same targets.
 
+PROJECT     := Pianism.xcodeproj
+SCHEME      := Pianism
 CORE        := Packages/PianismCore
-SWIFT_DIRS  := Packages
+SWIFT_DIRS  := App AppUITests Packages
+RESULTS     := build/results
 
-.PHONY: help test test-core lint format clean
+.PHONY: help test test-core test-app build evidence lint format clean
 
 help: ## List the available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
 
-test: test-core ## Run every automated test
+test: test-core test-app ## Run every automated test
 
 test-core: ## Unit-test the platform-independent core (fast, no simulator)
 	swift test --package-path $(CORE) -Xswiftc -warnings-as-errors
+
+build: ## Build the app for the simulator
+	xcodebuild build -project $(PROJECT) -scheme $(SCHEME) \
+		-destination "$$(scripts/simulator-destination.sh)" \
+		-quiet
+
+test-app: ## Build the app and run its end-to-end tests in the simulator
+	rm -rf $(RESULTS)/app.xcresult
+	xcodebuild test -project $(PROJECT) -scheme $(SCHEME) \
+		-destination "$$(scripts/simulator-destination.sh)" \
+		-resultBundlePath $(RESULTS)/app.xcresult \
+		-quiet
+
+evidence: ## Export the screenshots the last test-app run captured, for PR descriptions
+	rm -rf build/evidence
+	xcrun xcresulttool export attachments --path $(RESULTS)/app.xcresult --output-path build/evidence
+	@ls build/evidence
 
 lint: ## Check formatting without changing files
 	swift format lint --strict --recursive --parallel $(SWIFT_DIRS)
@@ -20,4 +40,4 @@ format: ## Format all Swift sources in place
 	swift format --in-place --recursive --parallel $(SWIFT_DIRS)
 
 clean: ## Remove build output
-	rm -rf build $(CORE)/.build
+	rm -rf build $(CORE)/.build Packages/PianismFeatures/.build

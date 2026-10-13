@@ -33,4 +33,42 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: swift-format
-        run: swift format lint --strict --recursive --parallel Packages
+        run: swift format lint --strict --recursive --parallel App AppUITests Packages
+
+  # macOS minutes cost 10x on private repos, so this job runs only after the cheap ones pass.
+  app:
+    name: Build and end-to-end tests (iOS Simulator)
+    needs: [core, lint]
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Select the newest stable Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | grep -vi beta | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+      - name: Boot a simulator
+        run: |
+          udid=$(scripts/simulator-destination.sh | sed 's/.*id=//')
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+      - name: Build and test
+        run: make test-app
+      - name: Export screenshots
+        if: always()
+        run: make evidence
+      - name: Upload screenshots (visual evidence for review)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: build/evidence
+          retention-days: 14
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-xcresult
+          path: build/results/app.xcresult
+          retention-days: 7

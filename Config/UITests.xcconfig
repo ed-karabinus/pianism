@@ -1,0 +1,7 @@
+// End-to-end tests that drive the built app.
+
+PRODUCT_NAME = PianismUITests
+PRODUCT_BUNDLE_IDENTIFIER = com.edkarabinus.PianismUITests
+GENERATE_INFOPLIST_FILE = YES
+TEST_TARGET_NAME = Pianism
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks @loader_path/Frameworks
