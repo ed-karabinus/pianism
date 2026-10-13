@@ -6,6 +6,8 @@ PRODUCT_BUNDLE_IDENTIFIER = com.edkarabinus.Pianism
 MARKETING_VERSION = 0.1.0
 CURRENT_PROJECT_VERSION = 1
 
+CODE_SIGN_ENTITLEMENTS = Config/Pianism.entitlements
+
 GENERATE_INFOPLIST_FILE = YES
 INFOPLIST_KEY_CFBundleDisplayName = Pianism
 INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.music

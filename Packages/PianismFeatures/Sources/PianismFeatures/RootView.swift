@@ -1,32 +1,39 @@
 import SwiftUI
 
 /// The app's top-level screen.
-///
-/// A placeholder until the Practice screen lands in M1 (SES-1).
 public struct RootView: View {
-    public init() {}
+    let practice: PracticeModel
+
+    @Environment(\.scenePhase) private var scenePhase
+
+    public init(practice: PracticeModel) {
+        self.practice = practice
+    }
 
     public var body: some View {
-        ContentUnavailableView(
-            "Pianism",
-            systemImage: "pianokeys",
-            description: Text("Your practice log is on its way.")
-        )
-        .accessibilityIdentifier(AccessibilityID.root)
+        PracticeView(model: practice)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(AccessibilityID.root)
+            // Restores a session after the app was killed, and shows changes made while it was away.
+            .onChange(of: scenePhase, initial: true) {
+                if scenePhase == .active { practice.refresh() }
+            }
     }
 }
 
 /// Accessibility identifiers shared with the UI tests.
 public enum AccessibilityID {
     public static let root = "root"
+    public static let practiceStatus = "practice.status"
+    public static let practiceElapsed = "practice.elapsed"
+    public static let practiceLastSession = "practice.last-session"
+    public static let practiceStart = "practice.start"
+    public static let practicePause = "practice.pause"
+    public static let practiceResume = "practice.resume"
+    public static let practiceStop = "practice.stop"
 }
 
 #Preview {
-    RootView()
-}
-
-#Preview("Dark, AX5") {
-    RootView()
-        .preferredColorScheme(.dark)
-        .dynamicTypeSize(.accessibility5)
+    RootView(practice: .preview(.ready))
 }

@@ -10,6 +10,7 @@ let strict: [SwiftSetting] = [.treatAllWarnings(as: .error)]
 
 let package = Package(
     name: "PianismFeatures",
+    defaultLocalization: "en",
     platforms: [
         .iOS(.v26)
     ],
@@ -25,6 +26,7 @@ let package = Package(
             dependencies: [
                 .product(name: "PianismCore", package: "PianismCore")
             ],
+            resources: [.process("Resources")],
             swiftSettings: strict
         )
     ]
