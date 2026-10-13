@@ -12,7 +12,7 @@ flowchart TB
     app["App target<br/>composition root"] --> features
     widget["Widget extension<br/>(M3)"] --> features
     features["PianismFeatures<br/>SwiftUI screens + view models"] --> core
-    persistence["Persistence<br/>SwiftData + CloudKit"] --> core
+    persistence["PianismPersistence<br/>running-session file, SwiftData + CloudKit"] --> core
     midi["MIDI<br/>CoreMIDI adapter"] --> core
     purchases["Purchases<br/>StoreKit 2"] --> core
     core["PianismCore<br/>pure Swift rules + ports"]
@@ -27,6 +27,7 @@ Requirements: Xcode 26 or later (developed on Xcode 27), iOS 26+ iPhone and iPad
 
 ```sh
 make test-core   # core unit tests, a few seconds
+make test-adapters   # adapter integration tests on macOS, against real files
 make test-app    # build the app and run end-to-end tests on iPhone and iPad simulators
 make test-app DEVICES=iPhone   # just one, when iterating
 make lint        # formatting check
@@ -40,7 +41,7 @@ Open `Pianism.xcodeproj` in Xcode to run the app. To run on a device, create
 | Layer | Runs |
 | --- | --- |
 | Unit (Swift Testing, core logic, injected clock) | Every PR, on Linux |
-| Integration (SwiftData store, StoreKit) | Every PR |
+| Integration (adapters against real files on macOS; later SwiftData, StoreKit) | Every PR |
 | End-to-end (XCUITest in the simulator) | Every PR |
 | Exploratory QA by an agent driving the simulator | Each milestone |
 | Device checks with a real piano | Each milestone, by the owner |
