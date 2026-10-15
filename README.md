@@ -31,7 +31,7 @@ make test-adapters   # adapter integration tests on macOS, against real files
 make test-app    # build the app and run end-to-end tests on iPhone and iPad simulators
 make test-app DEVICES=iPhone   # just one, when iterating
 make lint        # formatting check
-make unused      # fail on unused code (Periphery, pinned)
+make unused      # fail on unused code in the app and the package code it builds (Periphery, pinned)
 make mutate      # mutation testing of the core and adapters; minutes, run before milestone checks
 ```
 

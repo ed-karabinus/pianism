@@ -54,11 +54,11 @@ evidence: ## Export the screenshots the last test-app run captured, one folder p
 lint: ## Check formatting without changing files
 	swift format lint --strict --recursive --parallel $(SWIFT_DIRS)
 
-unused: ## Fail on unused code, with Periphery pinned in build/ (ADR 0005)
+unused: ## Fail on unused code in the app and the package code it builds (Periphery, pinned; ADR 0005)
 	scripts/unused.sh
 
 mutate: ## Plant one bug at a time in the core and adapters and report the ones no test catches (minutes)
-	python3 scripts/mutate.py
+	python3 scripts/mutate.py $(CORE) $(ADAPTERS)
 
 format: ## Format all Swift sources in place
 	swift format --in-place --recursive --parallel $(SWIFT_DIRS)
