@@ -2,12 +2,12 @@
 
 - Status: proposed
 - Date: 2026-10-15
-- Pull request: the review discussion after #27, and #30
+- Pull request: the review discussion after #27, and #33
 
 ## Context and problem statement
 
 Agents write code quickly, so the main risk is code that works but shouldn't exist. Review is the
-first defence (#30), but a reviewer's judgment varies. Two automated checks don't depend on it:
+first defence (#33), but a reviewer's judgment varies. Two automated checks don't depend on it:
 
 - **Unused code:** declarations, parameters and `public` modifiers that nothing uses.
 - **Mutation testing:** break one line at a time and run the tests. A break that no test notices
