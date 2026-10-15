@@ -159,6 +159,17 @@ struct SessionRecorderTests {
         #expect(store.current() == nil)
     }
 
+    @Test("SES-6: if saving to history fails, the ended session stays in the store for the next try")
+    func archiveKeepsSessionWhenSaveFails() throws {
+        try recorder.start()
+        clock.advance(by: 60)
+        let ended = try recorder.stop()
+
+        #expect(throws: UnavailableHistory.Failure.self) { try recorder.archive(to: UnavailableHistory()) }
+
+        #expect(store.current() == ended)
+    }
+
     @Test("Archiving never clears a session that another writer started in the meantime")
     func archiveKeepsNewerSession() throws {
         let history = InMemorySessionHistory()
@@ -228,6 +239,15 @@ enum Command: CustomTestStringConvertible, Sendable {
         case .resume: try recorder.resume()
         case .stop: try recorder.stop()
         }
+    }
+}
+
+/// A history that can't be reached, as when its store fails to open.
+struct UnavailableHistory: SessionHistory {
+    struct Failure: Error {}
+
+    func save(_ session: PracticeSession) throws {
+        throw Failure()
     }
 }
 
