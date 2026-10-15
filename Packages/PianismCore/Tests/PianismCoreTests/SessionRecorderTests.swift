@@ -1,0 +1,186 @@
+import Foundation
+import PianismCore
+import PianismCoreTestSupport
+import Testing
+
+struct SessionRecorderTests {
+    let clock = ManualClock()
+    let store = InMemoryRunningSessionStore()
+    let recorder: SessionRecorder
+
+    init() {
+        recorder = SessionRecorder(store: store, clock: clock)
+    }
+
+    // MARK: SES-1, SES-2: every command is stored before it returns
+
+    @Test("SES-1: starting stores a running session that starts now")
+    func startStoresSession() throws {
+        let session = try recorder.start()
+
+        #expect(session.state == .running)
+        #expect(session.startedAt == clock.now)
+        #expect(store.current() == session)
+    }
+
+    @Test("SES-1, SES-2: pause, resume and stop are each stored with the time they happen")
+    func commandsAreStored() throws {
+        try recorder.start()
+        clock.advance(by: 300)
+        let paused = try recorder.pause()
+        #expect(store.current() == paused)
+        #expect(paused.state == .paused)
+
+        clock.advance(by: 60)
+        let resumed = try recorder.resume()
+        #expect(store.current() == resumed)
+        #expect(resumed.state == .running)
+
+        clock.advance(by: 120)
+        let stopped = try recorder.stop()
+        #expect(store.current() == stopped)
+        #expect(stopped.endedAt == clock.now)
+        #expect(stopped.elapsed(at: clock.now) == 420)
+    }
+
+    // MARK: Rejected commands leave the stored session untouched
+
+    @Test("SES-1: starting never overwrites a session that is running or paused", arguments: [false, true])
+    func startWhileStarted(paused: Bool) throws {
+        try recorder.start()
+        clock.advance(by: 60)
+        if paused { try recorder.pause() }
+        let before = store.current()
+
+        #expect(throws: RecorderError.alreadyStarted) { try recorder.start() }
+        #expect(store.current() == before)
+    }
+
+    @Test("SES-1: starting never overwrites an ended session that hasn't moved to history")
+    func startWhileEndedSessionWaits() throws {
+        try recorder.start()
+        clock.advance(by: 60)
+        let ended = try recorder.stop()
+
+        #expect(throws: RecorderError.previousSessionNotSaved) { try recorder.start() }
+        #expect(store.current() == ended)
+    }
+
+    @Test("Pause, resume and stop need a session", arguments: Command.changes)
+    func changesNeedSession(command: Command) {
+        #expect(throws: RecorderError.noSession) { try command.run(on: recorder) }
+        #expect(store.current() == nil)
+    }
+
+    @Test("A command the session rejects stores nothing")
+    func rejectedChangeStoresNothing() throws {
+        try recorder.start()
+        clock.advance(by: 60)
+        let before = store.current()
+
+        #expect(throws: SessionError.notPaused) { try recorder.resume() }
+        #expect(store.current() == before)
+    }
+
+    // MARK: SES-6: relaunch
+
+    @Test("SES-6: after a relaunch, a running session keeps counting from its stored start")
+    func relaunchWhileRunning() throws {
+        try recorder.start()
+        clock.advance(by: 600)
+        // The app is killed here. Five minutes later it launches with a new recorder.
+        clock.advance(by: 300)
+        let relaunched = SessionRecorder(store: store, clock: clock)
+
+        let restored = try #require(try relaunched.current())
+
+        #expect(restored.state == .running)
+        #expect(restored.elapsed(at: clock.now) == 900)
+    }
+
+    @Test("SES-6: after a relaunch, a paused session still excludes the pause and can be resumed")
+    func relaunchWhilePaused() throws {
+        try recorder.start()
+        clock.advance(by: 600)
+        try recorder.pause()
+        clock.advance(by: 300)
+        let relaunched = SessionRecorder(store: store, clock: clock)
+
+        let restored = try #require(try relaunched.current())
+        #expect(restored.state == .paused)
+        #expect(restored.elapsed(at: clock.now) == 600)
+
+        try relaunched.resume()
+        clock.advance(by: 60)
+        #expect(try relaunched.current()?.elapsed(at: clock.now) == 660)
+    }
+
+    // MARK: Two writers
+
+    @Test("A command takes the time after another writer's change, not before it")
+    func timeIsReadInsideTheUpdate() throws {
+        let contended = ContendedStore()
+        let app = SessionRecorder(store: contended, clock: clock)
+        let liveActivity = SessionRecorder(store: contended.base, clock: clock)
+        try app.start()
+        clock.advance(by: 60)
+        // While the app waits for the store, a Live Activity pauses the session a second later.
+        contended.beforeNextUpdate = {
+            clock.advance(by: 1)
+            try liveActivity.pause()
+        }
+
+        let stopped = try app.stop()
+
+        #expect(stopped.endedAt == clock.now)
+        #expect(stopped.elapsed(at: clock.now) == 61)
+    }
+
+    @Test("Two recorders sharing a store see each other's changes")
+    func sharedStore() throws {
+        let widget = SessionRecorder(store: store, clock: clock)
+        let started = try widget.start()
+        clock.advance(by: 30)
+
+        let paused = try recorder.pause()
+
+        #expect(paused.id == started.id)
+        #expect(try widget.current() == paused)
+    }
+}
+
+/// A recorder command that changes an existing session.
+enum Command: CustomTestStringConvertible, Sendable {
+    case pause, resume, stop
+
+    static let changes: [Command] = [.pause, .resume, .stop]
+
+    var testDescription: String { "\(self)" }
+
+    func run(on recorder: SessionRecorder) throws {
+        switch self {
+        case .pause: try recorder.pause()
+        case .resume: try recorder.resume()
+        case .stop: try recorder.stop()
+        }
+    }
+}
+
+/// A store where another writer gets in first: `beforeNextUpdate` runs once, just before the next
+/// update reads the session, as if that update had been waiting for the other process.
+final class ContendedStore: RunningSessionStore, @unchecked Sendable {
+    let base = InMemoryRunningSessionStore()
+    var beforeNextUpdate: (() throws -> Void)?
+
+    func current() throws -> PracticeSession? {
+        base.current()
+    }
+
+    func update<Result: Sendable>(_ change: (inout PracticeSession?) throws -> Result) throws -> Result {
+        if let other = beforeNextUpdate {
+            beforeNextUpdate = nil
+            try other()
+        }
+        return try base.update(change)
+    }
+}

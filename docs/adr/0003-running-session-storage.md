@@ -1,6 +1,6 @@
 # 3. The running session lives in the App Group, not the synced store
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-13
 - Issue: #16
 
