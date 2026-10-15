@@ -35,6 +35,20 @@ jobs:
       - name: swift-format
         run: swift format lint --strict --recursive --parallel App AppUITests Packages
 
+  # Adapters use Apple-only APIs such as NSFileCoordinator, so they are tested on macOS, against real
+  # files. No simulator, so this runs in a few minutes, alongside the end-to-end tests.
+  adapters:
+    name: Adapter integration tests (macOS)
+    needs: [core, lint]
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Select the newest stable Xcode
+        run: scripts/select-xcode.sh
+      - name: Test the adapter packages
+        run: make test-adapters
+
   # Runs after the fast Linux jobs pass, so a formatting slip fails in one minute, not ten.
   app:
     name: Build and end-to-end tests (iOS Simulator)
@@ -44,10 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Select the newest stable Xcode
-        run: |
-          xcode=$(ls -d /Applications/Xcode_*.app | grep -vi beta | sort -V | tail -1)
-          sudo xcode-select -s "$xcode"
-          xcodebuild -version
+        run: scripts/select-xcode.sh
       # One simulator at a time: the runner is small, and separate steps keep a log and a time per device.
       - name: End-to-end tests on iPhone
         timeout-minutes: 20

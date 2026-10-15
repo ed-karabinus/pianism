@@ -13,8 +13,9 @@ to the owner.
 | Command | What it does |
 | --- | --- |
 | `make test-core` | Unit tests for `PianismCore` (seconds, no simulator) |
+| `make test-adapters` | Integration tests for the adapter packages, on macOS against real files (seconds, no simulator) |
 | `make test-app` | Builds the app and runs end-to-end tests on iPhone and iPad simulators (`DEVICES=iPhone` for one) |
-| `make test` | Both of the above |
+| `make test` | All of the above |
 | `make lint` / `make format` | Check / apply swift-format |
 | `make build` | Simulator build only |
 | `make evidence` | Exports the screenshots the last `test-app` run captured, for the PR's Testing section |
@@ -28,8 +29,10 @@ Run `make lint test` before every push. CI runs the same commands.
 - `Packages/PianismCore` — pure Swift rules. No SwiftUI, SwiftData, CoreMIDI, StoreKit or UIKit
   imports (CI tests it on Linux, so it will fail). Shared test doubles go in `PianismCoreTestSupport`.
 - `Packages/PianismFeatures` — SwiftUI screens and view models.
-- Adapter packages (Persistence, MIDI, Purchases, System) arrive as needed; each implements a port
-  defined in the core.
+- `Packages/PianismPersistence` — storage adapters, such as the running-session file (ADR 0003).
+  Tested on macOS with `make test-adapters`.
+- More adapter packages (MIDI, Purchases, System) arrive as needed; each implements a port defined in
+  the core. Add each new one to `ADAPTERS` in the `Makefile`.
 - `Config/*.xcconfig` — all build settings. Change settings there, not in the project file.
 - `docs/adr/` — architecture decision records.
 
