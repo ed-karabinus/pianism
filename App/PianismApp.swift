@@ -42,7 +42,7 @@ struct PianismApp: App {
 /// Stands in for the synced history until it lands with HIS-1 (#14, ADR 0004): finished sessions
 /// are not kept yet.
 private struct UnsavedSessionHistory: SessionHistory {
-    func save(_ session: PracticeSession) {}
+    func save(_: PracticeSession) {}
 }
 
 /// A clock that always reads the same time, for end-to-end tests.
