@@ -12,6 +12,8 @@
 
 1. <!-- the file that explains the change best -->
 
+**Size:** <!-- production lines: estimated N (and where: plan, issue or earlier PR), actual M. Over 1.5×: why. -->
+
 ## Testing
 
 <!-- Evidence, not claims. -->
@@ -19,6 +21,7 @@
 - **Automated:** <!-- tests added or changed, by name, plus the summary line of `make test` -->
 - **Visual:** <!-- screenshots or a recording for any UI change (before and after when something changed). `make evidence` exports the screenshots the UI tests captured. Otherwise: "No UI change." -->
 - **Manual:** <!-- anything checked by hand or on a device, or "None needed." -->
+- **Independent review:** <!-- what the review agent (.claude/agents/pr-reviewer.md) found: each finding applied (lines saved) or rejected (why). Apple sample code compared, if a framework is new. -->
 
 ## Issue
 
@@ -29,6 +32,7 @@
 ### Definition of done
 
 - [ ] Each acceptance criterion maps to a named test (or a device-checklist item)
+- [ ] A separate agent reviewed the branch; every finding is applied or answered above
 - [ ] `make lint test` passes locally; zero warnings
 - [ ] UI changes have screenshots above; new views have previews in light, dark and AX5
 - [ ] New controls have VoiceOver labels; new strings are in the String Catalog
