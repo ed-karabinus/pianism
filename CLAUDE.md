@@ -47,6 +47,19 @@ Run `make lint test` before every push. CI runs the same commands.
 - Tests use Swift Testing (`import Testing`) except UI tests, which use XCTest. Name each test after
   the behaviour it proves and tag it with its requirement ID.
 
+## Keeping the code small
+
+Agents write code quickly, so the main risk is code that works but shouldn't exist.
+
+- No protocol with a single implementation, unless it's a port the core defines or a seam tests need.
+- Nothing without a caller today: no parameters, options, enum cases or public API "for later".
+- Use the platform before writing your own: `@Bindable` rather than a hand-built `Binding`, a
+  Foundation formatter rather than string arithmetic. When a framework is new to the codebase, read
+  Apple's sample code for it first, and say in the PR which sample you compared and where we differ.
+- Comments say why, not what. Document public API; comment private code only when the why isn't
+  obvious.
+- Prefer deleting to adding. A PR that only removes code is always welcome.
+
 ## Workflow
 
 1. Work on a branch named after the ticket, for example `ses-3-still-practicing-nudge`.
@@ -58,5 +71,10 @@ Run `make lint test` before every push. CI runs the same commands.
    The owner reviews and merges every PR; agents never merge.
 3. Anything that adds a module, a dependency or a persistent model change needs a short plan (and an
    ADR if it changes the architecture) approved by the owner before you write code.
-4. Never weaken, skip or delete a test to make it pass without saying so in the PR.
-5. Report results faithfully: if something failed or was skipped, say so.
+4. Estimate the production lines before you start, and report the estimate and the actual in the
+   PR. More than 1.5 times the estimate needs a sentence explaining why.
+5. Before opening a PR that changes code, have a separate agent review the branch with the brief in
+   `.claude/agents/pr-reviewer.md`. It must not be the agent that wrote the change. Apply each
+   finding or say why not; the PR lists what the review cut and what it rejected.
+6. Never weaken, skip or delete a test to make it pass without saying so in the PR.
+7. Report results faithfully: if something failed or was skipped, say so.
