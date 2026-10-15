@@ -1,6 +1,6 @@
 # 4. Finished sessions and tags in SwiftData, mapped to core values and synced through CloudKit
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-13
 - Issue: #25
 
