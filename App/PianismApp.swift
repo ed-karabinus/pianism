@@ -17,18 +17,19 @@ struct PianismApp: App {
             // Without the App Group, the widget and Live Activity couldn't see the session.
             fatalError("Missing the \(Self.appGroup) App Group entitlement.")
         }
-        let options = LaunchOptions.current
-        if options.reset {
-            try? store.update { $0 = nil }
-        }
-        let clock = options.clock ?? SystemClock()
-        _practice = State(
-            initialValue: PracticeModel(
-                recorder: SessionRecorder(store: store, clock: clock),
-                history: UnsavedSessionHistory(),
-                clock: clock
-            )
-        )
+        var clock: any WallClock = SystemClock()
+        #if DEBUG
+            // End-to-end tests fix the time with PIANISM_NOW (seconds since 1970) and start with
+            // no running session with PIANISM_RESET=1. Release builds ignore both.
+            let environment = ProcessInfo.processInfo.environment
+            if let seconds = environment["PIANISM_NOW"].flatMap(TimeInterval.init) {
+                clock = FixedClock(now: Date(timeIntervalSince1970: seconds))
+            }
+            if environment["PIANISM_RESET"] == "1" {
+                try? store.update { $0 = nil }
+            }
+        #endif
+        practice = PracticeModel(store: store, history: UnsavedSessionHistory(), clock: clock)
     }
 
     var body: some Scene {
@@ -42,4 +43,9 @@ struct PianismApp: App {
 /// are not kept yet.
 private struct UnsavedSessionHistory: SessionHistory {
     func save(_ session: PracticeSession) {}
+}
+
+/// A clock that always reads the same time, for end-to-end tests.
+private struct FixedClock: WallClock {
+    let now: Date
 }

@@ -2,7 +2,7 @@ import XCTest
 
 /// End-to-end tests of the Practice screen (SES-1, SES-2, SES-6).
 ///
-/// Each launch fixes the app's clock (see `App/LaunchOptions.swift`), so times are exact. Time
+/// Each launch fixes the app's clock (see `App/PianismApp.swift`), so times are exact. Time
 /// passes between launches, which also proves a session survives the app being killed.
 final class PracticeTests: XCTestCase {
     /// 2027-01-01 00:00:00 UTC.

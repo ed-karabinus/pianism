@@ -2,17 +2,13 @@ import PianismCore
 import SwiftUI
 
 /// The Practice screen: one tap to start, the time always visible (SES-1, SES-2, P1).
-public struct PracticeView: View {
-    let model: PracticeModel
+struct PracticeView: View {
+    @Bindable var model: PracticeModel
 
     @ScaledMetric(relativeTo: .largeTitle) private var timeSize = 76
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    public init(model: PracticeModel) {
-        self.model = model
-    }
-
-    public var body: some View {
+    var body: some View {
         VStack(spacing: 24) {
             Spacer()
             Text(status, bundle: .module)
@@ -20,7 +16,7 @@ public struct PracticeView: View {
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier(AccessibilityID.practiceStatus)
             TimelineView(.periodic(from: .now, by: 1)) { _ in
-                let elapsed = model.elapsed(at: model.clock.now)
+                let elapsed = model.session?.elapsed(at: model.clock.now) ?? 0
                 Text(ElapsedTime.display(elapsed))
                     .font(.system(size: timeSize * timeScale, weight: .light, design: .rounded).monospacedDigit())
                     .lineLimit(1)
@@ -41,7 +37,7 @@ public struct PracticeView: View {
         }
         .padding(24)
         .frame(maxWidth: 560)
-        .alert(Text("Couldn't save that change", bundle: .module), isPresented: storageErrorBinding) {
+        .alert(Text("Couldn't save that change", bundle: .module), isPresented: $model.isShowingStorageError) {
             Button(role: .cancel) {
             } label: {
                 Text("OK", bundle: .module)
@@ -90,10 +86,6 @@ public struct PracticeView: View {
         case .paused: "Paused"
         }
     }
-
-    private var storageErrorBinding: Binding<Bool> {
-        Binding(get: { model.isShowingStorageError }, set: { model.isShowingStorageError = $0 })
-    }
 }
 
 /// A full-width, extra-large button for the screen's main commands.
@@ -104,6 +96,7 @@ private struct CommandButton: View {
     let prominent: Bool
     let action: () -> Void
 
+    /// Takes the title unlabeled, like SwiftUI's own `Button` and `Label`.
     init(
         _ title: LocalizedStringKey, systemImage: String, id: String, prominent: Bool = false,
         action: @escaping () -> Void

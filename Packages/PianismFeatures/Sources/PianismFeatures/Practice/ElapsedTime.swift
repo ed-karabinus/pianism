@@ -15,6 +15,6 @@ enum ElapsedTime {
     }
 
     private static func wholeSeconds(_ elapsed: TimeInterval) -> Duration {
-        .seconds(Int(max(elapsed, 0)))
+        .seconds(Int(elapsed))
     }
 }
