@@ -44,6 +44,9 @@ the adapter implements:
 - `SessionHistory`: save, which inserts or updates by ID; sessions in a date range; delete.
 - `TagLibrary`: all tags; add, rename, archive and merge.
 
+Both ports also report when anything they hold changes, on this device or from iCloud, so view
+models know when to fetch again.
+
 Grouping by day, day totals and week totals are pure core functions over values (HIS-1, HIS-2). They
 are tested on Linux, including time zones and daylight-saving changes. **A session counts toward
 the day it started.**
@@ -134,13 +137,23 @@ queries need, and makes every record opaque in the CloudKit dashboard.
 ## Consequences
 
 - Good: day, week and per-piece rules stay in the Linux-tested core. Views and view models never
-  see a `@Model` type.
+  see a `@Model` type: they hold `Sendable` values, so nothing tied to a `ModelContext` crosses an
+  actor under Swift 6's strict concurrency, and previews and view-model tests need no container.
+- Good: storage can change behind the ports. If SwiftData's CloudKit sync proves unreliable,
+  Core Data or `CKSyncEngine` can replace it without touching views or rules.
 - Good: saving the same session twice is harmless, which closes the crash window ADR 0003 left
   between the file and the store.
 - Good: built-in skills can't be duplicated by sync, and their names can be localized and renamed
   freely.
-- Bad: no `@Query` in views. View models fetch through the ports and refetch when the store reports
-  a change, local or synced. That is a little more code than SwiftData's defaults.
+- Bad: no `@Query` in views, so the app tracks changes itself, which `@Query` would do for free.
+  The ports publish a "changed" signal for saves made anywhere in the app and for records imported
+  from iCloud, read from SwiftData's history. Each list's view model refetches its date range when
+  it fires. That's about 200 lines plus tests, but lines aren't the real cost: if the signal misses
+  a change, a screen shows stale data. Local saves are covered by an integration test with two
+  containers on one store, and an end-to-end test that stops a session and sees it in history.
+  iCloud imports can only be checked on two real devices (SYN-1). If that signal proves
+  unreliable, a list can fall back to `@Query` in its view, mapping records to core values before
+  any rule runs. The core doesn't change.
 - Bad: "sessions for this piece" (HIS-4, M4) filters `tagIDs` in memory, because SwiftData
   predicates can't look inside an array attribute. At a few thousand sessions, that is milliseconds.
   The same pass resolves merged tags. The NFR performance test will measure it.
