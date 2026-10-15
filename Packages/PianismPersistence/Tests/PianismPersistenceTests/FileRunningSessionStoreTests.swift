@@ -103,9 +103,9 @@ final class FileRunningSessionStoreTests {
     func concurrentWritersLoseNothing() throws {
         let writers = 8
         let togglesEach = 100
+        let (clock, fileURL) = (clock, store.fileURL)
         try store.update { $0 = PracticeSession(startedAt: clock.now) }
         let errors = Mutex<[any Error]>([])
-        let (clock, fileURL) = (clock, store.fileURL)
 
         // Real threads, each with its own store, stand in for the app, the widget and Live Activities.
         // NSFileCoordinator blocks, so this deliberately avoids Swift concurrency's cooperative pool.
