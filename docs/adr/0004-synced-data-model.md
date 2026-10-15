@@ -20,8 +20,8 @@ it into the synced store (ADR 0003). Built-in skills are code constants, never s
 can't duplicate them (TAG-1). Engineering principle E1 keeps SwiftData out of the core.
 
 So: what do sessions and tags look like in the store? How does a session refer to a built-in skill
-that isn't a row? How do we prevent duplicates without unique constraints? How do we evolve the
-schema?
+that isn't a row? How do we prevent duplicates without unique constraints, and merge the ones sync
+can't prevent? How do we evolve the schema?
 
 ## Considered options
 
@@ -42,7 +42,7 @@ IDs, a note and a source as those features land), `Tag`, and `TagID`. It also de
 the adapter implements:
 
 - `SessionHistory`: save, which inserts or updates by ID; sessions in a date range; delete.
-- `TagLibrary`: all tags; add, rename and archive.
+- `TagLibrary`: all tags; add, rename, archive and merge.
 
 Grouping by day, day totals and week totals are pure core functions over values (HIS-1, HIS-2). They
 are tested on Linux, including time zones and daylight-saving changes. **A session counts toward
@@ -69,6 +69,7 @@ the day it started.**
 | `isArchived` | `Bool`, `false` | Tags are archived, never deleted |
 | `composer` | `String`, `""` | TAG-3 |
 | `targetTempo` | `Int?`, `nil` | TAG-3, in BPM |
+| `mergedInto` | `String`, `""` | The ID of the tag this one was merged into. See "Duplicate tags" |
 | `createdAt`, `modifiedAt` | `Date`, `.distantPast` | |
 
 **Tags by ID, with no relationships.** Built-in skills have fixed IDs in the core, such as
@@ -83,6 +84,31 @@ found, insert otherwise. Moving an ended session out of the running-session file
 `history.save(session)` followed by clearing the file. If the app dies in between, the next launch
 saves it again, and the upsert makes that harmless. Reads still drop any duplicate `id` and keep
 the latest `modifiedAt`, in case sync ever delivers one.
+
+**Duplicate tags are merged by alias, never by rewriting sessions.** IDs can't stop two devices
+from each adding "Ballade No. 1" before either has synced, and sync can take minutes even online.
+So duplicates are made rare, then recoverable:
+
+- Adding a tag whose name matches an existing tag of the same kind, ignoring case and accents,
+  offers the existing tag instead, including archived ones. That leaves only a race between
+  devices.
+- A merge sets the duplicate's `mergedInto` to the kept tag's ID and archives it. Sessions are
+  never touched. A pure core function resolves every tag ID by following `mergedInto` to the end of
+  the chain, so a session tagged with either ID counts toward the kept tag, once.
+- Rewriting the sessions' `tagIDs` instead would be unsafe under sync. A device that hasn't
+  received the merge keeps tagging new sessions with the old ID, and each rewritten session is a
+  write that can collide with an edit made on another device. An alias covers both cases, and
+  clearing `mergedInto` undoes the merge.
+- Two devices can merge the same pair in opposite directions, which makes a cycle. Resolution then
+  keeps the tag in the cycle created first, with ties broken by ID, so every device agrees without
+  coordinating. If the kept tag hasn't synced yet, the duplicate shows as itself until it arrives.
+
+`mergedInto` and its resolution ship in schema v1, before any merge screen exists, so every
+installed version understands a merge made by a later one. Deriving tag IDs from names was
+rejected: it would merge racing adds by itself, but only on exact names. It would also silently
+join two different pieces: rename "Ballade" to "Ballade No. 1", add a new "Ballade", and both
+pieces share an ID their sessions can never be split from. A visible duplicate can be merged and
+unmerged; pieces joined by a shared ID can't be separated.
 
 **Schema evolution.** The schema is a `VersionedSchema` with a `SchemaMigrationPlan` from v1, even
 with a single version.
@@ -117,9 +143,11 @@ queries need, and makes every record opaque in the CloudKit dashboard.
   a change, local or synced. That is a little more code than SwiftData's defaults.
 - Bad: "sessions for this piece" (HIS-4, M4) filters `tagIDs` in memory, because SwiftData
   predicates can't look inside an array attribute. At a few thousand sessions, that is milliseconds.
-  The NFR performance test will measure it.
-- Bad: two devices offline can each create a piece with the same name, and both are kept. Merging
-  tags is a possible later feature, which would rewrite references.
+  The same pass resolves merged tags. The NFR performance test will measure it.
+- Bad: two devices that add the same piece before syncing still get two pieces, until the user
+  merges them. The merge screen is a separate story, proposed as TAG-4 alongside HIS-4 in M4. Until
+  then, there is no per-piece view for the split to show in, and the piece picker shows the name
+  twice.
 - Out of scope: PRO-2's count of free auto-logged sessions isn't derived from history, because
   deleting sessions would reset it. It's decided with Purchases in M4.
 - To verify with SYN-1 (#15): sync between two real devices, and the CloudKit dashboard's schema
