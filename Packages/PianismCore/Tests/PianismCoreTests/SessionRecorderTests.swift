@@ -115,6 +115,82 @@ struct SessionRecorderTests {
         #expect(try relaunched.current()?.elapsed(at: clock.now) == 660)
     }
 
+    // MARK: Moving ended sessions into history
+
+    @Test("SES-1: archiving moves an ended session into history and frees the store for a new start")
+    func archiveMovesEndedSession() throws {
+        let history = InMemorySessionHistory()
+        try recorder.start()
+        clock.advance(by: 60)
+        let ended = try recorder.stop()
+
+        let archived = try recorder.archive(to: history)
+
+        #expect(archived == ended)
+        #expect(history.sessions == [ended])
+        #expect(store.current() == nil)
+        #expect(throws: Never.self) { try recorder.start() }
+    }
+
+    @Test("Archiving leaves a running or paused session alone", arguments: [false, true])
+    func archiveIgnoresUnfinishedSession(paused: Bool) throws {
+        let history = InMemorySessionHistory()
+        try recorder.start()
+        clock.advance(by: 60)
+        if paused { try recorder.pause() }
+        let before = store.current()
+
+        #expect(try recorder.archive(to: history) == nil)
+        #expect(history.sessions.isEmpty)
+        #expect(store.current() == before)
+    }
+
+    @Test("SES-6: archiving again after a crash between saving and clearing keeps one copy")
+    func archiveAfterCrashKeepsOneCopy() throws {
+        let history = InMemorySessionHistory()
+        try recorder.start()
+        clock.advance(by: 60)
+        let ended = try recorder.stop()
+        history.save(ended)  // The app died here, before clearing the store.
+
+        try recorder.archive(to: history)
+
+        #expect(history.sessions == [ended])
+        #expect(store.current() == nil)
+    }
+
+    @Test("SES-6: if saving to history fails, the ended session stays in the store for the next try")
+    func archiveKeepsSessionWhenSaveFails() throws {
+        try recorder.start()
+        clock.advance(by: 60)
+        let ended = try recorder.stop()
+
+        #expect(throws: UnavailableHistory.Failure.self) { try recorder.archive(to: UnavailableHistory()) }
+
+        #expect(store.current() == ended)
+    }
+
+    @Test("Archiving never clears a session that another writer started in the meantime")
+    func archiveKeepsNewerSession() throws {
+        let history = InMemorySessionHistory()
+        let contended = ContendedStore()
+        let app = SessionRecorder(store: contended, clock: clock)
+        let widget = SessionRecorder(store: contended.base, clock: clock)
+        try app.start()
+        clock.advance(by: 60)
+        try app.stop()
+        // While the app saves to history, another process archives the session and starts a new one.
+        contended.beforeNextUpdate = {
+            try widget.archive(to: history)
+            try widget.start()
+        }
+
+        try app.archive(to: history)
+
+        #expect(contended.base.current()?.state == .running)
+        #expect(history.sessions.count == 1)
+    }
+
     // MARK: Two writers
 
     @Test("A command takes the time after another writer's change, not before it")
@@ -163,6 +239,15 @@ enum Command: CustomTestStringConvertible, Sendable {
         case .resume: try recorder.resume()
         case .stop: try recorder.stop()
         }
+    }
+}
+
+/// A history that can't be reached, as when its store fails to open.
+struct UnavailableHistory: SessionHistory {
+    struct Failure: Error {}
+
+    func save(_ session: PracticeSession) throws {
+        throw Failure()
     }
 }
 

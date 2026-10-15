@@ -26,9 +26,9 @@ test-core: ## Unit-test the platform-independent core (fast, no simulator)
 test-adapters: ## Integration-test the adapter packages, which need Apple-only APIs (macOS, no simulator)
 	@for package in $(ADAPTERS); do swift test --package-path $$package || exit 1; done
 
-build: ## Build the app for the simulator
-	xcodebuild build -project $(PROJECT) -scheme $(SCHEME) \
-		-destination "$$(scripts/simulator-destination.sh)" \
+build: ## Build the app as it ships (Release) for the simulator; the tests build Debug
+	xcodebuild build -project $(PROJECT) -scheme $(SCHEME) -configuration Release \
+		-destination 'generic/platform=iOS Simulator' \
 		$(XCODE_FLAGS)
 
 test-app: ## Build the app and run its end-to-end tests on each simulator in DEVICES (default: iPhone iPad)

@@ -1,0 +1,42 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Couldn't save that change" : {
+
+    },
+    "Last session: %@" : {
+
+    },
+    "OK" : {
+
+    },
+    "Pause" : {
+
+    },
+    "Paused" : {
+
+    },
+    "Pianism couldn't reach its storage. Try again in a moment." : {
+
+    },
+    "Practice time" : {
+
+    },
+    "Practicing" : {
+
+    },
+    "Ready to practice" : {
+
+    },
+    "Resume" : {
+
+    },
+    "Start" : {
+
+    },
+    "Stop" : {
+
+    }
+  },
+  "version" : "1.0"
+}

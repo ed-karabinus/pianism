@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		0A0000000000000000000072 /* PianismFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000071 /* PianismFeatures */; };
+		0A0000000000000000000075 /* PianismPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000074 /* PianismPersistence */; };
+		0A0000000000000000000078 /* PianismCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000077 /* PianismCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,6 +51,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				0A0000000000000000000072 /* PianismFeatures in Frameworks */,
+				0A0000000000000000000075 /* PianismPersistence in Frameworks */,
+				0A0000000000000000000078 /* PianismCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -114,6 +118,8 @@
 			name = Pianism;
 			packageProductDependencies = (
 				0A0000000000000000000071 /* PianismFeatures */,
+				0A0000000000000000000074 /* PianismPersistence */,
+				0A0000000000000000000077 /* PianismCore */,
 			);
 			productName = Pianism;
 			productReference = 0A0000000000000000000010 /* Pianism.app */;
@@ -172,6 +178,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				0A0000000000000000000070 /* XCLocalSwiftPackageReference "Packages/PianismFeatures" */,
+				0A0000000000000000000073 /* XCLocalSwiftPackageReference "Packages/PianismPersistence" */,
+				0A0000000000000000000076 /* XCLocalSwiftPackageReference "Packages/PianismCore" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0A0000000000000000000003 /* Products */;
@@ -306,12 +314,28 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/PianismFeatures;
 		};
+		0A0000000000000000000073 /* XCLocalSwiftPackageReference "Packages/PianismPersistence" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/PianismPersistence;
+		};
+		0A0000000000000000000076 /* XCLocalSwiftPackageReference "Packages/PianismCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/PianismCore;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		0A0000000000000000000071 /* PianismFeatures */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PianismFeatures;
+		};
+		0A0000000000000000000074 /* PianismPersistence */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PianismPersistence;
+		};
+		0A0000000000000000000077 /* PianismCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PianismCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
