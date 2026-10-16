@@ -2,6 +2,7 @@ import Foundation
 import PianismCore
 import SwiftData
 import Synchronization
+import os
 
 /// Finished sessions, kept in SwiftData on this device (HIS-1; ADR 0004, as amended by ADR 0006).
 ///
@@ -14,6 +15,7 @@ public final class SwiftDataSessionHistory: SessionHistory {
     private let opened = Mutex<ModelContainer?>(nil)
     /// Saves run one at a time, so two saves of a new session can't both insert it (ADR 0006).
     private let saving = Mutex(())
+    private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
 
     /// A history stored at `url`, which is created, with its folder, on first use.
     public init(url: URL) {
@@ -50,8 +52,11 @@ public final class SwiftDataSessionHistory: SessionHistory {
             }
             try record.update(from: session)
             // A record that wouldn't read back the same would hide the whole history, so refuse it:
-            // the session then stays in the running-session file.
-            guard try record.session() == session else { throw HistoryError.wouldNotReadBack }
+            // the session then waits in the outbox (ADR 0007), where this log line explains it.
+            guard try record.session() == session else {
+                logger.error("Refused session \(session.id, privacy: .public): it wouldn't read back the same")
+                throw HistoryError.wouldNotReadBack
+            }
             try context.save()
         }
     }

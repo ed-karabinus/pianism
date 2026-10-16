@@ -5,7 +5,7 @@ import PianismCore
 /// or removing one never rewrites another (ADR 0007). Writes are atomic, so a crash never leaves half
 /// a file, and no folder means nothing is waiting.
 public struct FileSessionOutbox: SessionOutbox {
-    public let directory: URL
+    private let directory: URL
 
     public init(directory: URL) {
         self.directory = directory
@@ -18,9 +18,11 @@ public struct FileSessionOutbox: SessionOutbox {
         } catch CocoaError.fileReadNoSuchFile {
             return []
         }
-        // Atomic writes pass through temporary files, which never end in .json.
-        return try files.filter { $0.pathExtension == "json" }.map {
-            try JSONDecoder().decode(PracticeSession.self, from: Data(contentsOf: $0))
+        // Atomic writes pass through temporary files, which never end in .json. A file that can't be
+        // read, as after an update that changed the format, is skipped and kept, so it can't hold
+        // back the others.
+        return files.filter { $0.pathExtension == "json" }.compactMap {
+            try? JSONDecoder().decode(PracticeSession.self, from: Data(contentsOf: $0))
         }
     }
 
@@ -30,11 +32,7 @@ public struct FileSessionOutbox: SessionOutbox {
     }
 
     public func remove(id: UUID) throws {
-        do {
-            try FileManager.default.removeItem(at: file(for: id))
-        } catch CocoaError.fileNoSuchFile {
-            // Already gone, as after a crash between removing it and returning.
-        }
+        try FileManager.default.removeItem(at: file(for: id))
     }
 
     private func file(for id: UUID) -> URL {

@@ -17,7 +17,7 @@ extension PracticeModel {
         let store = PreviewStore(state == .ready ? nil : PracticeSession(startedAt: previewNow))
         let clock = PreviewClock(now: previewNow.addingTimeInterval(25 * 60 + 3))
         let model = PracticeModel(
-            store: store, history: InMemorySessionHistory(), outbox: InMemorySessionOutbox(), clock: clock)
+            store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock)
         if state == .paused {
             model.pause()
         }

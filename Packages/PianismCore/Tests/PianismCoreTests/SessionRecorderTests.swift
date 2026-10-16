@@ -6,7 +6,7 @@ import Testing
 struct SessionRecorderTests {
     let clock = ManualClock()
     let store = InMemoryRunningSessionStore()
-    let outbox = InMemorySessionOutbox()
+    let outbox = InMemorySessionHistory()
     let recorder: SessionRecorder
 
     init() {
@@ -289,7 +289,7 @@ enum Command: CustomTestStringConvertible, Sendable {
     }
 }
 
-/// A history that can't be reached, as when its store fails to open.
+/// An outbox that can't be written, as on a full disk.
 struct UnavailableOutbox: SessionOutbox {
     struct Failure: Error {}
 
@@ -306,6 +306,7 @@ struct UnavailableOutbox: SessionOutbox {
     }
 }
 
+/// A history that can't be reached, as when its store fails to open.
 struct UnavailableHistory: SessionHistory {
     struct Failure: Error {}
 

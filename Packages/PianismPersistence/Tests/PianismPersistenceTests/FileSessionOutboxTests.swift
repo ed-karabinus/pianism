@@ -8,7 +8,8 @@ import Testing
 final class FileSessionOutboxTests {
     let clock = ManualClock(start: Date(timeIntervalSince1970: 1_798_761_600.123_456))
     let directory = FileManager.default.temporaryDirectory.appending(path: "FileSessionOutboxTests-\(UUID())")
-    var outbox: FileSessionOutbox { FileSessionOutbox(directory: directory.appending(path: "Outbox")) }
+    var outboxDirectory: URL { directory.appending(path: "Outbox") }
+    var outbox: FileSessionOutbox { FileSessionOutbox(directory: outboxDirectory) }
 
     deinit {
         try? FileManager.default.removeItem(at: directory)
@@ -38,10 +39,20 @@ final class FileSessionOutboxTests {
         #expect(try outbox.sessions() == [session])
     }
 
-    @Test("No folder means nothing is waiting, and removing a session that isn't there is harmless")
-    func emptyAndAlreadyRemoved() throws {
+    @Test("No folder means nothing is waiting")
+    func noFolderNothingWaiting() throws {
         #expect(try outbox.sessions().isEmpty)
-        #expect(throws: Never.self) { try self.outbox.remove(id: UUID()) }
+    }
+
+    @Test("ADR 0007: a waiting file that can't be read is skipped and kept, so it can't hold back the rest")
+    func unreadableFileIsSkippedAndKept() throws {
+        let session = try endedSession(startingAfter: 0)
+        try outbox.add(session)
+        let unreadable = outboxDirectory.appending(path: "\(UUID().uuidString).json")
+        try Data("not a session".utf8).write(to: unreadable)
+
+        #expect(try outbox.sessions() == [session])
+        #expect(FileManager.default.fileExists(atPath: unreadable.path))
     }
 
     private func endedSession(startingAfter offset: TimeInterval) throws -> PracticeSession {

@@ -49,3 +49,7 @@ it loses data outright.
   load, and Practice says how many are waiting.
 - Bad: a third place a session can be, besides the running-session file and history. Each move
   between them is safe to repeat, which the tests check.
+- Bad: a session history refuses every time (one that wouldn't read back the same, ADR 0006) stays
+  in the outbox, logged, and the sessions listed after it wait behind it. Moving past it would
+  repeat a failed open for each waiting session during an outage. A waiting file that can't be read,
+  as after a format change, is skipped and kept.

@@ -1,3 +1,4 @@
+import Foundation
 import Synchronization
 
 /// A ``SessionHistory`` kept in memory, for previews and tests.
@@ -18,5 +19,16 @@ public final class InMemorySessionHistory: SessionHistory {
                 sessions.append(session)
             }
         }
+    }
+}
+
+/// Also an outbox, for previews and tests: adding is saving.
+extension InMemorySessionHistory: SessionOutbox {
+    public func add(_ session: PracticeSession) {
+        save(session)
+    }
+
+    public func remove(id: UUID) {
+        saved.withLock { $0.removeAll { $0.id == id } }
     }
 }

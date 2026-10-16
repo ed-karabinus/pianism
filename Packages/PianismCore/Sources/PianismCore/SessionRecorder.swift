@@ -31,8 +31,8 @@ public struct SessionRecorder: Sendable {
     /// Starts a new session now, in the current time zone (SES-1, ADR 0006).
     ///
     /// Throws ``RecorderError/alreadyStarted`` if a session is running or paused, and
-    /// ``RecorderError/previousSessionNotSaved`` if an ended session hasn't moved to history yet,
-    /// so starting never overwrites practice.
+    /// ``RecorderError/previousSessionNotSaved`` if an ended session is still stored because neither
+    /// history nor the outbox could take it, so starting never overwrites practice.
     @discardableResult
     public func start() throws -> PracticeSession {
         try store.update { stored in
@@ -116,7 +116,8 @@ public struct SessionRecorder: Sendable {
 public enum RecorderError: Error, Sendable, Hashable {
     /// `start` while a session is running or paused.
     case alreadyStarted
-    /// `start` while an ended session is still waiting to move to history.
+    /// `start` while an ended session is still stored, because neither history nor the outbox could
+    /// take it.
     case previousSessionNotSaved
     /// `pause`, `resume` or `stop` with no session.
     case noSession
