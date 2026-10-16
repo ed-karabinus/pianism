@@ -93,10 +93,18 @@ final class PracticeTests: XCTestCase {
         XCTAssertEqual(relaunched.value as? String, "25 minutes, 3 seconds")
     }
 
-    /// HIS-1: when the history can't open, History says so rather than showing no practice.
+    /// HIS-1: when the history can't open, Stop still ends the session, which waits in its own file,
+    /// and History says it couldn't load rather than showing no practice.
     @MainActor
-    func testHistoryThatCantOpenSaysSo() throws {
+    func testWhenHistoryCantOpen() throws {
         let app = launch(at: start, reset: true, breakHistory: true)
+        tap(app, "practice.start")
+        tap(app, "practice.stop")
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 5))
+        alert.buttons.firstMatch.tap()
+        XCTAssertTrue(app.buttons["practice.start"].waitForExistence(timeout: 5))
+        XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
         app.buttons["History"].firstMatch.tap()
         XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "History, couldn't load")

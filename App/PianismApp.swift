@@ -3,7 +3,6 @@ import PianismCore
 import PianismFeatures
 import PianismPersistence
 import SwiftUI
-import os
 
 /// The composition root: the only place that wires concrete adapters into the core.
 @main
@@ -37,16 +36,7 @@ struct PianismApp: App {
                 historyURL = URL(filePath: "/dev/null/History.store")
             }
         #endif
-        let sessions: any SessionHistory
-        do {
-            sessions = try SwiftDataSessionHistory(url: historyURL)
-        } catch {
-            // Rather than crash: History says it couldn't load, Practice shows a storage error, and
-            // a finished session waits in the running-session file until the history opens.
-            Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
-                .error("Couldn't open the history: \(error, privacy: .public)")
-            sessions = UnavailableSessionHistory()
-        }
+        let sessions = SwiftDataSessionHistory(url: historyURL)
         practice = PracticeModel(store: store, history: sessions, clock: clock)
         history = HistoryModel(history: sessions, clock: clock)
     }
@@ -56,14 +46,6 @@ struct PianismApp: App {
             RootView(practice: practice, history: history)
         }
     }
-}
-
-/// Stands in when the history store can't open: every call fails.
-private struct UnavailableSessionHistory: SessionHistory {
-    struct Unavailable: Error {}
-
-    func sessions() throws -> [PracticeSession] { throw Unavailable() }
-    func save(_: PracticeSession) throws { throw Unavailable() }
 }
 
 /// A clock that always reads the same time, for end-to-end tests.

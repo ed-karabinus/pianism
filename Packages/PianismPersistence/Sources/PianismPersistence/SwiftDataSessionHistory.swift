@@ -7,28 +7,32 @@ import Synchronization
 ///
 /// Sync through iCloud is off until SYN-1 (#15) deploys the schema.
 public final class SwiftDataSessionHistory: SessionHistory {
-    private let container: ModelContainer
+    /// The open store, or why it couldn't open, which every call then throws. That way the app keeps
+    /// running: History says it couldn't load, and Practice keeps an ended session in its own file.
+    let container: Result<ModelContainer, any Error>
     /// Saves run one at a time, so two saves of a new session can't both insert it (ADR 0006).
     private let saving = Mutex(())
 
     /// Opens the store at `url`, creating it and its folder if needed.
-    public init(url: URL) throws {
-        try FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        container = try ModelContainer(
-            for: Schema(versionedSchema: HistorySchemaV1.self),
-            migrationPlan: HistoryMigrationPlan.self,
-            configurations: ModelConfiguration(url: url, cloudKitDatabase: .none)
-        )
+    public init(url: URL) {
+        container = Result {
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            return try ModelContainer(
+                for: Schema(versionedSchema: HistorySchemaV1.self),
+                migrationPlan: HistoryMigrationPlan.self,
+                configurations: ModelConfiguration(url: url, cloudKitDatabase: .none)
+            )
+        }
     }
 
     public func sessions() throws -> [PracticeSession] {
-        try ModelContext(container).fetch(FetchDescriptor<SessionRecord>()).map { try $0.session() }
+        try ModelContext(container.get()).fetch(FetchDescriptor<SessionRecord>()).map { try $0.session() }
     }
 
     public func save(_ session: PracticeSession) throws {
         try saving.withLock { _ in
-            let context = ModelContext(container)
+            let context = ModelContext(try container.get())
             let id = session.id
             let existing = try context.fetch(FetchDescriptor<SessionRecord>(predicate: #Predicate { $0.id == id }))
             let record = existing.first ?? SessionRecord()

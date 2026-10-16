@@ -28,11 +28,11 @@ final class SwiftDataSessionHistoryTests {
         var plain = PracticeSession(startedAt: clock.now + 7_200)
         try plain.stop(at: clock.now + 9_000)
 
-        let history = try SwiftDataSessionHistory(url: storeURL)
+        let history = SwiftDataSessionHistory(url: storeURL)
         try history.save(paused)
         try history.save(plain)
 
-        let reopened = try SwiftDataSessionHistory(url: storeURL)
+        let reopened = SwiftDataSessionHistory(url: storeURL)
         #expect(Set(try reopened.sessions()) == [paused, plain])
     }
 
@@ -44,7 +44,7 @@ final class SwiftDataSessionHistoryTests {
         try session.pause(at: clock.now + 600.123_456_7)
         try session.stop(at: clock.now + 900.987_654_3)
 
-        let history = try SwiftDataSessionHistory(url: storeURL)
+        let history = SwiftDataSessionHistory(url: storeURL)
         try history.save(session)
 
         #expect(try history.sessions() == [session])
@@ -55,7 +55,7 @@ final class SwiftDataSessionHistoryTests {
         var ended = PracticeSession(startedAt: clock.now)
         try ended.stop(at: clock.now + 600)
         let session = ended
-        let history = try SwiftDataSessionHistory(url: storeURL)
+        let history = SwiftDataSessionHistory(url: storeURL)
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             for _ in 0..<20 {
@@ -74,21 +74,25 @@ final class SwiftDataSessionHistoryTests {
         try session.pause(at: clock.now + 60)
         try session.resume(at: clock.now + 120)
         try session.stop(at: clock.now + 600)
-        try SwiftDataSessionHistory(url: storeURL).save(session)
+        let history = SwiftDataSessionHistory(url: storeURL)
+        try history.save(session)
 
-        let record = try #require(try storedRecords().first)
+        let context = ModelContext(try history.container.get())
+        let record = try #require(try context.fetch(FetchDescriptor<SessionRecord>()).first)
         #expect(record.timeZoneID == "America/Los_Angeles")
         let json = try #require(try JSONSerialization.jsonObject(with: record.pauses) as? [String: [[String: Double]]])
         let start = clock.now.timeIntervalSinceReferenceDate
         #expect(json == ["pauses": [["start": start + 60, "end": start + 120]]])
     }
 
-    /// The records in the store, read directly rather than through the adapter.
-    private func storedRecords() throws -> [SessionRecord] {
-        let container = try ModelContainer(
-            for: Schema(versionedSchema: HistorySchemaV1.self),
-            configurations: ModelConfiguration(url: storeURL, cloudKitDatabase: .none)
-        )
-        return try ModelContext(container).fetch(FetchDescriptor<SessionRecord>())
+    @Test("A store that can't open makes every call fail, rather than the app crash")
+    func unopenableStoreFailsEachCall() throws {
+        var session = PracticeSession(startedAt: clock.now)
+        try session.stop(at: clock.now + 600)
+        // A folder can't be created inside a file.
+        let history = SwiftDataSessionHistory(url: URL(filePath: "/dev/null/History.store"))
+
+        #expect(throws: (any Error).self) { try history.sessions() }
+        #expect(throws: (any Error).self) { try history.save(session) }
     }
 }

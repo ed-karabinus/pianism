@@ -58,6 +58,12 @@ public final class PracticeModel {
             if let archived = try recorder.archive(to: history) {
                 lastSession = archived
             }
+        } catch {
+            // The ended session stays stored and moves on a later refresh. Until then, Start is refused.
+            logger.error("Couldn't move the session into history: \(error, privacy: .public)")
+            isShowingStorageError = true
+        }
+        do {
             session = try recorder.current()
         } catch {
             logger.error("Couldn't load the running session: \(error, privacy: .public)")

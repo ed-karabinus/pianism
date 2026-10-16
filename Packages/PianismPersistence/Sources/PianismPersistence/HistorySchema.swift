@@ -3,9 +3,9 @@ import SwiftData
 
 /// How finished sessions are stored: schema v1 of ADR 0004, as amended by ADR 0006.
 ///
-/// Once it reaches CloudKit, this schema can only grow. It's declared whole, including the fields
-/// whose features haven't landed yet, because changing a model means keeping a copy of its old
-/// version forever.
+/// It's declared whole, as the ADRs' tables define it, including fields whose features haven't
+/// landed yet. It must be complete before SYN-1 promotes it to CloudKit, where nothing can be renamed
+/// or removed; until then, it can still change in place.
 enum HistorySchemaV1: VersionedSchema {
     static let versionIdentifier = Schema.Version(1, 0, 0)
     static var models: [any PersistentModel.Type] { [SessionRecord.self] }
@@ -45,8 +45,8 @@ enum HistoryMigrationPlan: SchemaMigrationPlan {
 }
 
 /// The JSON in ``SessionRecord/pauses``, fixed by ADR 0006. Changing it changes stored data.
-struct StoredPauses: Codable, Equatable {
-    struct Pause: Codable, Equatable {
+struct StoredPauses: Codable {
+    struct Pause: Codable {
         var start: Date
         var end: Date
     }
