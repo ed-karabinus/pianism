@@ -2,9 +2,10 @@
 
 Significant technical decisions are recorded here in [MADR](https://adr.github.io/madr/) style:
 context, options considered, the decision, and its consequences. Write a new record when a change
-adds a module, a dependency, a persistent model change, or departs from an earlier decision.
-Never edit an accepted record's decision; supersede it with a new one. Each record's status is in
-its own file.
+adds a module, a dependency, a persistent model change, or reverses an earlier decision, and mark
+the earlier record "superseded by" or "amended by" it in its status line. To refine an accepted
+decision without reversing it, edit the record and add a dated "Amended" note that says what
+changed and why; git history keeps the original. Each record's status is in its own file.
 
 | # | Decision |
 | --- | --- |

@@ -81,3 +81,8 @@ Agents write code quickly, so the main risk is code that works but shouldn't exi
    finding or say why not; the PR lists what the review cut and what it rejected.
 6. Never weaken, skip or delete a test to make it pass without saying so in the PR.
 7. Report results faithfully: if something failed or was skipped, say so.
+8. Every check made by hand, in a PR's Manual section or while trying a build on a device, gets an
+   automated test in that PR or a follow-up issue that says how it will be automated. If it can't
+   be automated, the issue says why and the check becomes an entry in `docs/device-checklist.md`
+   (start the file with its first entry). When the owner reports a problem from using the app,
+   write a test that fails on it before fixing it.
