@@ -43,7 +43,8 @@ Run `make lint unused build test` before every push. CI runs the same commands.
 - Never read the system clock directly: take a `WallClock` (E3). Tests use `ManualClock`.
 - No sleeps or real time in tests; no real network or hardware below the device layer (E4).
 - No third-party dependencies without an ADR approved by the owner (E5).
-- Swift 6 language mode, warnings are errors, no force unwraps or `try!`.
+- Swift 6 language mode, warnings are errors, no force unwraps or `try!`. `make` and CI also fail on the
+  few compiler warnings that setting misses, such as Sendable captures at `@preconcurrency` APIs (#24).
 - Every user-facing string goes through the String Catalog; every control gets a VoiceOver label.
 - New views get `#Preview`s in light, dark and AX5 text size.
 - Tests use Swift Testing (`import Testing`) except UI tests, which use XCTest. Name each test after
