@@ -11,6 +11,7 @@ struct PianismApp: App {
     static let appGroup = "group.com.edkarabinus.Pianism"
 
     @State private var practice: PracticeModel
+    @State private var history: HistoryModel
 
     init() {
         guard let store = FileRunningSessionStore(appGroup: Self.appGroup) else {
@@ -29,20 +30,17 @@ struct PianismApp: App {
                 try? store.update { $0 = nil }
             }
         #endif
-        practice = PracticeModel(store: store, history: UnsavedSessionHistory(), clock: clock)
+        // Kept in memory until the synced store lands (HIS-1, #14, ADR 0004): a relaunch forgets it.
+        let sessions = InMemorySessionHistory()
+        practice = PracticeModel(store: store, history: sessions, clock: clock)
+        history = HistoryModel(history: sessions, clock: clock)
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(practice: practice)
+            RootView(practice: practice, history: history)
         }
     }
-}
-
-/// Stands in for the synced history until it lands with HIS-1 (#14, ADR 0004): finished sessions
-/// are not kept yet.
-private struct UnsavedSessionHistory: SessionHistory {
-    func save(_ session: PracticeSession) {}
 }
 
 /// A clock that always reads the same time, for end-to-end tests.

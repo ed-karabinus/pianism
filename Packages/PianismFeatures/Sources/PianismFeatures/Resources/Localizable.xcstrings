@@ -1,10 +1,19 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Couldn't load your history" : {
+
+    },
     "Couldn't save that change" : {
 
     },
+    "History" : {
+
+    },
     "Last session: %@" : {
+
+    },
+    "No practice yet" : {
 
     },
     "OK" : {
@@ -19,6 +28,9 @@
     "Pianism couldn't reach its storage. Try again in a moment." : {
 
     },
+    "Practice" : {
+
+    },
     "Practice time" : {
 
     },
@@ -31,10 +43,22 @@
     "Resume" : {
 
     },
+    "Sessions you finish appear here." : {
+
+    },
     "Start" : {
 
     },
     "Stop" : {
+
+    },
+    "Today" : {
+
+    },
+    "Try again in a moment." : {
+
+    },
+    "Yesterday" : {
 
     }
   },

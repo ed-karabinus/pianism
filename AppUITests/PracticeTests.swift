@@ -62,6 +62,33 @@ final class PracticeTests: XCTestCase {
         attachScreenshot(of: app, named: "Stopped")
     }
 
+    /// HIS-1: a finished session appears under Today with its time, and the day shows its total.
+    @MainActor
+    func testFinishedSessionAppearsInHistory() throws {
+        var app = launch(at: start, reset: true)
+        app.buttons["History"].firstMatch.tap()
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "History, empty")
+        app.buttons["Practice"].firstMatch.tap()
+        tap(app, "practice.start")
+        app.terminate()
+
+        app = launch(at: start + 25 * 60 + 3)
+        tap(app, "practice.stop")
+        app.buttons["History"].firstMatch.tap()
+        let day = element(app, "history.day")
+        XCTAssertTrue(day.waitForExistence(timeout: 5))
+        XCTAssertEqual(day.label, "Today")
+        XCTAssertEqual(day.value as? String, "25 minutes, 3 seconds")
+        XCTAssertEqual(element(app, "history.session").value as? String, "25 minutes, 3 seconds")
+        attachScreenshot(of: app, named: "History, one session")
+    }
+
+    @MainActor
+    private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any)[identifier].firstMatch
+    }
+
     @MainActor
     private func launch(at now: TimeInterval, reset: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()

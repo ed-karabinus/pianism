@@ -1,14 +1,13 @@
-import PianismCore
 import Synchronization
 
-/// A ``SessionHistory`` that keeps finished sessions in memory, in the order first saved.
+/// A ``SessionHistory`` kept in memory: the app's history until the synced store lands (HIS-1,
+/// ADR 0004), and the one previews and tests use.
 public final class InMemorySessionHistory: SessionHistory {
     private let saved = Mutex<[PracticeSession]>([])
 
     public init() {}
 
-    /// Every saved session.
-    public var sessions: [PracticeSession] {
+    public func sessions() -> [PracticeSession] {
         saved.withLock { $0 }
     }
 
