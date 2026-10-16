@@ -7,20 +7,24 @@ import os
 @MainActor
 @Observable
 public final class HistoryModel {
-    /// Days with practice, newest first.
+    /// Days with practice, newest first, including sessions still waiting to be saved.
     private(set) var days: [PracticeDay] = []
+    /// The sessions shown that history hasn't saved yet (ADR 0007).
+    private(set) var waitingIDs: Set<UUID> = []
     /// The time of the last refresh, which decides what counts as today and yesterday.
     private(set) var now: Date
-    /// Whether the last refresh couldn't read the history.
+    /// Whether the last refresh couldn't read the history. Waiting sessions still show.
     private(set) var loadFailed = false
 
     let calendar = Calendar.autoupdatingCurrent
     private let clock: any WallClock
     private let history: any SessionHistory
+    private let outbox: any SessionOutbox
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
 
-    public init(history: any SessionHistory, clock: any WallClock) {
+    public init(history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock) {
         self.history = history
+        self.outbox = outbox
         self.clock = clock
         self.now = clock.now
     }
@@ -29,12 +33,21 @@ public final class HistoryModel {
     /// app returns to the foreground: sessions finish elsewhere, and midnight may have passed.
     func refresh() {
         now = clock.now
+        // An outbox that can't be read is reported by Practice, which raises its storage alert.
+        let waiting = (try? outbox.sessions()) ?? []
+        var saved: [PracticeSession] = []
         do {
-            days = PracticeDay.group(try history.sessions(), in: calendar)
+            saved = try history.sessions()
             loadFailed = false
         } catch {
             logger.error("Couldn't load the history: \(error, privacy: .public)")
             loadFailed = true
         }
+        // A session can be in both, when history saved it but it couldn't leave the outbox. It shows
+        // once, as saved.
+        let savedIDs = Set(saved.map(\.id))
+        let unsaved = waiting.filter { !savedIDs.contains($0.id) }
+        waitingIDs = Set(unsaved.map(\.id))
+        days = PracticeDay.group(saved + unsaved, in: calendar)
     }
 }

@@ -41,9 +41,9 @@ struct PianismApp: App {
             }
         #endif
         let sessions = SwiftDataSessionHistory(url: historyURL)
-        practice = PracticeModel(
-            store: store, history: sessions, outbox: FileSessionOutbox(directory: outboxURL), clock: clock)
-        history = HistoryModel(history: sessions, clock: clock)
+        let outbox = FileSessionOutbox(directory: outboxURL)
+        practice = PracticeModel(store: store, history: sessions, outbox: outbox, clock: clock)
+        history = HistoryModel(history: sessions, outbox: outbox, clock: clock)
     }
 
     var body: some Scene {

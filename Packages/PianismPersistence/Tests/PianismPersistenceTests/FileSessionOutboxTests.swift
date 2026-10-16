@@ -44,15 +44,30 @@ final class FileSessionOutboxTests {
         #expect(try outbox.sessions().isEmpty)
     }
 
-    @Test("ADR 0007: a waiting file that can't be read is skipped and kept, so it can't hold back the rest")
-    func unreadableFileIsSkippedAndKept() throws {
+    @Test("ADR 0007: a waiting file that can't be read moves aside, so it can't hold back the rest")
+    func unreadableFileMovesAside() throws {
         let session = try endedSession(startingAfter: 0)
         try outbox.add(session)
-        let unreadable = outboxDirectory.appending(path: "\(UUID().uuidString).json")
-        try Data("not a session".utf8).write(to: unreadable)
+        let name = "\(UUID().uuidString).json"
+        try Data("not a session".utf8).write(to: outboxDirectory.appending(path: name))
 
         #expect(try outbox.sessions() == [session])
-        #expect(FileManager.default.fileExists(atPath: unreadable.path))
+        #expect(try outbox.sessions() == [session])
+        #expect(FileManager.default.fileExists(atPath: outboxDirectory.appending(path: "Unreadable/\(name)").path))
+        #expect(!FileManager.default.fileExists(atPath: outboxDirectory.appending(path: name).path))
+    }
+
+    @Test("A waiting file that can't be read right now stays where it is, to be retried")
+    func unreadableForNowStays() throws {
+        let session = try endedSession(startingAfter: 0)
+        try outbox.add(session)
+        let file = outboxDirectory.appending(path: "\(session.id.uuidString).json")
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file.path) }
+
+        #expect(try outbox.sessions().isEmpty)
+        #expect(FileManager.default.fileExists(atPath: file.path))
+        #expect(!FileManager.default.fileExists(atPath: outboxDirectory.appending(path: "Unreadable").path))
     }
 
     private func endedSession(startingAfter offset: TimeInterval) throws -> PracticeSession {

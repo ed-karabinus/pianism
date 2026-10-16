@@ -88,10 +88,15 @@ public struct SessionRecorder: Sendable {
         return ended
     }
 
+    /// Stops at the first failure, as when the store can't open, so an outage costs one failed save
+    /// per archive, not one per waiting session. A refused session is skipped, so it can't hold back
+    /// the rest.
     private func moveWaiting(from outbox: any SessionOutbox, to history: any SessionHistory) throws {
         for waiting in try outbox.sessions() {
-            try history.save(waiting)
-            try outbox.remove(id: waiting.id)
+            do {
+                try history.save(waiting)
+                try outbox.remove(id: waiting.id)
+            } catch is SessionRefused {}
         }
     }
 

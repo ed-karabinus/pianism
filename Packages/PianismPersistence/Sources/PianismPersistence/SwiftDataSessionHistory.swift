@@ -53,20 +53,15 @@ public final class SwiftDataSessionHistory: SessionHistory {
             try record.update(from: session)
             // A record that wouldn't read back the same would hide the whole history, so refuse it:
             // the session then waits in the outbox (ADR 0007), where this log line explains it.
-            guard try record.session() == session else {
+            // A record that can't be rebuilt at all is refused too, not treated as history failing.
+            guard (try? record.session()) == session else {
                 logger.error(  // mutate:ignore - a log line; no test reads logs
                     "Refused session \(session.id, privacy: .public): it wouldn't read back the same")
-                throw HistoryError.wouldNotReadBack
+                throw SessionRefused()
             }
             try context.save()
         }
     }
-}
-
-/// Why ``SwiftDataSessionHistory`` refused to save a session.
-enum HistoryError: Error {
-    /// Stored, the session would read back as something else.
-    case wouldNotReadBack
 }
 
 extension SessionRecord {

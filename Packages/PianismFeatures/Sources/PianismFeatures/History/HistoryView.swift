@@ -14,7 +14,7 @@ struct HistoryView: View {
     }
 
     @ViewBuilder private var content: some View {
-        if model.loadFailed {
+        if model.days.isEmpty, model.loadFailed {
             ContentUnavailableView(
                 LocalizedStringResource("Couldn't load your history", bundle: .module),
                 systemImage: "exclamationmark.triangle",
@@ -28,19 +28,35 @@ struct HistoryView: View {
             )
             .accessibilityIdentifier(AccessibilityID.historyEmpty)
         } else {
-            List(model.days) { day in
-                Section {
-                    ForEach(day.sessions) { session in
-                        let times = (session.startedAt..<(session.endedAt ?? session.startedAt))
-                            .formatted(.interval.hour().minute())
-                        // A finished session's practice time is fixed, so the date passed here is ignored.
-                        TimedRow(title: Text(times), duration: session.elapsed(at: .distantPast))
-                            .accessibilityIdentifier(AccessibilityID.historySession)
+            List {
+                if model.loadFailed {
+                    Label(
+                        LocalizedStringResource(
+                            "Couldn't load your earlier history. Sessions waiting to be saved are shown.",
+                            bundle: .module),
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(AccessibilityID.historyUnavailable)
+                }
+                ForEach(model.days) { day in
+                    Section {
+                        ForEach(day.sessions) { session in
+                            let times = (session.startedAt..<(session.endedAt ?? session.startedAt))
+                                .formatted(.interval.hour().minute())
+                            let title =
+                                model.waitingIDs.contains(session.id)
+                                ? Text("\(times), not saved yet", bundle: .module) : Text(times)
+                            // A finished session's practice time is fixed, so the date passed here is ignored.
+                            TimedRow(title: title, duration: session.elapsed(at: .distantPast))
+                                .accessibilityIdentifier(AccessibilityID.historySession)
+                        }
+                    } header: {
+                        TimedRow(title: title(for: day), duration: day.total)
+                            .accessibilityAddTraits(.isHeader)
+                            .accessibilityIdentifier(AccessibilityID.historyDay)
                     }
-                } header: {
-                    TimedRow(title: title(for: day), duration: day.total)
-                        .accessibilityAddTraits(.isHeader)
-                        .accessibilityIdentifier(AccessibilityID.historyDay)
                 }
             }
         }
@@ -85,4 +101,8 @@ private struct TimedRow: View {
 
 #Preview("Empty") {
     HistoryView(model: .preview(empty: true))
+}
+
+#Preview("History couldn't load, sessions waiting") {
+    HistoryView(model: .preview(waiting: true))
 }

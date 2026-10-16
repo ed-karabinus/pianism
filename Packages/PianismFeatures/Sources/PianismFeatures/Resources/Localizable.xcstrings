@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Couldn't load your earlier history. Sessions waiting to be saved are shown." : {
+
+    },
     "Couldn't load your history" : {
 
     },
@@ -17,6 +20,9 @@
 
     },
     "OK" : {
+
+    },
+    "%@, not saved yet" : {
 
     },
     "Pause" : {

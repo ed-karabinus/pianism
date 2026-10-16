@@ -94,11 +94,16 @@ final class PracticeTests: XCTestCase {
     }
 
     /// ADR 0007: when the history can't open, practice goes on. Each finished session waits in the
-    /// outbox, Practice says how many are waiting, and History says it couldn't load. Once the
-    /// history opens, the waiting sessions move into it.
+    /// outbox, Practice says how many are waiting, and History shows them marked "not saved yet" under
+    /// a notice. Once the history opens, the waiting sessions move into it.
     @MainActor
     func testWhenHistoryCantOpen() throws {
         var app = launch(at: start, reset: true, breakHistory: true)
+        // Nothing saved and nothing waiting: the whole screen says History couldn't load.
+        app.buttons["History"].firstMatch.tap()
+        XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
+        XCTAssertFalse(element(app, "history.session").exists)
+        app.buttons["Practice"].firstMatch.tap()
         for _ in 1...2 {
             tap(app, "practice.start")
             tap(app, "practice.stop")
@@ -109,14 +114,20 @@ final class PracticeTests: XCTestCase {
         attachScreenshot(of: app, named: "Practice, sessions waiting")
         app.buttons["History"].firstMatch.tap()
         XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
-        attachScreenshot(of: app, named: "History, couldn't load")
+        let notSavedYet = NSPredicate(format: "label ENDSWITH 'not saved yet'")
+        let waiting = app.descendants(matching: .any).matching(identifier: "history.session")
+        XCTAssertEqual(waiting.count, 2)
+        XCTAssertEqual(waiting.matching(notSavedYet).count, 2)
+        attachScreenshot(of: app, named: "History, sessions waiting")
         app.terminate()
 
         app = launch(at: start + 60 * 60)
         XCTAssertFalse(app.staticTexts["practice.waiting"].exists)
         app.buttons["History"].firstMatch.tap()
         XCTAssertTrue(element(app, "history.day").waitForExistence(timeout: 5))
-        XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "history.session").count, 2)
+        let saved = app.descendants(matching: .any).matching(identifier: "history.session")
+        XCTAssertEqual(saved.count, 2)
+        XCTAssertEqual(saved.matching(notSavedYet).count, 0)
     }
 
     @MainActor
