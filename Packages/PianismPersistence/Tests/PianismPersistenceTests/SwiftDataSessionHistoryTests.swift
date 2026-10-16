@@ -28,11 +28,11 @@ final class SwiftDataSessionHistoryTests {
         var plain = PracticeSession(startedAt: clock.now + 7_200)
         try plain.stop(at: clock.now + 9_000)
 
-        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         try history.save(paused)
         try history.save(plain)
 
-        let reopened = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        let reopened = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         #expect(Set(try reopened.sessions()) == [paused, plain])
     }
 
@@ -44,7 +44,7 @@ final class SwiftDataSessionHistoryTests {
         try session.pause(at: clock.now + 600.123_456_7)
         try session.stop(at: clock.now + 900.987_654_3)
 
-        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         try history.save(session)
 
         #expect(try history.sessions() == [session])
@@ -55,7 +55,7 @@ final class SwiftDataSessionHistoryTests {
         var ended = PracticeSession(startedAt: clock.now)
         try ended.stop(at: clock.now + 600)
         let session = ended
-        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             for _ in 0..<20 {
@@ -66,7 +66,7 @@ final class SwiftDataSessionHistoryTests {
 
         #expect(try history.sessions() == [session])
         // Counted directly, since reading would hide a duplicate.
-        #expect(try ModelContext(history.container()).fetchCount(FetchDescriptor<SessionRecord>()) == 1)
+        #expect(try ModelContext(history.store.container()).fetchCount(FetchDescriptor<SessionRecord>()) == 1)
     }
 
     @Test("ADR 0004: saving never replaces a saved session, so a stale copy from the outbox can't undo an edit")
@@ -75,7 +75,7 @@ final class SwiftDataSessionHistoryTests {
         try saved.stop(at: clock.now + 600)
         var stale = PracticeSession(id: saved.id, startedAt: clock.now)
         try stale.stop(at: clock.now + 300)
-        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         try history.save(saved)
         // Later, so a second record would win as the latest change.
         clock.advance(by: 60)
@@ -89,10 +89,10 @@ final class SwiftDataSessionHistoryTests {
     func deletedSessionStaysHidden() throws {
         var session = PracticeSession(startedAt: clock.now)
         try session.stop(at: clock.now + 600)
-        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         try history.save(session)
         // Deleted on another device; deleting on this one arrives with SES-5.
-        let context = ModelContext(try history.container())
+        let context = ModelContext(try history.store.container())
         try #require(try context.fetch(FetchDescriptor<SessionRecord>()).first).deletedAt = clock.now
         try context.save()
 
@@ -103,7 +103,7 @@ final class SwiftDataSessionHistoryTests {
 
     @Test("ADR 0004, 0006: duplicates from sync show once, as the latest change, unless any is deleted")
     func duplicatesShowOnce() throws {
-        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         let id = UUID()
         try insertRecord(in: history, id: id, endingAfter: 600, modifiedAfter: 2)
         try insertRecord(in: history, id: id, endingAfter: 900, modifiedAfter: 3)
@@ -122,7 +122,7 @@ final class SwiftDataSessionHistoryTests {
     func unreadableRecordIsSkipped() throws {
         var session = PracticeSession(startedAt: clock.now)
         try session.stop(at: clock.now + 600)
-        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         try history.save(session)
         try insertRecord(in: history, id: UUID(), endingAfter: 600, modifiedAfter: 1, pauses: Data("not JSON".utf8))
 
@@ -136,12 +136,12 @@ final class SwiftDataSessionHistoryTests {
         try session.pause(at: clock.now + 60)
         try session.resume(at: clock.now + 120)
         try session.stop(at: clock.now + 600)
-        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         // Saved a while after it ended, as when it waited in the outbox.
         clock.advance(by: 700)
         try history.save(session)
 
-        let context = ModelContext(try history.container())
+        let context = ModelContext(try history.store.container())
         let record = try #require(try context.fetch(FetchDescriptor<SessionRecord>()).first)
         #expect(record.timeZoneID == "America/Los_Angeles")
         #expect(record.modifiedAt == clock.now)
@@ -157,7 +157,7 @@ final class SwiftDataSessionHistoryTests {
             #"{"id":"6B1E2A4C-0F5D-4C3B-9A8E-2D7F1C3B5A90","startedAt":820454400,"#
             + #""pauses":[{"start":820454300,"end":820454350}],"endedAt":820455000}"#
         let session = try JSONDecoder().decode(PracticeSession.self, from: Data(stored.utf8))
-        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
 
         #expect(throws: SessionRefused.self) { try history.save(session) }
         #expect(try history.sessions().isEmpty)
@@ -171,7 +171,7 @@ final class SwiftDataSessionHistoryTests {
         let folder = storeURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try Data().write(to: folder)
-        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         #expect(throws: (any Error).self) { try history.save(session) }
 
         try FileManager.default.removeItem(at: folder)
@@ -182,9 +182,9 @@ final class SwiftDataSessionHistoryTests {
 
     @Test("Once open, the store is reused rather than opened again on every call")
     func opensOnce() throws {
-        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
 
-        #expect(try history.container() === history.container())
+        #expect(try history.store.container() === history.store.container())
     }
 
     @Test("A store that can't open makes every call fail, rather than the app crash")
@@ -192,7 +192,8 @@ final class SwiftDataSessionHistoryTests {
         var session = PracticeSession(startedAt: clock.now)
         try session.stop(at: clock.now + 600)
         // A folder can't be created inside a file.
-        let history = SwiftDataSessionHistory(url: URL(filePath: "/dev/null/History.store"), clock: clock)
+        let history = SwiftDataSessionHistory(
+            store: HistoryStore(url: URL(filePath: "/dev/null/History.store")), clock: clock)
 
         #expect(throws: (any Error).self) { try history.sessions() }
         #expect(throws: (any Error).self) { try history.save(session) }
@@ -203,7 +204,7 @@ final class SwiftDataSessionHistoryTests {
         in history: SwiftDataSessionHistory, id: UUID, endingAfter seconds: TimeInterval,
         modifiedAfter modified: TimeInterval, isDeleted: Bool = false, pauses: Data = Data()
     ) throws {
-        let context = ModelContext(try history.container())
+        let context = ModelContext(try history.store.container())
         let record = SessionRecord()
         record.id = id
         record.startedAt = clock.now

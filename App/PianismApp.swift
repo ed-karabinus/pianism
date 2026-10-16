@@ -40,7 +40,7 @@ struct PianismApp: App {
                 historyURL = URL(filePath: "/dev/null/History.store")
             }
         #endif
-        let sessions = SwiftDataSessionHistory(url: historyURL, clock: clock)
+        let sessions = SwiftDataSessionHistory(store: HistoryStore(url: historyURL), clock: clock)
         let outbox = FileSessionOutbox(directory: outboxURL)
         practice = PracticeModel(store: store, history: sessions, outbox: outbox, clock: clock)
         history = HistoryModel(history: sessions, outbox: outbox, clock: clock)
