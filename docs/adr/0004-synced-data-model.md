@@ -41,7 +41,7 @@ Option 2.
 IDs, a note and a source as those features land), `Tag`, and `TagID`. It also defines two ports
 the adapter implements:
 
-- `SessionHistory`: save, which inserts or updates by ID; sessions in a date range; delete.
+- `SessionHistory`: save, which inserts each ID once; sessions in a date range; delete.
 - `TagLibrary`: all tags; add, rename, archive and merge.
 
 Both ports also report when anything they hold changes, on this device or from iCloud, so view

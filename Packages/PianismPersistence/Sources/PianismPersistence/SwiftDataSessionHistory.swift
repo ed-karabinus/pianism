@@ -31,7 +31,7 @@ public final class SwiftDataSessionHistory: SessionHistory {
         let records = try ModelContext(container()).fetch(FetchDescriptor<SessionRecord>())
         return Dictionary(grouping: records, by: \.id).values.compactMap { duplicates in
             guard duplicates.allSatisfy({ $0.deletedAt == nil }),
-                let latest = duplicates.max(by: { $0.modifiedAt < $1.modifiedAt })
+                let latest = duplicates.max(by: { $0.modifiedAt < $1.modifiedAt })  // mutate:ignore - only ties differ
             else { return nil }
             do {
                 return try latest.session()

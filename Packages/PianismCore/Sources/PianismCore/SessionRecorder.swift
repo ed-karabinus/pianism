@@ -68,8 +68,8 @@ public struct SessionRecorder: Sendable {
     /// Returns the ended session, or `nil` if none had ended.
     ///
     /// Throws only if the ended session could go nowhere; it then stays in the store. Safe to repeat
-    /// after a crash at any step: history and the outbox both replace by ID, and the store is
-    /// cleared only while it still holds that session.
+    /// after a crash at any step: history saves each ID once, the outbox replaces by ID, and the
+    /// store is cleared only while it still holds that session.
     @discardableResult
     public func archive(to history: any SessionHistory, or outbox: any SessionOutbox) throws -> PracticeSession? {
         let ended = try store.current().flatMap { $0.state == .ended ? $0 : nil }

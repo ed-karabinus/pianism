@@ -65,6 +65,8 @@ final class SwiftDataSessionHistoryTests {
         }
 
         #expect(try history.sessions() == [session])
+        // Counted directly, since reading would hide a duplicate.
+        #expect(try ModelContext(history.container()).fetchCount(FetchDescriptor<SessionRecord>()) == 1)
     }
 
     @Test("ADR 0004: saving never replaces a saved session, so a stale copy from the outbox can't undo an edit")
@@ -75,6 +77,8 @@ final class SwiftDataSessionHistoryTests {
         try stale.stop(at: clock.now + 300)
         let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
         try history.save(saved)
+        // Later, so a second record would win as the latest change.
+        clock.advance(by: 60)
 
         try history.save(stale)
 
@@ -133,6 +137,8 @@ final class SwiftDataSessionHistoryTests {
         try session.resume(at: clock.now + 120)
         try session.stop(at: clock.now + 600)
         let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        // Saved a while after it ended, as when it waited in the outbox.
+        clock.advance(by: 700)
         try history.save(session)
 
         let context = ModelContext(try history.container())
@@ -140,7 +146,7 @@ final class SwiftDataSessionHistoryTests {
         #expect(record.timeZoneID == "America/Los_Angeles")
         #expect(record.modifiedAt == clock.now)
         let json = try #require(try JSONSerialization.jsonObject(with: record.pauses) as? [String: [[String: Double]]])
-        let start = clock.now.timeIntervalSinceReferenceDate
+        let start = session.startedAt.timeIntervalSinceReferenceDate
         #expect(json == ["pauses": [["start": start + 60, "end": start + 120]]])
     }
 
