@@ -77,7 +77,7 @@ final class SwiftDataSessionHistoryTests {
         let history = SwiftDataSessionHistory(url: storeURL)
         try history.save(session)
 
-        let context = ModelContext(try history.container.get())
+        let context = ModelContext(try history.container())
         let record = try #require(try context.fetch(FetchDescriptor<SessionRecord>()).first)
         #expect(record.timeZoneID == "America/Los_Angeles")
         let json = try #require(try JSONSerialization.jsonObject(with: record.pauses) as? [String: [[String: Double]]])
@@ -96,6 +96,23 @@ final class SwiftDataSessionHistoryTests {
 
         #expect(throws: (any Error).self) { try history.save(session) }
         #expect(try history.sessions().isEmpty)
+    }
+
+    @Test("ADR 0007: a store that couldn't open opens on a later call, once the cause is gone")
+    func opensOnceTheCauseIsGone() throws {
+        var session = PracticeSession(startedAt: clock.now)
+        try session.stop(at: clock.now + 600)
+        // A file where the store's folder should be, so the folder can't be created.
+        let folder = storeURL.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data().write(to: folder)
+        let history = SwiftDataSessionHistory(url: storeURL)
+        #expect(throws: (any Error).self) { try history.save(session) }
+
+        try FileManager.default.removeItem(at: folder)
+
+        try history.save(session)
+        #expect(try history.sessions() == [session])
     }
 
     @Test("A store that can't open makes every call fail, rather than the app crash")
