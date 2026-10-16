@@ -14,3 +14,4 @@ its own file.
 | [4](0004-synced-data-model.md) | Finished sessions and tags in SwiftData, mapped to core values and synced through CloudKit |
 | [5](0005-code-health-checks.md) | Unused code found by Periphery 3.8.0, and mutation testing by a script in the repository |
 | [6](0006-schema-v1-before-deploy.md) | Schema v1 gains a record version, a time zone and a deleted mark before it ships |
+| [7](0007-outbox-when-history-cant-save.md) | Finished sessions wait in an outbox when history can't save them |
