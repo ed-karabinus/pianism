@@ -64,6 +64,7 @@ final class PracticeTests: XCTestCase {
 
     /// HIS-1: a finished session appears under Today with its time, and the day shows its total.
     /// History is visited before and after Stop in one launch, so it must refresh when shown again.
+    /// It's stored, so it's still there after the app is killed and relaunched.
     @MainActor
     func testFinishedSessionAppearsInHistory() throws {
         var app = launch(at: start, reset: true)
@@ -83,6 +84,22 @@ final class PracticeTests: XCTestCase {
         XCTAssertEqual(day.value as? String, "25 minutes, 3 seconds")
         XCTAssertEqual(element(app, "history.session").value as? String, "25 minutes, 3 seconds")
         attachScreenshot(of: app, named: "History, one session")
+        app.terminate()
+
+        app = launch(at: start + 60 * 60)
+        app.buttons["History"].firstMatch.tap()
+        let relaunched = element(app, "history.day")
+        XCTAssertTrue(relaunched.waitForExistence(timeout: 5))
+        XCTAssertEqual(relaunched.value as? String, "25 minutes, 3 seconds")
+    }
+
+    /// HIS-1: when the history can't open, History says so rather than showing no practice.
+    @MainActor
+    func testHistoryThatCantOpenSaysSo() throws {
+        let app = launch(at: start, reset: true, breakHistory: true)
+        app.buttons["History"].firstMatch.tap()
+        XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "History, couldn't load")
     }
 
     @MainActor
@@ -91,11 +108,14 @@ final class PracticeTests: XCTestCase {
     }
 
     @MainActor
-    private func launch(at now: TimeInterval, reset: Bool = false) -> XCUIApplication {
+    private func launch(at now: TimeInterval, reset: Bool = false, breakHistory: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["PIANISM_NOW"] = String(now)
         if reset {
             app.launchEnvironment["PIANISM_RESET"] = "1"
+        }
+        if breakHistory {
+            app.launchEnvironment["PIANISM_BREAK_HISTORY"] = "1"
         }
         app.launch()
         XCTAssertTrue(app.staticTexts["practice.status"].waitForExistence(timeout: 10))

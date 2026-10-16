@@ -23,6 +23,17 @@ struct SessionRecorderTests {
         #expect(store.current() == session)
     }
 
+    @Test("ADR 0006: starting records the time zone the session starts in")
+    func startRecordsTimeZone() throws {
+        let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
+        let recorder = SessionRecorder(store: store, clock: clock, timeZone: { tokyo })
+
+        let session = try recorder.start()
+
+        #expect(session.timeZone == tokyo)
+        #expect(store.current()?.timeZone == tokyo)
+    }
+
     @Test("SES-1, SES-2: pause, resume and stop are each stored with the time they happen")
     func commandsAreStored() throws {
         try recorder.start()

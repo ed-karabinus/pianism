@@ -11,6 +11,8 @@ public final class HistoryModel {
     private(set) var days: [PracticeDay] = []
     /// The time of the last refresh, which decides what counts as today and yesterday.
     private(set) var now: Date
+    /// Whether the last refresh couldn't read the history.
+    private(set) var loadFailed = false
 
     let calendar = Calendar.autoupdatingCurrent
     private let clock: any WallClock
@@ -29,8 +31,10 @@ public final class HistoryModel {
         now = clock.now
         do {
             days = PracticeDay.group(try history.sessions(), in: calendar)
+            loadFailed = false
         } catch {
             logger.error("Couldn't load the history: \(error, privacy: .public)")
+            loadFailed = true
         }
     }
 }

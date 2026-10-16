@@ -3,6 +3,7 @@ import PianismCore
 import PianismFeatures
 import PianismPersistence
 import SwiftUI
+import os
 
 /// The composition root: the only place that wires concrete adapters into the core.
 @main
@@ -19,19 +20,33 @@ struct PianismApp: App {
             fatalError("Missing the \(Self.appGroup) App Group entitlement.")
         }
         var clock: any WallClock = SystemClock()
+        var historyURL = URL.applicationSupportDirectory.appending(path: "History/History.store")
         #if DEBUG
-            // End-to-end tests fix the time with PIANISM_NOW (seconds since 1970) and start with
-            // no running session with PIANISM_RESET=1. Release builds ignore both.
+            // End-to-end tests fix the time with PIANISM_NOW (seconds since 1970), start with no
+            // running session and no history with PIANISM_RESET=1, and make the history fail to
+            // open with PIANISM_BREAK_HISTORY=1. Release builds ignore all three.
             let environment = ProcessInfo.processInfo.environment
             if let seconds = environment["PIANISM_NOW"].flatMap(TimeInterval.init) {
                 clock = FixedClock(now: Date(timeIntervalSince1970: seconds))
             }
             if environment["PIANISM_RESET"] == "1" {
                 try? store.update { $0 = nil }
+                try? FileManager.default.removeItem(at: historyURL.deletingLastPathComponent())
+            }
+            if environment["PIANISM_BREAK_HISTORY"] == "1" {
+                historyURL = URL(filePath: "/dev/null/History.store")
             }
         #endif
-        // Kept in memory until the synced store lands (HIS-1, #14, ADR 0004): a relaunch forgets it.
-        let sessions = InMemorySessionHistory()
+        let sessions: any SessionHistory
+        do {
+            sessions = try SwiftDataSessionHistory(url: historyURL)
+        } catch {
+            // Rather than crash: History says it couldn't load, Practice shows a storage error, and
+            // a finished session waits in the running-session file until the history opens.
+            Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
+                .error("Couldn't open the history: \(error, privacy: .public)")
+            sessions = UnavailableSessionHistory()
+        }
         practice = PracticeModel(store: store, history: sessions, clock: clock)
         history = HistoryModel(history: sessions, clock: clock)
     }
@@ -41,6 +56,14 @@ struct PianismApp: App {
             RootView(practice: practice, history: history)
         }
     }
+}
+
+/// Stands in when the history store can't open: every call fails.
+private struct UnavailableSessionHistory: SessionHistory {
+    struct Unavailable: Error {}
+
+    func sessions() throws -> [PracticeSession] { throw Unavailable() }
+    func save(_: PracticeSession) throws { throw Unavailable() }
 }
 
 /// A clock that always reads the same time, for end-to-end tests.

@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Couldn't load your history" : {
+
+    },
     "Couldn't save that change" : {
 
     },
@@ -35,6 +38,9 @@
 
     },
     "Ready to practice" : {
+
+    },
+    "Restart Pianism to try again." : {
 
     },
     "Resume" : {

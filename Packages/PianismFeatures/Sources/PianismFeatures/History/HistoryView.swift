@@ -14,7 +14,14 @@ struct HistoryView: View {
     }
 
     @ViewBuilder private var content: some View {
-        if model.days.isEmpty {
+        if model.loadFailed {
+            ContentUnavailableView(
+                LocalizedStringResource("Couldn't load your history", bundle: .module),
+                systemImage: "exclamationmark.triangle",
+                description: Text("Restart Pianism to try again.", bundle: .module)
+            )
+            .accessibilityIdentifier(AccessibilityID.historyUnavailable)
+        } else if model.days.isEmpty {
             ContentUnavailableView(
                 LocalizedStringResource("No practice yet", bundle: .module), systemImage: "music.note.list",
                 description: Text("Sessions you finish appear here.", bundle: .module)
