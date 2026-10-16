@@ -9,15 +9,18 @@ public struct SessionRecorder: Sendable {
     private let store: any RunningSessionStore
     private let clock: any WallClock
     private let makeID: @Sendable () -> UUID
+    private let timeZone: @Sendable () -> TimeZone
 
     public init(
         store: any RunningSessionStore,
         clock: any WallClock,
-        makeID: @escaping @Sendable () -> UUID = UUID.init
+        makeID: @escaping @Sendable () -> UUID = UUID.init,
+        timeZone: @escaping @Sendable () -> TimeZone = { .current }
     ) {
         self.store = store
         self.clock = clock
         self.makeID = makeID
+        self.timeZone = timeZone
     }
 
     /// The running, paused or just-ended session, or `nil` if there is none.
@@ -25,7 +28,7 @@ public struct SessionRecorder: Sendable {
         try store.current()
     }
 
-    /// Starts a new session now (SES-1).
+    /// Starts a new session now, in the current time zone (SES-1, ADR 0006).
     ///
     /// Throws ``RecorderError/alreadyStarted`` if a session is running or paused, and
     /// ``RecorderError/previousSessionNotSaved`` if an ended session hasn't moved to history yet,
@@ -36,7 +39,7 @@ public struct SessionRecorder: Sendable {
             if let stored {
                 throw stored.state == .ended ? RecorderError.previousSessionNotSaved : .alreadyStarted
             }
-            let session = PracticeSession(id: makeID(), startedAt: clock.now)
+            let session = PracticeSession(id: makeID(), startedAt: clock.now, timeZone: timeZone())
             stored = session
             return session
         }
