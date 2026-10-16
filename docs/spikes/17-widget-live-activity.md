@@ -2,11 +2,21 @@
 
 Branch `spike-17-widget-live-activity`, not to be merged. Written 2026-10-16.
 
-**Status: partly proven.**
+**Status: proven on a device** (the owner's iPhone 18 Pro, 2026-10-16). A Start button on a widget starts
+a session and its Live Activity without opening the app, including after the app was force-quit.
 
-- **Proven:** the widget extension builds, and the widget shows in the gallery with its Start button.
-- **Not yet proven:** that tapping Start launches the app in the background, starts the session and shows the Live Activity. Automating the Home Screen on the iOS 27 simulator stalled, as described below.
-- **To finish:** the 2-minute manual check at the end.
+| Check (the manual steps at the end) | Result |
+| --- | --- |
+| Tap Start on the widget | The app stayed closed |
+| Dynamic Island | The piano icon and a running timer appeared |
+| Lock Screen | "Practicing" with a running clock |
+| Open Pianism | Practice showed the running session |
+| Swipe the app away, tap Start again | The same three results |
+| Live Activities turned off (step 6) | Not tried yet |
+
+Automating the Home Screen on the iOS 27 simulator stalled (below), so this stays a device check:
+there is no reliable automated path to tapping a widget. The real implementation tests the intent's
+logic through the core, and keeps this checklist for the device.
 
 ## What was built
 
