@@ -13,6 +13,7 @@ a session and its Live Activity without opening the app, including after the app
 | Open Pianism | Practice showed the running session |
 | Swipe the app away, tap Start again | The same three results |
 | Live Activities turned off (step 6) | Not tried yet |
+| Layout | The Dynamic Island content looked off-centre. Likely cause: `Text(timerInterval:)` reserves the width of its longest value and left-aligns in it. Fix in GLN-1 with a fixed timer width and an explicit alignment |
 
 Automating the Home Screen on the iOS 27 simulator stalled (below), so this stays a device check:
 there is no reliable automated path to tapping a widget. The real implementation tests the intent's
@@ -73,7 +74,10 @@ Home Screen automation (`XCUIApplication(bundleIdentifier: "com.apple.springboar
 6. **Check a force-quit app.** Confirm on a device that the widget still starts a session after the
    app was swiped away. Apple's documentation says the system launches the app's process to run a
    `LiveActivityIntent`, but this spike didn't test it.
-7. **Drop the spike's shortcuts:** `.now` in the timeline provider (the real one takes a clock, E3), the tap by position, and the hard-coded App Group string.
+7. **Lay out the Dynamic Island with previews.** Give the timer a fixed width and an explicit
+   alignment (the spike's looked off-centre on the device). Check the compact, minimal and expanded
+   views in Xcode's Live Activity previews, then on a device.
+8. **Drop the spike's shortcuts:** `.now` in the timeline provider (the real one takes a clock, E3), the tap by position, and the hard-coded App Group string.
 
 ## The 2-minute manual check that finishes the spike
 
