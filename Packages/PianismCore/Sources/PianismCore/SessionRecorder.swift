@@ -31,8 +31,8 @@ public struct SessionRecorder: Sendable {
     /// Starts a new session now, in the current time zone (SES-1, ADR 0006).
     ///
     /// Throws ``RecorderError/alreadyStarted`` if a session is running or paused, and
-    /// ``RecorderError/previousSessionNotSaved`` if an ended session hasn't moved to history yet,
-    /// so starting never overwrites practice.
+    /// ``RecorderError/previousSessionNotSaved`` if an ended session is still stored because neither
+    /// history nor the outbox could take it, so starting never overwrites practice.
     @discardableResult
     public func start() throws -> PracticeSession {
         try store.update { stored in
@@ -63,19 +63,36 @@ public struct SessionRecorder: Sendable {
         try change { session, now in try session.stop(at: now) }
     }
 
-    /// Moves an ended session into `history` and clears it from the store, so a new one can start
-    /// (ADR 0003). Returns the moved session, or `nil` if none had ended.
+    /// Moves an ended session out of the store, so a new one can start: into `history`, or into
+    /// `outbox` if history can't save it (ADR 0007). Then moves any waiting sessions into history.
+    /// Returns the ended session, or `nil` if none had ended.
     ///
-    /// Safe to repeat after a crash between the two steps: history saves by ID, and the store is
+    /// Throws only if the ended session could go nowhere; it then stays in the store. Safe to repeat
+    /// after a crash at any step: history and the outbox both replace by ID, and the store is
     /// cleared only while it still holds that session.
     @discardableResult
-    public func archive(to history: any SessionHistory) throws -> PracticeSession? {
-        guard let ended = try store.current(), ended.state == .ended else { return nil }
-        try history.save(ended)
-        try store.update { stored in
-            if stored?.id == ended.id { stored = nil }
+    public func archive(to history: any SessionHistory, or outbox: any SessionOutbox) throws -> PracticeSession? {
+        let ended = try store.current().flatMap { $0.state == .ended ? $0 : nil }
+        if let ended {
+            do {
+                try history.save(ended)
+            } catch {
+                try outbox.add(ended)
+            }
+            try store.update { stored in
+                if stored?.id == ended.id { stored = nil }
+            }
         }
+        // History may still be failing; whatever it doesn't take waits for the next archive.
+        _ = try? moveWaiting(from: outbox, to: history)
         return ended
+    }
+
+    private func moveWaiting(from outbox: any SessionOutbox, to history: any SessionHistory) throws {
+        for waiting in try outbox.sessions() {
+            try history.save(waiting)
+            try outbox.remove(id: waiting.id)
+        }
     }
 
     /// Applies `apply` to the stored session at the current time.
@@ -99,7 +116,8 @@ public struct SessionRecorder: Sendable {
 public enum RecorderError: Error, Sendable, Hashable {
     /// `start` while a session is running or paused.
     case alreadyStarted
-    /// `start` while an ended session is still waiting to move to history.
+    /// `start` while an ended session is still stored, because neither history nor the outbox could
+    /// take it.
     case previousSessionNotSaved
     /// `pause`, `resume` or `stop` with no session.
     case noSession

@@ -32,6 +32,12 @@ struct PracticeView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier(AccessibilityID.practiceLastSession)
             }
+            if model.waitingCount > 0 {
+                Text("^[\(model.waitingCount) session](inflect: true) waiting to be saved", bundle: .module)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(AccessibilityID.practiceWaiting)
+            }
             Spacer()
             controls
         }

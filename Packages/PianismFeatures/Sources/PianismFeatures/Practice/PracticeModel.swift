@@ -10,22 +10,28 @@ import os
 @MainActor
 @Observable
 public final class PracticeModel {
-    /// The running or paused session, or `nil` when ready to start. Also an ended session that couldn't
-    /// move into history yet, which shows as ready to start.
+    /// The running or paused session, or `nil` when ready to start. Also an ended session that neither
+    /// history nor the outbox could take, which shows as ready to start.
     private(set) var session: PracticeSession?
     /// The session that just ended, shown until the next one starts.
     private(set) var lastSession: PracticeSession?
+    /// How many finished sessions are waiting to move into history, which couldn't save them yet.
+    private(set) var waitingCount = 0
     /// Whether to show that a change couldn't be stored.
     var isShowingStorageError = false
 
     let clock: any WallClock
     private let recorder: SessionRecorder
     private let history: any SessionHistory
+    private let outbox: any SessionOutbox
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "practice")
 
-    public init(store: any RunningSessionStore, history: any SessionHistory, clock: any WallClock) {
+    public init(
+        store: any RunningSessionStore, history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock
+    ) {
         self.recorder = SessionRecorder(store: store, clock: clock)
         self.history = history
+        self.outbox = outbox
         self.clock = clock
         // Loads the stored session now, so the first frame after a relaunch already shows it.
         refresh()
@@ -50,18 +56,20 @@ public final class PracticeModel {
         perform { try recorder.stop() }
     }
 
-    /// Shows the stored session, after moving an ended one into history.
+    /// Shows the stored session, after moving an ended one into history, or into the outbox if
+    /// history can't save it (ADR 0007).
     ///
     /// Call when the app becomes active: the session may have changed in another process, such as
     /// a Live Activity, or have been restored after the app was killed.
     func refresh() {
         do {
-            if let archived = try recorder.archive(to: history) {
+            if let archived = try recorder.archive(to: history, or: outbox) {
                 lastSession = archived
             }
+            waitingCount = try outbox.sessions().count
         } catch {
-            // The ended session stays stored and moves on a later refresh. Until then, Start is refused.
-            logger.error("Couldn't move the session into history: \(error, privacy: .public)")
+            // Neither history nor the outbox could take it, so it stays stored and Start is refused.
+            logger.error("Couldn't move the session out of the running-session file: \(error, privacy: .public)")
             isShowingStorageError = true
         }
         do {

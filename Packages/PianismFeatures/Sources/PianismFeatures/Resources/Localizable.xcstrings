@@ -60,6 +60,9 @@
     },
     "Yesterday" : {
 
+    },
+    "^[%lld session](inflect: true) waiting to be saved" : {
+
     }
   },
   "version" : "1.0"
