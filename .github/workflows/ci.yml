@@ -66,9 +66,10 @@ jobs:
       - name: Release build
         run: make build QUIET=
 
-  # One job per device, in parallel. Each starts booting its simulator, builds while it boots, then
-  # tests (`make test-app`). This repository is public, so the runners cost nothing; GitHub Free
-  # runs at most 5 macOS jobs at once, and a CI run uses 4.
+  # One job per device, in parallel (`make test-app` builds, boots the simulator, then tests). Booting
+  # in the background during the build didn't help: on these 3-core runners it slowed the build as
+  # much as it saved. This repository is public, so the runners cost nothing; GitHub Free runs at
+  # most 5 macOS jobs at once, and a CI run uses 4.
   e2e:
     name: End-to-end tests (${{ matrix.device }})
     needs: [core, lint]
@@ -82,10 +83,6 @@ jobs:
       - uses: actions/checkout@v5
       - name: Select the newest stable Xcode
         run: scripts/select-xcode.sh
-      - name: Start booting the simulator
-        run: |
-          udid=$(scripts/simulator-destination.sh ${{ matrix.device }} | sed 's/.*id=//')
-          xcrun simctl boot "$udid" > /dev/null 2>&1 &
       - name: End-to-end tests
         run: make test-app DEVICES=${{ matrix.device }} QUIET=
       - name: Export screenshots
