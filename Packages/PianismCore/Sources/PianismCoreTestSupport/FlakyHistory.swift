@@ -2,22 +2,27 @@ import PianismCore
 import Synchronization
 
 /// A history that can't be reached until it heals, as when its store fails to open and later opens.
-final class FlakyHistory: SessionHistory {
-    struct Failure: Error {}
+public final class FlakyHistory: SessionHistory {
+    public struct Failure: Error {
+        public init() {}
+    }
 
-    let saved = InMemorySessionHistory()
+    /// What the history holds, readable by tests even while it fails.
+    public let saved = InMemorySessionHistory()
     private let isFailing = Mutex(true)
 
-    func heal() {
+    public init() {}
+
+    public func heal() {
         isFailing.withLock { $0 = false }
     }
 
-    func sessions() throws -> [PracticeSession] {
+    public func sessions() throws -> [PracticeSession] {
         try failIfUnreachable()
         return saved.sessions()
     }
 
-    func save(_ session: PracticeSession) throws {
+    public func save(_ session: PracticeSession) throws {
         try failIfUnreachable()
         saved.save(session)
     }

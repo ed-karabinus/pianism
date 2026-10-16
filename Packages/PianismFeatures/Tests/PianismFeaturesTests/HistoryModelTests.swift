@@ -22,9 +22,7 @@ struct HistoryModelTests {
 
         model.refresh()
 
-        let shown = model.days.flatMap(\.sessions)
-        #expect(shown.count == 2)
-        #expect(Set(shown) == [both, waiting])
+        #expect(model.days.flatMap(\.sessions) == [waiting, both])
         #expect(model.waitingIDs == [waiting.id])
         #expect(!model.loadFailed)
     }
@@ -48,10 +46,24 @@ struct HistoryModelTests {
         #expect(!model.loadFailed)
     }
 
+    @Test("ADR 0007: an outbox that can't be read doesn't hide the saved history")
+    func unreadableOutboxKeepsHistory() throws {
+        let history = InMemorySessionHistory()
+        let saved = try endedSession(startingAfter: 0)
+        history.save(saved)
+        let model = HistoryModel(history: history, outbox: UnavailableOutbox(), clock: clock)
+
+        model.refresh()
+
+        #expect(model.days.flatMap(\.sessions) == [saved])
+        #expect(!model.loadFailed)
+    }
+
     @Test("HIS-1: each refresh moves today along, so a screen left open past midnight catches up")
     func refreshMovesToday() {
         let model = HistoryModel(history: InMemorySessionHistory(), outbox: outbox, clock: clock)
         clock.advance(by: 86_400)
+        #expect(model.now != clock.now)
 
         model.refresh()
 
