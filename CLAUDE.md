@@ -45,6 +45,9 @@ Run `make lint unused build test` before every push. CI runs the same commands.
 - No third-party dependencies without an ADR approved by the owner (E5).
 - Swift 6 language mode, warnings are errors, no force unwraps or `try!`. `make` and CI also fail on the
   few compiler warnings that setting misses, such as Sendable captures at `@preconcurrency` APIs (#24).
+- Data on a device must still read after an update. A new field on `PracticeSession`, which is stored
+  as JSON, is optional or decoded with `decodeIfPresent`, and a format change adds a sample to
+  `SessionFileFormatTests` (ADR 0003). The synced schema follows ADR 0006.
 - Every user-facing string goes through the String Catalog; every control gets a VoiceOver label.
 - New views get `#Preview`s in light, dark and AX5 text size.
 - Tests use Swift Testing (`import Testing`) except UI tests, which use XCTest. Name each test after
