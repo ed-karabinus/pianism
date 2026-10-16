@@ -115,6 +115,13 @@ final class SwiftDataSessionHistoryTests {
         #expect(try history.sessions() == [session])
     }
 
+    @Test("Once open, the store is reused rather than opened again on every call")
+    func opensOnce() throws {
+        let history = SwiftDataSessionHistory(url: storeURL)
+
+        #expect(try history.container() === history.container())
+    }
+
     @Test("A store that can't open makes every call fail, rather than the app crash")
     func unopenableStoreFailsEachCall() throws {
         var session = PracticeSession(startedAt: clock.now)
