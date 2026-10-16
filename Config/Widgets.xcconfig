@@ -1,0 +1,14 @@
+// The widget extension: the Start widget and the practice Live Activity (spike #17).
+
+PRODUCT_NAME = PianismWidgets
+PRODUCT_BUNDLE_IDENTIFIER = com.edkarabinus.Pianism.Widgets
+MARKETING_VERSION = 0.1.0
+CURRENT_PROJECT_VERSION = 1
+
+CODE_SIGN_ENTITLEMENTS = Config/Pianism.entitlements
+GENERATE_INFOPLIST_FILE = YES
+INFOPLIST_FILE = Config/Widgets-Info.plist
+INFOPLIST_KEY_CFBundleDisplayName = Pianism
+SKIP_INSTALL = YES
+APPLICATION_EXTENSION_API_ONLY = YES
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks @executable_path/../../Frameworks
