@@ -40,11 +40,11 @@ Option 3.
 - The running session is a single `PracticeSession` value (see `PianismCore`), encoded as JSON at
   `<App Group>/running-session.json`. No file means no running session. A file written by an older
   build must still read: a new field is optional or decoded with `decodeIfPresent` and a default,
-  and every format a build has written to a device keeps a sample in `SessionFileFormatTests`,
-  which every build must decode.
+  and every format a build has written to a device keeps a sample in the Persistence package's
+  `SessionFileFormatTests`, which every build must read through the adapters.
 - The core defines a port, `RunningSessionStore`, with two operations: `current()` and
-  `update(_ change: (inout PracticeSession?) throws -> Void)`. Every change is a read-modify-write
-  of the whole value.
+  `update(_ change: (inout PracticeSession?) throws -> Value) throws -> Value`. Every change is a
+  read-modify-write of the whole value.
 - The adapter implements `update` with `NSFileCoordinator`, so the app and the widget extension
   never interleave a read and a write, and writes the file atomically, so a crash never leaves
   half a file.
@@ -60,8 +60,8 @@ Amended 2026-10-16, after a review of every ADR against the code: synthesized `D
 property's default value and fails on a missing key, so adding a plain field would have made every
 older file unreadable. An unreadable file counts as no session, so the session running during an
 update would be lost, and the outbox would set its waiting sessions aside. Samples now fix the
-format. Two lines written before ADR 0004 and 0006 are corrected: moving a session into history
-takes two steps, and finished sessions can be edited (SES-5).
+format. Lines that no longer matched are corrected: moving a session into history takes two steps
+(ADR 0004), finished sessions can be edited (SES-5, ADR 0006), and `update` returns a value.
 
 Option 1 is rejected because CloudKit mirroring would sync every pause and resume, other devices
 would show sessions that are still running, and SwiftData contexts in two processes would race

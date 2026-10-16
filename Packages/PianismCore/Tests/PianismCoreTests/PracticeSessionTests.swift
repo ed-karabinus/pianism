@@ -138,17 +138,6 @@ struct PracticeSessionTests {
         #expect(restored.state == .paused)
         #expect(restored.elapsed(at: clock.now) == 200)
     }
-
-    @Test("SES-6: a running session stored before time zones were recorded still loads")
-    func decodesWithoutTimeZone() throws {
-        let stored = #"{"id":"6B1E2A4C-0F5D-4C3B-9A8E-2D7F1C3B5A90","startedAt":820454400,"pauses":[]}"#
-
-        let session = try JSONDecoder().decode(PracticeSession.self, from: Data(stored.utf8))
-
-        #expect(session.startedAt == clock.now)
-        #expect(session.state == .running)
-        #expect(session.timeZone == nil)
-    }
 }
 
 /// A change attempted in a state that doesn't allow it, and the error it must produce.
