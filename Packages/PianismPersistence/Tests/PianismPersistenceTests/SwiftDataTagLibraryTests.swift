@@ -49,16 +49,16 @@ final class SwiftDataTagLibraryTests {
         #expect(try library.tags() == [tag])
     }
 
-    @Test("ADR 0004: duplicates from sync show once, as the latest change, and a change reaches every copy")
-    func duplicatesShowOnceAndChangeTogether() throws {
-        try insertRecord(id: "a", name: "Old", modifiedAfter: 1)
+    @Test("ADR 0004: duplicates from sync show once, as the latest change, and a change keeps the rest of it")
+    func duplicatesShowOnceAndChangeTheLatest() throws {
+        try insertRecord(id: "a", name: "Old", modifiedAfter: 1, isArchived: true)
         try insertRecord(id: "a", name: "New", modifiedAfter: 2)
 
         #expect(try library.tags() == [Tag(id: "a", kind: .piece, name: "New")])
 
         try library.rename(id: "a", to: "Renamed")
 
-        #expect(try records().map(\.name) == ["Renamed", "Renamed"])
+        #expect(try library.tags() == [Tag(id: "a", kind: .piece, name: "Renamed")])
     }
 
     @Test("ADR 0006: a tag a newer version wrote can't be renamed or archived, so this version can't damage it")
@@ -103,7 +103,8 @@ final class SwiftDataTagLibraryTests {
 
     /// Inserts a record as sync would deliver it, bypassing the library.
     private func insertRecord(
-        id: String, name: String, modifiedAfter modified: TimeInterval, kind: String = "piece", version: Int = 1
+        id: String, name: String, modifiedAfter modified: TimeInterval, kind: String = "piece", version: Int = 1,
+        isArchived: Bool = false
     ) throws {
         let context = ModelContext(try HistoryStore(url: storeURL).container())
         let record = TagRecord()
@@ -112,6 +113,7 @@ final class SwiftDataTagLibraryTests {
         record.name = name
         record.modifiedAt = clock.now + modified
         record.version = version
+        record.isArchived = isArchived
         context.insert(record)
         try context.save()
     }
