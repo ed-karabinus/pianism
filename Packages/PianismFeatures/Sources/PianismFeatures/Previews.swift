@@ -27,21 +27,32 @@ extension PracticeModel {
 
 extension HistoryModel {
     /// A model with practice today, yesterday and last week, or with none, for previews. Times are
-    /// local, so "Today" holds in any time zone.
-    static func preview(empty: Bool = false) -> HistoryModel {
-        let history = InMemorySessionHistory()
+    /// local, so "Today" holds in any time zone. `waiting` puts the sessions in the outbox and makes
+    /// history fail to load, as during an outage (ADR 0007).
+    static func preview(empty: Bool = false, waiting: Bool = false) -> HistoryModel {
+        let sessions = InMemorySessionHistory()
         let midnight = Calendar.autoupdatingCurrent.startOfDay(for: previewNow)
         let hour: TimeInterval = 60 * 60
         // (Hours after this midnight, minutes of practice.)
-        let sessions = empty ? [] : [(18, 25), (8, 40), (-5, 15), (-150, 55)]
-        for (hours, minutes) in sessions {
+        let practice = empty ? [] : [(18, 25), (8, 40), (-5, 15), (-150, 55)]
+        for (hours, minutes) in practice {
             let start = midnight.addingTimeInterval(Double(hours) * hour)
             var session = PracticeSession(startedAt: start)
             try? session.stop(at: start.addingTimeInterval(Double(minutes) * 60))
-            history.save(session)
+            sessions.save(session)
         }
-        return HistoryModel(history: history, clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)))
+        let history: any SessionHistory = waiting ? PreviewUnavailableHistory() : sessions
+        let outbox = waiting ? sessions : InMemorySessionHistory()
+        return HistoryModel(
+            history: history, outbox: outbox, clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)))
     }
+}
+
+private struct PreviewUnavailableHistory: SessionHistory {
+    struct Unavailable: Error {}
+
+    func sessions() throws -> [PracticeSession] { throw Unavailable() }
+    func save(_: PracticeSession) throws { throw Unavailable() }
 }
 
 private struct PreviewClock: WallClock {

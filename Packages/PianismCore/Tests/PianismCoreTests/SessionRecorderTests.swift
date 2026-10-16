@@ -203,6 +203,26 @@ struct SessionRecorderTests {
         #expect(outbox.sessions().isEmpty)
     }
 
+    @Test(
+        "ADR 0007: a session history refuses stays waiting without holding back the others, but an outage stops the move",
+        arguments: [true, false])
+    func refusedSessionDoesNotHoldBackOthers(refused: Bool) throws {
+        var ended: [PracticeSession] = []
+        for _ in 1...2 {
+            try recorder.start()
+            clock.advance(by: 60)
+            ended.append(try recorder.stop())
+            try recorder.archive(to: UnavailableHistory(), or: outbox)
+        }
+        // The outbox lists the refused session first, so it would block the other if it stopped the loop.
+        let history = RefusingHistory(refusing: ended[0].id, asOutage: !refused)
+
+        try recorder.archive(to: history, or: outbox)
+
+        #expect(history.saved.sessions() == (refused ? [ended[1]] : []))
+        #expect(outbox.sessions() == (refused ? [ended[0]] : ended))
+    }
+
     @Test("SES-6: if neither history nor the outbox can save, the ended session stays in the store")
     func archiveKeepsSessionWhenNothingCanSave() throws {
         try recorder.start()
@@ -286,6 +306,25 @@ enum Command: CustomTestStringConvertible, Sendable {
         case .resume: try recorder.resume()
         case .stop: try recorder.stop()
         }
+    }
+}
+
+/// A history that fails on one session: refusing it, as when it wouldn't read back the same, or, with
+/// `asOutage`, as if the store had failed.
+struct RefusingHistory: SessionHistory {
+    let refusing: UUID
+    let asOutage: Bool
+    let saved = InMemorySessionHistory()
+
+    func sessions() -> [PracticeSession] {
+        saved.sessions()
+    }
+
+    func save(_ session: PracticeSession) throws {
+        if session.id == refusing {
+            if asOutage { throw UnavailableHistory.Failure() } else { throw SessionRefused() }
+        }
+        saved.save(session)
     }
 }
 
