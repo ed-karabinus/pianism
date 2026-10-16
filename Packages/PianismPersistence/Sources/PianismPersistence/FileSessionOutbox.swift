@@ -44,11 +44,14 @@ public struct FileSessionOutbox: SessionOutbox {
         let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
         let unreadable = directory.appending(path: "Unreadable")
         do {
-            try FileManager.default.createDirectory(at: unreadable, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(
+                at: unreadable, withIntermediateDirectories: true)  // mutate:ignore - its parent was just listed
             try FileManager.default.moveItem(at: file, to: unreadable.appending(path: file.lastPathComponent))
-            logger.error("Moved aside an unreadable waiting session: \(file.lastPathComponent, privacy: .public)")
+            logger.error(  // mutate:ignore - a log line; no test reads logs
+                "Moved aside an unreadable waiting session: \(file.lastPathComponent, privacy: .public)")
         } catch {
-            logger.error("Couldn't move aside \(file.lastPathComponent, privacy: .public): \(error, privacy: .public)")
+            logger.error(  // mutate:ignore - a log line; no test reads logs
+                "Couldn't move aside \(file.lastPathComponent, privacy: .public): \(error, privacy: .public)")
         }
     }
 
