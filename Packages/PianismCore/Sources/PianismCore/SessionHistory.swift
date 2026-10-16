@@ -9,6 +9,7 @@ public protocol SessionHistory: Sendable {
     /// Every saved session, in no particular order.
     func sessions() throws -> [PracticeSession]
 
-    /// Saves `session`, replacing any saved session with the same ID, so saving twice is harmless.
+    /// Saves `session` unless a session with its ID is already saved, or was deleted. Saving twice is
+    /// harmless, and a stale copy can't replace a later edit.
     func save(_ session: PracticeSession) throws
 }

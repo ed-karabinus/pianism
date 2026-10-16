@@ -15,15 +15,32 @@ public final class SwiftDataSessionHistory: SessionHistory {
     private let opened = Mutex<ModelContainer?>(nil)
     /// Saves run one at a time, so two saves of a new session can't both insert it (ADR 0006).
     private let saving = Mutex(())
+    private let clock: any WallClock
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
 
-    /// A history stored at `url`, which is created, with its folder, on first use.
-    public init(url: URL) {
+    /// A history stored at `url`, which is created, with its folder, on first use. `clock` stamps
+    /// when each record last changed.
+    public init(url: URL, clock: any WallClock) {
         self.url = url
+        self.clock = clock
     }
 
+    /// Each ID once, as its latest change, leaving out an ID with any deleted record (ADR 0004,
+    /// 0006). A record that can't be rebuilt is left out too, so it can't hide the rest.
     public func sessions() throws -> [PracticeSession] {
-        try ModelContext(container()).fetch(FetchDescriptor<SessionRecord>()).map { try $0.session() }
+        let records = try ModelContext(container()).fetch(FetchDescriptor<SessionRecord>())
+        return Dictionary(grouping: records, by: \.id).values.compactMap { duplicates in
+            guard duplicates.allSatisfy({ $0.deletedAt == nil }),
+                let latest = duplicates.max(by: { $0.modifiedAt < $1.modifiedAt })
+            else { return nil }
+            do {
+                return try latest.session()
+            } catch {
+                logger.error(  // mutate:ignore - a log line; no test reads logs
+                    "Skipped session \(latest.id, privacy: .public): it can't be rebuilt: \(error)")
+                return nil
+            }
+        }
     }
 
     func container() throws -> ModelContainer {
@@ -45,12 +62,13 @@ public final class SwiftDataSessionHistory: SessionHistory {
         try saving.withLock { _ in
             let context = ModelContext(try container())
             let id = session.id
-            let existing = try context.fetch(FetchDescriptor<SessionRecord>(predicate: #Predicate { $0.id == id }))
-            let record = existing.first ?? SessionRecord()
-            if existing.isEmpty {
-                context.insert(record)
-            }
+            // A record with this ID, even a deleted one, is never replaced (ADR 0004, as amended).
+            guard try context.fetchCount(FetchDescriptor<SessionRecord>(predicate: #Predicate { $0.id == id })) == 0
+            else { return }
+            let record = SessionRecord()
+            context.insert(record)
             try record.update(from: session)
+            record.modifiedAt = clock.now
             // A record that wouldn't read back the same would hide the whole history, so refuse it:
             // the session then waits in the outbox (ADR 0007), where this log line explains it.
             // A record that can't be rebuilt at all is refused too, not treated as history failing.

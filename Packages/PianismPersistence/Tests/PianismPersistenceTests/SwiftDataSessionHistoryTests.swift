@@ -28,11 +28,11 @@ final class SwiftDataSessionHistoryTests {
         var plain = PracticeSession(startedAt: clock.now + 7_200)
         try plain.stop(at: clock.now + 9_000)
 
-        let history = SwiftDataSessionHistory(url: storeURL)
+        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
         try history.save(paused)
         try history.save(plain)
 
-        let reopened = SwiftDataSessionHistory(url: storeURL)
+        let reopened = SwiftDataSessionHistory(url: storeURL, clock: clock)
         #expect(Set(try reopened.sessions()) == [paused, plain])
     }
 
@@ -44,7 +44,7 @@ final class SwiftDataSessionHistoryTests {
         try session.pause(at: clock.now + 600.123_456_7)
         try session.stop(at: clock.now + 900.987_654_3)
 
-        let history = SwiftDataSessionHistory(url: storeURL)
+        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
         try history.save(session)
 
         #expect(try history.sessions() == [session])
@@ -55,7 +55,7 @@ final class SwiftDataSessionHistoryTests {
         var ended = PracticeSession(startedAt: clock.now)
         try ended.stop(at: clock.now + 600)
         let session = ended
-        let history = SwiftDataSessionHistory(url: storeURL)
+        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             for _ in 0..<20 {
@@ -67,6 +67,64 @@ final class SwiftDataSessionHistoryTests {
         #expect(try history.sessions() == [session])
     }
 
+    @Test("ADR 0004: saving never replaces a saved session, so a stale copy from the outbox can't undo an edit")
+    func savingKeepsTheSavedSession() throws {
+        var saved = PracticeSession(startedAt: clock.now)
+        try saved.stop(at: clock.now + 600)
+        var stale = PracticeSession(id: saved.id, startedAt: clock.now)
+        try stale.stop(at: clock.now + 300)
+        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        try history.save(saved)
+
+        try history.save(stale)
+
+        #expect(try history.sessions() == [saved])
+    }
+
+    @Test("ADR 0006: a deleted session stays hidden, even when it is saved again")
+    func deletedSessionStaysHidden() throws {
+        var session = PracticeSession(startedAt: clock.now)
+        try session.stop(at: clock.now + 600)
+        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        try history.save(session)
+        // Deleted on another device; deleting on this one arrives with SES-5.
+        let context = ModelContext(try history.container())
+        try #require(try context.fetch(FetchDescriptor<SessionRecord>()).first).deletedAt = clock.now
+        try context.save()
+
+        try history.save(session)
+
+        #expect(try history.sessions().isEmpty)
+    }
+
+    @Test("ADR 0004, 0006: duplicates from sync show once, as the latest change, unless any is deleted")
+    func duplicatesShowOnce() throws {
+        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        let id = UUID()
+        try insertRecord(in: history, id: id, endingAfter: 600, modifiedAfter: 2)
+        try insertRecord(in: history, id: id, endingAfter: 900, modifiedAfter: 3)
+        try insertRecord(in: history, id: id, endingAfter: 300, modifiedAfter: 1)
+        let deleted = UUID()
+        try insertRecord(in: history, id: deleted, endingAfter: 600, modifiedAfter: 2)
+        try insertRecord(in: history, id: deleted, endingAfter: 600, modifiedAfter: 1, isDeleted: true)
+
+        let sessions = try history.sessions()
+
+        #expect(sessions.map(\.id) == [id])
+        #expect(sessions.first?.endedAt == clock.now + 900)
+    }
+
+    @Test("A record that can't be rebuilt is skipped, so it can't hide the rest of history")
+    func unreadableRecordIsSkipped() throws {
+        var session = PracticeSession(startedAt: clock.now)
+        try session.stop(at: clock.now + 600)
+        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
+        try history.save(session)
+        try insertRecord(in: history, id: UUID(), endingAfter: 600, modifiedAfter: 1, pauses: Data("not JSON".utf8))
+
+        #expect(try history.sessions() == [session])
+    }
+
     @Test("ADR 0006: pauses are stored as the JSON the ADR fixes, and the time zone by its identifier")
     func storedFormat() throws {
         let losAngeles = try #require(TimeZone(identifier: "America/Los_Angeles"))
@@ -74,12 +132,13 @@ final class SwiftDataSessionHistoryTests {
         try session.pause(at: clock.now + 60)
         try session.resume(at: clock.now + 120)
         try session.stop(at: clock.now + 600)
-        let history = SwiftDataSessionHistory(url: storeURL)
+        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
         try history.save(session)
 
         let context = ModelContext(try history.container())
         let record = try #require(try context.fetch(FetchDescriptor<SessionRecord>()).first)
         #expect(record.timeZoneID == "America/Los_Angeles")
+        #expect(record.modifiedAt == clock.now)
         let json = try #require(try JSONSerialization.jsonObject(with: record.pauses) as? [String: [[String: Double]]])
         let start = clock.now.timeIntervalSinceReferenceDate
         #expect(json == ["pauses": [["start": start + 60, "end": start + 120]]])
@@ -92,7 +151,7 @@ final class SwiftDataSessionHistoryTests {
             #"{"id":"6B1E2A4C-0F5D-4C3B-9A8E-2D7F1C3B5A90","startedAt":820454400,"#
             + #""pauses":[{"start":820454300,"end":820454350}],"endedAt":820455000}"#
         let session = try JSONDecoder().decode(PracticeSession.self, from: Data(stored.utf8))
-        let history = SwiftDataSessionHistory(url: storeURL)
+        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
 
         #expect(throws: SessionRefused.self) { try history.save(session) }
         #expect(try history.sessions().isEmpty)
@@ -106,7 +165,7 @@ final class SwiftDataSessionHistoryTests {
         let folder = storeURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try Data().write(to: folder)
-        let history = SwiftDataSessionHistory(url: storeURL)
+        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
         #expect(throws: (any Error).self) { try history.save(session) }
 
         try FileManager.default.removeItem(at: folder)
@@ -117,7 +176,7 @@ final class SwiftDataSessionHistoryTests {
 
     @Test("Once open, the store is reused rather than opened again on every call")
     func opensOnce() throws {
-        let history = SwiftDataSessionHistory(url: storeURL)
+        let history = SwiftDataSessionHistory(url: storeURL, clock: clock)
 
         #expect(try history.container() === history.container())
     }
@@ -127,9 +186,26 @@ final class SwiftDataSessionHistoryTests {
         var session = PracticeSession(startedAt: clock.now)
         try session.stop(at: clock.now + 600)
         // A folder can't be created inside a file.
-        let history = SwiftDataSessionHistory(url: URL(filePath: "/dev/null/History.store"))
+        let history = SwiftDataSessionHistory(url: URL(filePath: "/dev/null/History.store"), clock: clock)
 
         #expect(throws: (any Error).self) { try history.sessions() }
         #expect(throws: (any Error).self) { try history.save(session) }
+    }
+
+    /// Inserts a record as sync would deliver it, bypassing `save`.
+    private func insertRecord(
+        in history: SwiftDataSessionHistory, id: UUID, endingAfter seconds: TimeInterval,
+        modifiedAfter modified: TimeInterval, isDeleted: Bool = false, pauses: Data = Data()
+    ) throws {
+        let context = ModelContext(try history.container())
+        let record = SessionRecord()
+        record.id = id
+        record.startedAt = clock.now
+        record.endedAt = clock.now + seconds
+        record.pauses = pauses
+        record.modifiedAt = clock.now + modified
+        record.deletedAt = isDeleted ? clock.now + modified : nil
+        context.insert(record)
+        try context.save()
     }
 }

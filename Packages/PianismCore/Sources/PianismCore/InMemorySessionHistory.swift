@@ -13,18 +13,17 @@ public final class InMemorySessionHistory: SessionHistory {
 
     public func save(_ session: PracticeSession) {
         saved.withLock { sessions in
-            if let index = sessions.firstIndex(where: { $0.id == session.id }) {
-                sessions[index] = session
-            } else {
+            if !sessions.contains(where: { $0.id == session.id }) {
                 sessions.append(session)
             }
         }
     }
 }
 
-/// Also an outbox, for previews and tests: adding is saving.
+/// Also an outbox, for previews and tests: a waiting session is a saved one.
 extension InMemorySessionHistory: SessionOutbox {
     public func add(_ session: PracticeSession) {
+        remove(id: session.id)
         save(session)
     }
 
