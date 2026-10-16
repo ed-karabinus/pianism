@@ -14,9 +14,12 @@ trap 'rm -f "$log"' EXIT
 "$@" 2>&1 | tee "$log"
 status=$?
 
-# Swift colours its diagnostics even when piped, so strip the colour codes before matching.
+# Swift colours its diagnostics even when piped, so strip the colour codes before matching. LC_ALL=C
+# and grep -a keep a stray non-UTF-8 byte in the log from stopping sed or grep, and checking the
+# output rather than the pipeline's status means an error there can't hide a warning.
 esc=$'\033'
-if warnings=$(sed "s/${esc}\[[0-9;]*m//g" "$log" | grep -E '^[^ ]+:[0-9]+:[0-9]+: warning: ' | sort -u); then
+warnings=$(LC_ALL=C sed "s/${esc}\[[0-9;]*m//g" "$log" | LC_ALL=C grep -aE '^[^ ].*:[0-9]+:[0-9]+: warning: ' | sort -u)
+if [ -n "$warnings" ]; then
     echo "error: the compiler warned. Fix each warning:" >&2
     echo "$warnings" >&2
     exit 1
