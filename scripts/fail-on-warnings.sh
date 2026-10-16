@@ -5,8 +5,17 @@
 # into @preconcurrency APIs, such as DispatchQueue.concurrentPerform, as warnings that the setting
 # doesn't upgrade. Only compiler diagnostics (path:line:column: warning:) count: Xcode's own tools
 # print warnings such as "not stripping binary because it is signed" that aren't ours to fix.
-# Only code this run compiles can warn, so a cached local build may pass; CI builds from scratch.
 set -uo pipefail
+
+# Only code a run compiles can warn, and a build skips unchanged files. So that a warning in this
+# branch's own changes prints on every run, not just the first, touch each Swift file it changed,
+# committed or not, which makes the build compile it again. (CI builds from scratch anyway.)
+top=$(git rev-parse --show-toplevel)
+if base=$(git merge-base HEAD origin/main 2>/dev/null); then
+    { git -C "$top" diff --name-only --diff-filter=d "$base" -- '*.swift'
+      git -C "$top" ls-files --others --exclude-standard -- '*.swift'; } |
+        while read -r file; do touch "$top/$file"; done
+fi
 
 log=$(mktemp)
 trap 'rm -f "$log"' EXIT
