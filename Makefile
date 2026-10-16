@@ -11,6 +11,8 @@ RESULTS     := build/results
 # CI sets QUIET= to keep xcodebuild's full output in the job log.
 QUIET       ?= -quiet
 XCODE_FLAGS := SWIFT_SUPPRESS_WARNINGS=NO $(QUIET)
+# Fails a build or test on any compiler warning, including the few warnings-as-errors misses (#24).
+NO_WARNINGS := scripts/fail-on-warnings.sh
 DEVICES     ?= iPhone iPad
 
 .PHONY: help test test-core test-adapters test-app build evidence lint unused mutate format clean
@@ -21,13 +23,13 @@ help: ## List the available commands
 test: test-core test-adapters test-app ## Run every automated test
 
 test-core: ## Unit-test the platform-independent core (fast, no simulator)
-	swift test --package-path $(CORE)
+	$(NO_WARNINGS) swift test --package-path $(CORE)
 
 test-adapters: ## Integration-test the adapter packages, which need Apple-only APIs (macOS, no simulator)
-	@for package in $(ADAPTERS); do swift test --package-path $$package || exit 1; done
+	@for package in $(ADAPTERS); do $(NO_WARNINGS) swift test --package-path $$package || exit 1; done
 
 build: ## Build the app as it ships (Release) for the simulator; the tests build Debug
-	xcodebuild build -project $(PROJECT) -scheme $(SCHEME) -configuration Release \
+	$(NO_WARNINGS) xcodebuild build -project $(PROJECT) -scheme $(SCHEME) -configuration Release \
 		-destination 'generic/platform=iOS Simulator' \
 		$(XCODE_FLAGS)
 
@@ -35,7 +37,7 @@ test-app: ## Build the app and run its end-to-end tests on each simulator in DEV
 	@for device in $(DEVICES); do \
 		echo "== End-to-end tests on $$device"; \
 		rm -rf $(RESULTS)/app-$$device.xcresult; \
-		xcodebuild test -project $(PROJECT) -scheme $(SCHEME) \
+		$(NO_WARNINGS) xcodebuild test -project $(PROJECT) -scheme $(SCHEME) \
 			-destination "$$(scripts/simulator-destination.sh $$device)" \
 			-resultBundlePath $(RESULTS)/app-$$device.xcresult \
 			$(XCODE_FLAGS) || exit 1; \
