@@ -41,7 +41,7 @@ Option 2.
 IDs, a note and a source as those features land), `Tag`, and `TagID`. It also defines two ports
 the adapter implements:
 
-- `SessionHistory`: save, which inserts or updates by ID; sessions in a date range; delete.
+- `SessionHistory`: save, which inserts each ID once; sessions in a date range; delete.
 - `TagLibrary`: all tags; add, rename, archive and merge.
 
 Both ports also report when anything they hold changes, on this device or from iCloud, so view
@@ -82,11 +82,17 @@ deliver records in any order: a session that arrives before its tag shows the ta
 Since tags are archived rather than deleted, references don't dangle. If an ID can't be resolved,
 the tag is left out, and a session with no tags left shows "Untagged" (TAG-2).
 
-**No duplicates without unique constraints.** Every save is an upsert: fetch by `id`, update if
-found, insert otherwise. Moving an ended session out of the running-session file is
-`history.save(session)` followed by clearing the file. If the app dies in between, the next launch
-saves it again, and the upsert makes that harmless. Reads still drop any duplicate `id` and keep
-the latest `modifiedAt`, in case sync ever delivers one.
+**No duplicates without unique constraints.** Saving a finished session inserts it only if no
+record has its `id`, and stamps `modifiedAt`. Moving an ended session out of the running-session
+file is `history.save(session)` followed by clearing the file. If the app dies in between, the next
+launch saves it again, and finding the record makes that harmless. Reads still drop any duplicate
+`id` and keep the latest `modifiedAt`, in case sync ever delivers one.
+
+Amended 2026-10-16, after a review of every ADR against the code: saving was an upsert, so a stale
+copy, such as one left in the outbox (ADR 0007) after its removal failed, could replace a later
+edit. Saving now never replaces a record; editing (SES-5) gets its own path, which checks `version`
+(ADR 0006). Reading also leaves out, and logs, a record it can't rebuild, so one bad record can't
+hide the whole history.
 
 **Duplicate tags are merged by alias, never by rewriting sessions.** IDs can't stop two devices
 from each adding "Ballade No. 1" before either has synced, and sync can take minutes even online.
