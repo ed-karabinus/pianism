@@ -25,11 +25,9 @@ enum HistorySchemaV1: VersionedSchema {
         var source: String = "timer"
         /// Such as `America/Los_Angeles`; empty if unknown.
         var timeZoneID: String = ""
-        // periphery:ignore - schema v1; settles duplicates once sync is on (SYN-1)
         var modifiedAt: Date = Date.distantPast
         // periphery:ignore - schema v1; checked once sessions can be edited (SES-5, ADR 0006)
         var version: Int = 1
-        // periphery:ignore - schema v1; deleting arrives with SES-5
         var deletedAt: Date?
 
         init() {}
