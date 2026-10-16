@@ -4,7 +4,7 @@ PROJECT     := Pianism.xcodeproj
 SCHEME      := Pianism
 CORE        := Packages/PianismCore
 ADAPTERS    := Packages/PianismPersistence
-SWIFT_DIRS  := App AppUITests Packages
+SWIFT_DIRS  := App AppUITests Packages scripts
 RESULTS     := build/results
 # Xcode 26 compiles package dependencies with -suppress-warnings, which clashes with the packages'
 # own .treatAllWarnings(as: .error). Turning suppression off keeps warnings visible, and fatal, everywhere.
