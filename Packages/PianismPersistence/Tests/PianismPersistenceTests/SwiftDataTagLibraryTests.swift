@@ -23,6 +23,7 @@ final class SwiftDataTagLibraryTests {
         let added = clock.now
         let ballade = try library.add(name: "Ballade No. 1", kind: .piece)
         let pedalling = try library.add(name: "Pedalling", kind: .skill)
+        #expect(try records().allSatisfy { $0.createdAt == added && $0.modifiedAt == added })
         clock.advance(by: 60)
         try library.rename(id: ballade.id, to: "Ballade No. 1 in G minor")
         try library.setArchived(true, id: pedalling.id)
