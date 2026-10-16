@@ -2,37 +2,48 @@ import Foundation
 import PianismCore
 import SwiftData
 import Synchronization
+import os
 
 /// Finished sessions, kept in SwiftData on this device (HIS-1; ADR 0004, as amended by ADR 0006).
 ///
 /// Sync through iCloud is off until SYN-1 (#15) deploys the schema.
 public final class SwiftDataSessionHistory: SessionHistory {
-    /// The open store, or why it couldn't open, which every call then throws. That way the app keeps
-    /// running: History says it couldn't load, and Practice keeps an ended session in its own file.
-    let container: Result<ModelContainer, any Error>
+    private let url: URL
+    /// The store once it has opened. Until then, each call tries to open it and throws why it
+    /// couldn't, so a passing failure such as a full disk heals itself, and the app keeps running:
+    /// History says it couldn't load, and finished sessions wait in the outbox (ADR 0007).
+    private let opened = Mutex<ModelContainer?>(nil)
     /// Saves run one at a time, so two saves of a new session can't both insert it (ADR 0006).
     private let saving = Mutex(())
+    private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
 
-    /// Opens the store at `url`, creating it and its folder if needed.
+    /// A history stored at `url`, which is created, with its folder, on first use.
     public init(url: URL) {
-        container = Result {
+        self.url = url
+    }
+
+    public func sessions() throws -> [PracticeSession] {
+        try ModelContext(container()).fetch(FetchDescriptor<SessionRecord>()).map { try $0.session() }
+    }
+
+    func container() throws -> ModelContainer {
+        try opened.withLock { opened in
+            if let opened { return opened }
             try FileManager.default.createDirectory(
                 at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            return try ModelContainer(
+            let container = try ModelContainer(
                 for: Schema(versionedSchema: HistorySchemaV1.self),
                 migrationPlan: HistoryMigrationPlan.self,
                 configurations: ModelConfiguration(url: url, cloudKitDatabase: .none)
             )
+            opened = container
+            return container
         }
-    }
-
-    public func sessions() throws -> [PracticeSession] {
-        try ModelContext(container.get()).fetch(FetchDescriptor<SessionRecord>()).map { try $0.session() }
     }
 
     public func save(_ session: PracticeSession) throws {
         try saving.withLock { _ in
-            let context = ModelContext(try container.get())
+            let context = ModelContext(try container())
             let id = session.id
             let existing = try context.fetch(FetchDescriptor<SessionRecord>(predicate: #Predicate { $0.id == id }))
             let record = existing.first ?? SessionRecord()
@@ -41,8 +52,12 @@ public final class SwiftDataSessionHistory: SessionHistory {
             }
             try record.update(from: session)
             // A record that wouldn't read back the same would hide the whole history, so refuse it:
-            // the session then stays in the running-session file.
-            guard try record.session() == session else { throw HistoryError.wouldNotReadBack }
+            // the session then waits in the outbox (ADR 0007), where this log line explains it.
+            guard try record.session() == session else {
+                logger.error(  // mutate:ignore - a log line; no test reads logs
+                    "Refused session \(session.id, privacy: .public): it wouldn't read back the same")
+                throw HistoryError.wouldNotReadBack
+            }
             try context.save()
         }
     }

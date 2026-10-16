@@ -1,6 +1,6 @@
 # 3. The running session lives in the App Group, not the synced store
 
-- Status: accepted
+- Status: accepted; amended by [ADR 0007](0007-outbox-when-history-cant-save.md)
 - Date: 2026-10-13
 - Issue: #16
 

@@ -93,21 +93,30 @@ final class PracticeTests: XCTestCase {
         XCTAssertEqual(relaunched.value as? String, "25 minutes, 3 seconds")
     }
 
-    /// HIS-1: when the history can't open, Stop still ends the session, which waits in its own file,
-    /// and History says it couldn't load rather than showing no practice.
+    /// ADR 0007: when the history can't open, practice goes on. Each finished session waits in the
+    /// outbox, Practice says how many are waiting, and History says it couldn't load. Once the
+    /// history opens, the waiting sessions move into it.
     @MainActor
     func testWhenHistoryCantOpen() throws {
-        let app = launch(at: start, reset: true, breakHistory: true)
-        tap(app, "practice.start")
-        tap(app, "practice.stop")
-        let alert = app.alerts.firstMatch
-        XCTAssertTrue(alert.waitForExistence(timeout: 5))
-        alert.buttons.firstMatch.tap()
+        var app = launch(at: start, reset: true, breakHistory: true)
+        for _ in 1...2 {
+            tap(app, "practice.start")
+            tap(app, "practice.stop")
+        }
+        XCTAssertFalse(app.alerts.firstMatch.exists)
         XCTAssertTrue(app.buttons["practice.start"].waitForExistence(timeout: 5))
-        XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
+        XCTAssertEqual(text(app, "practice.waiting"), "2 sessions waiting to be saved")
+        attachScreenshot(of: app, named: "Practice, sessions waiting")
         app.buttons["History"].firstMatch.tap()
         XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "History, couldn't load")
+        app.terminate()
+
+        app = launch(at: start + 60 * 60)
+        XCTAssertFalse(app.staticTexts["practice.waiting"].exists)
+        app.buttons["History"].firstMatch.tap()
+        XCTAssertTrue(element(app, "history.day").waitForExistence(timeout: 5))
+        XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "history.session").count, 2)
     }
 
     @MainActor

@@ -6,6 +6,7 @@ import Testing
 struct SessionRecorderTests {
     let clock = ManualClock()
     let store = InMemoryRunningSessionStore()
+    let outbox = InMemorySessionHistory()
     let recorder: SessionRecorder
 
     init() {
@@ -135,7 +136,7 @@ struct SessionRecorderTests {
         clock.advance(by: 60)
         let ended = try recorder.stop()
 
-        let archived = try recorder.archive(to: history)
+        let archived = try recorder.archive(to: history, or: outbox)
 
         #expect(archived == ended)
         #expect(history.sessions() == [ended])
@@ -151,7 +152,7 @@ struct SessionRecorderTests {
         if paused { try recorder.pause() }
         let before = store.current()
 
-        #expect(try recorder.archive(to: history) == nil)
+        #expect(try recorder.archive(to: history, or: outbox) == nil)
         #expect(history.sessions().isEmpty)
         #expect(store.current() == before)
     }
@@ -164,21 +165,56 @@ struct SessionRecorderTests {
         let ended = try recorder.stop()
         history.save(ended)  // The app died here, before clearing the store.
 
-        try recorder.archive(to: history)
+        try recorder.archive(to: history, or: outbox)
 
         #expect(history.sessions() == [ended])
         #expect(store.current() == nil)
     }
 
-    @Test("SES-6: if saving to history fails, the ended session stays in the store for the next try")
-    func archiveKeepsSessionWhenSaveFails() throws {
+    @Test("ADR 0007: if history can't save, the ended session waits in the outbox and practice goes on")
+    func archiveUsesOutboxWhenHistoryFails() throws {
         try recorder.start()
         clock.advance(by: 60)
         let ended = try recorder.stop()
 
-        #expect(throws: UnavailableHistory.Failure.self) { try recorder.archive(to: UnavailableHistory()) }
+        let archived = try recorder.archive(to: UnavailableHistory(), or: outbox)
+
+        #expect(archived == ended)
+        #expect(outbox.sessions() == [ended])
+        #expect(store.current() == nil)
+        #expect(throws: Never.self) { try recorder.start() }
+    }
+
+    @Test("ADR 0007: waiting sessions move into history once it can save them")
+    func archiveMovesWaitingSessions() throws {
+        let history = InMemorySessionHistory()
+        try recorder.start()
+        clock.advance(by: 60)
+        let first = try recorder.stop()
+        try recorder.archive(to: UnavailableHistory(), or: outbox)
+        clock.advance(by: 60)
+        try recorder.start()
+        clock.advance(by: 60)
+        let second = try recorder.stop()
+
+        try recorder.archive(to: history, or: outbox)
+
+        #expect(Set(history.sessions()) == [first, second])
+        #expect(outbox.sessions().isEmpty)
+    }
+
+    @Test("SES-6: if neither history nor the outbox can save, the ended session stays in the store")
+    func archiveKeepsSessionWhenNothingCanSave() throws {
+        try recorder.start()
+        clock.advance(by: 60)
+        let ended = try recorder.stop()
+
+        #expect(throws: UnavailableOutbox.Failure.self) {
+            try recorder.archive(to: UnavailableHistory(), or: UnavailableOutbox())
+        }
 
         #expect(store.current() == ended)
+        #expect(throws: RecorderError.previousSessionNotSaved) { try recorder.start() }
     }
 
     @Test("Archiving never clears a session that another writer started in the meantime")
@@ -192,11 +228,11 @@ struct SessionRecorderTests {
         try app.stop()
         // While the app saves to history, another process archives the session and starts a new one.
         contended.beforeNextUpdate = {
-            try widget.archive(to: history)
+            try widget.archive(to: history, or: outbox)
             try widget.start()
         }
 
-        try app.archive(to: history)
+        try app.archive(to: history, or: outbox)
 
         #expect(contended.base.current()?.state == .running)
         #expect(history.sessions().count == 1)
@@ -250,6 +286,23 @@ enum Command: CustomTestStringConvertible, Sendable {
         case .resume: try recorder.resume()
         case .stop: try recorder.stop()
         }
+    }
+}
+
+/// An outbox that can't be written, as on a full disk.
+struct UnavailableOutbox: SessionOutbox {
+    struct Failure: Error {}
+
+    func sessions() throws -> [PracticeSession] {
+        throw Failure()
+    }
+
+    func add(_: PracticeSession) throws {
+        throw Failure()
+    }
+
+    func remove(id _: UUID) throws {
+        throw Failure()
     }
 }
 

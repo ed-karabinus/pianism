@@ -20,9 +20,12 @@ struct PianismApp: App {
         }
         var clock: any WallClock = SystemClock()
         var historyURL = URL.applicationSupportDirectory.appending(path: "History/History.store")
+        // Finished sessions wait here while history can't save them (ADR 0007). Only the app moves
+        // sessions into history, so this stays out of the App Group.
+        let outboxURL = URL.applicationSupportDirectory.appending(path: "Outbox")
         #if DEBUG
             // End-to-end tests fix the time with PIANISM_NOW (seconds since 1970), start with no
-            // running session and no history with PIANISM_RESET=1, and make the history fail to
+            // running session, history or outbox with PIANISM_RESET=1, and make the history fail to
             // open with PIANISM_BREAK_HISTORY=1. Release builds ignore all three.
             let environment = ProcessInfo.processInfo.environment
             if let seconds = environment["PIANISM_NOW"].flatMap(TimeInterval.init) {
@@ -31,13 +34,15 @@ struct PianismApp: App {
             if environment["PIANISM_RESET"] == "1" {
                 try? store.update { $0 = nil }
                 try? FileManager.default.removeItem(at: historyURL.deletingLastPathComponent())
+                try? FileManager.default.removeItem(at: outboxURL)
             }
             if environment["PIANISM_BREAK_HISTORY"] == "1" {
                 historyURL = URL(filePath: "/dev/null/History.store")
             }
         #endif
         let sessions = SwiftDataSessionHistory(url: historyURL)
-        practice = PracticeModel(store: store, history: sessions, clock: clock)
+        practice = PracticeModel(
+            store: store, history: sessions, outbox: FileSessionOutbox(directory: outboxURL), clock: clock)
         history = HistoryModel(history: sessions, clock: clock)
     }
 
