@@ -52,7 +52,13 @@ Option 2 for both, plus the changes below.
 | `SessionRecord` | add | `deletedAt` | `Date?`, `nil` | See "Deletion" |
 | `SessionRecord` | remove | `practicedSeconds` | | The core totals sessions from their timestamps. Nothing would read a stored copy, and a sync merge could make it disagree |
 | `SessionRecord` | change | `id` | `UUID`, a new UUID | CloudKit needs a default, and ADR 0004 gave none |
-| `SessionRecord` | specify | `pauses` | `Data`, empty | JSON, `{"pauses": [...]}`, dates as `.secondsSince1970`. An object, so it can gain keys. Empty means no pauses |
+| `SessionRecord` | specify | `pauses` | `Data`, empty | JSON, `{"pauses": [...]}`, dates in `Date`'s own encoding (seconds since 2001), which round-trips exactly. An object, so it can gain keys. Empty means no pauses |
+
+Corrected 2026-10-15 by the first store code: the `pauses` row first said `.secondsSince1970`. That
+loses the last bit of a fractional time, so a session stopped while paused could read back with its
+pause ending after the session; the test "a session stopped while paused comes back exactly" catches
+it. "Duplicates from this device" first said saves go through one `ModelActor`; a lock does the same
+without making the synchronous `SessionHistory` port async.
 
 **Records from newer versions.** `version` starts at 1. A release raises it when it adds a field, or
 a stored value such as a new `source`, that an older app would lose by saving, whether or not the
@@ -86,7 +92,7 @@ versions showing deleted sessions: the reason ADR 0004 ships `mergedInto` in v1.
 **Duplicates from this device.** With no unique constraint, two saves racing on this device can both
 insert, and CloudKit won't merge them: it names a record after Core Data's object ID, not after `id`
 ([Apple](https://developer.apple.com/documentation/coredata/reading-cloudkit-records-for-core-data)).
-The adapter saves through one `ModelActor`, and delete marks every record with that `id`.
+The adapter saves one at a time, and delete marks every record with that `id`.
 
 **Sync merges.** Apple describes CloudKit's conflict handling as "last writer wins" (WWDC 2019), so
 an edit made on another device before sync can be lost; SYN-1 tests this on two devices. If it shows

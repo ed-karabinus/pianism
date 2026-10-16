@@ -19,19 +19,24 @@ struct PianismApp: App {
             fatalError("Missing the \(Self.appGroup) App Group entitlement.")
         }
         var clock: any WallClock = SystemClock()
+        var historyURL = URL.applicationSupportDirectory.appending(path: "History/History.store")
         #if DEBUG
-            // End-to-end tests fix the time with PIANISM_NOW (seconds since 1970) and start with
-            // no running session with PIANISM_RESET=1. Release builds ignore both.
+            // End-to-end tests fix the time with PIANISM_NOW (seconds since 1970), start with no
+            // running session and no history with PIANISM_RESET=1, and make the history fail to
+            // open with PIANISM_BREAK_HISTORY=1. Release builds ignore all three.
             let environment = ProcessInfo.processInfo.environment
             if let seconds = environment["PIANISM_NOW"].flatMap(TimeInterval.init) {
                 clock = FixedClock(now: Date(timeIntervalSince1970: seconds))
             }
             if environment["PIANISM_RESET"] == "1" {
                 try? store.update { $0 = nil }
+                try? FileManager.default.removeItem(at: historyURL.deletingLastPathComponent())
+            }
+            if environment["PIANISM_BREAK_HISTORY"] == "1" {
+                historyURL = URL(filePath: "/dev/null/History.store")
             }
         #endif
-        // Kept in memory until the synced store lands (HIS-1, #14, ADR 0004): a relaunch forgets it.
-        let sessions = InMemorySessionHistory()
+        let sessions = SwiftDataSessionHistory(url: historyURL)
         practice = PracticeModel(store: store, history: sessions, clock: clock)
         history = HistoryModel(history: sessions, clock: clock)
     }

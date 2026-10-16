@@ -44,6 +44,7 @@ enum AccessibilityID {
     static let practiceResume = "practice.resume"
     static let practiceStop = "practice.stop"
     static let historyEmpty = "history.empty"
+    static let historyUnavailable = "history.unavailable"
     static let historyDay = "history.day"
     static let historySession = "history.session"
 }

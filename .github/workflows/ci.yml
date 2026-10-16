@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Test PianismCore
-        run: swift test --package-path Packages/PianismCore
+        run: scripts/fail-on-warnings.sh swift test --package-path Packages/PianismCore
 
   lint:
     name: Format check

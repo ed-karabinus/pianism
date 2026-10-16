@@ -21,13 +21,17 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
 
     public let id: UUID
     public let startedAt: Date
+    /// Where the session started, kept so the day it was practiced can be recovered wherever it's
+    /// viewed later (ADR 0006). `nil` for a session started before this was recorded.
+    public let timeZone: TimeZone?
     public private(set) var pauses: [Pause] = []
     public private(set) var endedAt: Date?
 
     /// Starts a new, running session (SES-1).
-    public init(id: UUID = UUID(), startedAt: Date) {
+    public init(id: UUID = UUID(), startedAt: Date, timeZone: TimeZone? = nil) {
         self.id = id
         self.startedAt = startedAt
+        self.timeZone = timeZone
     }
 
     public var state: State {

@@ -1,7 +1,6 @@
 import Synchronization
 
-/// A ``SessionHistory`` kept in memory: the app's history until the synced store lands (HIS-1,
-/// ADR 0004), and the one previews and tests use.
+/// A ``SessionHistory`` kept in memory, for previews and tests.
 public final class InMemorySessionHistory: SessionHistory {
     private let saved = Mutex<[PracticeSession]>([])
 

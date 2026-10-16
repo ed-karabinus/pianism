@@ -10,7 +10,8 @@ import os
 @MainActor
 @Observable
 public final class PracticeModel {
-    /// The running or paused session, or `nil` when ready to start.
+    /// The running or paused session, or `nil` when ready to start. Also an ended session that couldn't
+    /// move into history yet, which shows as ready to start.
     private(set) var session: PracticeSession?
     /// The session that just ended, shown until the next one starts.
     private(set) var lastSession: PracticeSession?
@@ -58,6 +59,12 @@ public final class PracticeModel {
             if let archived = try recorder.archive(to: history) {
                 lastSession = archived
             }
+        } catch {
+            // The ended session stays stored and moves on a later refresh. Until then, Start is refused.
+            logger.error("Couldn't move the session into history: \(error, privacy: .public)")
+            isShowingStorageError = true
+        }
+        do {
             session = try recorder.current()
         } catch {
             logger.error("Couldn't load the running session: \(error, privacy: .public)")
