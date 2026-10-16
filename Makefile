@@ -33,14 +33,22 @@ build: ## Build the app as it ships (Release) for the simulator; the tests build
 		-destination 'generic/platform=iOS Simulator' \
 		$(XCODE_FLAGS)
 
-test-app: ## Build the app and run its end-to-end tests on each simulator in DEVICES (default: iPhone iPad)
+# Builds once, then tests each device without rebuilding. One simulator at a time, each shut down
+# after its tests: two booted simulators overload an 8 GB Mac, and iOS's launch watchdog then kills apps.
+test-app: ## Build the app once, then run its end-to-end tests on each simulator in DEVICES (default: iPhone iPad)
+	$(NO_WARNINGS) xcodebuild build-for-testing -project $(PROJECT) -scheme $(SCHEME) \
+		-destination "$$(scripts/simulator-destination.sh $(firstword $(DEVICES)))" $(XCODE_FLAGS)
 	@for device in $(DEVICES); do \
 		echo "== End-to-end tests on $$device"; \
 		rm -rf $(RESULTS)/app-$$device.xcresult; \
-		$(NO_WARNINGS) xcodebuild test -project $(PROJECT) -scheme $(SCHEME) \
-			-destination "$$(scripts/simulator-destination.sh $$device)" \
-			-resultBundlePath $(RESULTS)/app-$$device.xcresult \
-			$(XCODE_FLAGS) || exit 1; \
+		destination="$$(scripts/simulator-destination.sh $$device)"; \
+		udid="$${destination##*id=}"; \
+		xcrun simctl bootstatus "$$udid" -b >/dev/null || exit 1; \
+		xcodebuild test-without-building -project $(PROJECT) -scheme $(SCHEME) -destination "$$destination" \
+			-resultBundlePath $(RESULTS)/app-$$device.xcresult $(XCODE_FLAGS); \
+		status=$$?; \
+		xcrun simctl shutdown "$$udid"; \
+		[ $$status -eq 0 ] || exit 1; \
 	done
 
 evidence: ## Export the screenshots the last test-app run captured, one folder per device

@@ -62,47 +62,57 @@ jobs:
       - name: Test the adapter packages
         run: make test-adapters
 
-  # Runs after the fast Linux jobs pass, so a formatting slip fails in one minute, not ten.
-  app:
-    name: Build and end-to-end tests (iOS Simulator)
+  # One job per device, in parallel. Each starts booting its simulator, builds while it boots, then
+  # tests (`make test-app`). This repository is public, so the runners cost nothing; GitHub Free
+  # runs at most 5 macOS jobs at once, and a CI run uses 4.
+  e2e:
+    name: End-to-end tests (${{ matrix.device }})
     needs: [core, lint]
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [iPhone, iPad]
     steps:
       - uses: actions/checkout@v5
       - name: Select the newest stable Xcode
         run: scripts/select-xcode.sh
+      - name: Start booting the simulator
+        run: |
+          udid=$(scripts/simulator-destination.sh ${{ matrix.device }} | sed 's/.*id=//')
+          nohup xcrun simctl boot "$udid" > /dev/null 2>&1 &
       # The tests build Debug, so this catches code that only compiles there, such as preview helpers.
       - name: Release build
+        if: matrix.device == 'iPhone'
         run: make build QUIET=
-      # One simulator at a time: the runner is small, and separate steps keep a log and a time per device.
-      - name: End-to-end tests on iPhone
-        timeout-minutes: 20
-        run: |
-          udid=$(scripts/simulator-destination.sh iPhone | sed 's/.*id=//')
-          xcrun simctl boot "$udid" && xcrun simctl bootstatus "$udid" -b
-          make test-app DEVICES=iPhone QUIET=
-          xcrun simctl shutdown "$udid"
-      - name: End-to-end tests on iPad
-        timeout-minutes: 20
-        run: |
-          udid=$(scripts/simulator-destination.sh iPad | sed 's/.*id=//')
-          xcrun simctl boot "$udid" && xcrun simctl bootstatus "$udid" -b
-          make test-app DEVICES=iPad QUIET=
+      - name: End-to-end tests
+        run: make test-app DEVICES=${{ matrix.device }} QUIET=
       - name: Export screenshots
         if: always()
-        run: make evidence
+        run: make evidence DEVICES=${{ matrix.device }}
       - name: Upload screenshots (visual evidence for review)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: screenshots
+          name: screenshots-${{ matrix.device }}
           path: build/evidence
           retention-days: 14
       - name: Upload test results
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: app-xcresult
+          name: app-xcresult-${{ matrix.device }}
           path: build/results/*.xcresult
           retention-days: 7
+
+  # Keeps the name of the required check, so the ruleset doesn't change.
+  app:
+    name: Build and end-to-end tests (iOS Simulator)
+    needs: [e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Both devices passed
+        run: test "${{ needs.e2e.result }}" = success
