@@ -46,6 +46,8 @@ Home Screen automation (`XCUIApplication(bundleIdentifier: "com.apple.springboar
 - A Live Activity can last 8 hours. After that it stays on the Lock Screen for up to 4 more hours, 12 hours at most. SES-4's 4-hour cap fits inside that.
 - A Live Activity's static and dynamic data together can't exceed 4 KB, and the Live Activity has no network access.
 - The app's Info.plist needs `NSSupportsLiveActivities`. The extension hosts the `ActivityConfiguration`.
+- People can turn Live Activities off, for one app or for all, and then `Activity.request` throws.
+  Check `ActivityAuthorizationInfo().areActivitiesEnabled` before asking.
 
 ## What the real implementation should do
 
@@ -54,7 +56,14 @@ Home Screen automation (`XCUIApplication(bundleIdentifier: "com.apple.springboar
    - The app can be killed while an activity runs, so on launch it reconciles `Activity<PracticeAttributes>.activities` with the stored session.
 3. **Keep the running clock off the update path.** `Text(timerInterval:)` counts on its own. Pausing needs an update that shows a fixed time.
 4. **Decide one detail with SES-1 and SES-6:** if the app is in the foreground when the widget's intent runs, the Practice screen must refresh. It already refreshes when the app becomes active, but not while it's already active.
-5. **Drop the spike's shortcuts:** `.now` in the timeline provider (the real one takes a clock, E3), the tap by position, and the hard-coded App Group string.
+5. **Never fail a session because of its Live Activity.** The spike starts the session and then
+   requests the Live Activity, so if Live Activities are off, the widget reports an error for a
+   session that is running. Start the session first, request the Live Activity only when allowed,
+   and treat a failed request as harmless: Practice still shows the session.
+6. **Check a force-quit app.** Confirm on a device that the widget still starts a session after the
+   app was swiped away. Apple's documentation says the system launches the app's process to run a
+   `LiveActivityIntent`, but this spike didn't test it.
+7. **Drop the spike's shortcuts:** `.now` in the timeline provider (the real one takes a clock, E3), the tap by position, and the hard-coded App Group string.
 
 ## The 2-minute manual check that finishes the spike
 
@@ -67,5 +76,10 @@ On the iPhone simulator:
    - **Expected:** the Dynamic Island shows the piano icon and a running clock.
    - **Expected:** the Lock Screen shows "Practicing" with the clock.
 4. Open Pianism. **Expected:** Practice shows "Practicing" with the same elapsed time.
+5. Stop the session, swipe the app away, and tap Start on the widget again. **Expected:** the same as
+   steps 3 and 4.
+6. Turn Live Activities off for Pianism (Settings → Pianism → Live Activities), and tap Start again.
+   **Expected with the spike's code:** the session starts, but the widget may show an error. This is
+   the case point 5 above fixes.
 
 On a device, the same steps need automatic signing to register `com.edkarabinus.Pianism.Widgets` under the team. That needs your Apple ID in Xcode.
