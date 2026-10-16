@@ -13,6 +13,7 @@ to the owner.
 | Command | What it does |
 | --- | --- |
 | `make test-core` | Unit tests for `PianismCore` (seconds, no simulator) |
+| `make test-features` | Unit tests for the view models in `PianismFeatures`, on macOS (seconds, no simulator) |
 | `make test-adapters` | Integration tests for the adapter packages, on macOS against real files (seconds, no simulator) |
 | `make test-app` | Builds the app and runs end-to-end tests on iPhone and iPad simulators (`DEVICES=iPhone` for one) |
 | `make test` | All of the above |
