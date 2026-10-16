@@ -95,10 +95,8 @@ public struct SessionRecorder: Sendable {
         for waiting in try outbox.sessions() {
             do {
                 try history.save(waiting)
-            } catch is SessionRefused {
-                continue
-            }
-            try outbox.remove(id: waiting.id)
+                try outbox.remove(id: waiting.id)
+            } catch is SessionRefused {}
         }
     }
 

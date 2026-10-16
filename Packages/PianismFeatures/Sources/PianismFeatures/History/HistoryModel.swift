@@ -33,12 +33,8 @@ public final class HistoryModel {
     /// app returns to the foreground: sessions finish elsewhere, and midnight may have passed.
     func refresh() {
         now = clock.now
-        var waiting: [PracticeSession] = []
-        do {
-            waiting = try outbox.sessions()
-        } catch {
-            logger.error("Couldn't read the waiting sessions: \(error, privacy: .public)")
-        }
+        // An outbox that can't be read is reported by Practice, which raises its storage alert.
+        let waiting = (try? outbox.sessions()) ?? []
         var saved: [PracticeSession] = []
         do {
             saved = try history.sessions()
@@ -47,7 +43,8 @@ public final class HistoryModel {
             logger.error("Couldn't load the history: \(error, privacy: .public)")
             loadFailed = true
         }
-        // A session can be in both for a moment, between being saved and leaving the outbox.
+        // A session can be in both, when history saved it but it couldn't leave the outbox. It shows
+        // once, as saved.
         let savedIDs = Set(saved.map(\.id))
         let unsaved = waiting.filter { !savedIDs.contains($0.id) }
         waitingIDs = Set(unsaved.map(\.id))

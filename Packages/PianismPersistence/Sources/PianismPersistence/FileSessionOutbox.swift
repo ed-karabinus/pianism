@@ -19,18 +19,12 @@ public struct FileSessionOutbox: SessionOutbox {
         } catch CocoaError.fileReadNoSuchFile {
             return []
         }
-        // Atomic writes pass through temporary files, which never end in .json. A file that can't be
-        // read, as after an update that changed the format, moves to Unreadable/, where it's kept for
-        // diagnosis and can't hold back the others.
+        // Atomic writes pass through temporary files, which never end in .json.
         return files.filter { $0.pathExtension == "json" }.compactMap { file in
-            if let session = try? JSONDecoder().decode(PracticeSession.self, from: Data(contentsOf: file)) {
-                return session
-            }
-            Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
-                .error("Moved aside an unreadable waiting session: \(file.lastPathComponent, privacy: .public)")
-            let unreadable = directory.appending(path: "Unreadable")
-            try? FileManager.default.createDirectory(at: unreadable, withIntermediateDirectories: true)
-            try? FileManager.default.moveItem(at: file, to: unreadable.appending(path: file.lastPathComponent))
+            // Unreadable right now, or removed since the listing: try again next time.
+            guard let data = try? Data(contentsOf: file) else { return nil }
+            if let session = try? JSONDecoder().decode(PracticeSession.self, from: data) { return session }
+            moveAside(file)
             return nil
         }
     }
@@ -42,6 +36,20 @@ public struct FileSessionOutbox: SessionOutbox {
 
     public func remove(id: UUID) throws {
         try FileManager.default.removeItem(at: file(for: id))
+    }
+
+    /// Moves a file whose contents aren't a session, as after an update changed the format, to
+    /// Unreadable/, so it can't hold back the others. It's kept there for a later fix to recover.
+    private func moveAside(_ file: URL) {
+        let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
+        let unreadable = directory.appending(path: "Unreadable")
+        do {
+            try FileManager.default.createDirectory(at: unreadable, withIntermediateDirectories: true)
+            try FileManager.default.moveItem(at: file, to: unreadable.appending(path: file.lastPathComponent))
+            logger.error("Moved aside an unreadable waiting session: \(file.lastPathComponent, privacy: .public)")
+        } catch {
+            logger.error("Couldn't move aside \(file.lastPathComponent, privacy: .public): \(error, privacy: .public)")
+        }
     }
 
     private func file(for id: UUID) -> URL {

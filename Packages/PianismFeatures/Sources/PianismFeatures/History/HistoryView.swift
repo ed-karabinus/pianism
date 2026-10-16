@@ -30,13 +30,12 @@ struct HistoryView: View {
         } else {
             List {
                 if model.loadFailed {
-                    Label {
-                        Text(
+                    Label(
+                        LocalizedStringResource(
                             "Couldn't load your earlier history. Sessions waiting to be saved are shown.",
-                            bundle: .module)
-                    } icon: {
-                        Image(systemName: "exclamationmark.triangle")
-                    }
+                            bundle: .module),
+                        systemImage: "exclamationmark.triangle"
+                    )
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier(AccessibilityID.historyUnavailable)
@@ -102,4 +101,8 @@ private struct TimedRow: View {
 
 #Preview("Empty") {
     HistoryView(model: .preview(empty: true))
+}
+
+#Preview("History couldn't load, sessions waiting") {
+    HistoryView(model: .preview(waiting: true))
 }

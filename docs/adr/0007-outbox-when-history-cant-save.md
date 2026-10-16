@@ -34,22 +34,32 @@ Option 3, chosen by the owner on 2026-10-16.
   in the App Group. Only the app archives sessions, and separate files mean adding or removing one
   never rewrites another.
 - **Practice says what's waiting:** "2 sessions waiting to be saved", in place of an alert on every
-  tap. History still says it couldn't load.
+  tap. **History shows waiting sessions too,** marked "not saved yet". If history can't load, they
+  show under a notice; only with nothing to show does the whole screen say it couldn't load.
 - **History retries opening** on the next call after a failure, so a passing cause, such as a full
   disk, heals without a relaunch.
 
 Option 1 is rejected because it loses more practice than it protects. Option 2 is rejected because
 it loses data outright.
 
+Amended 2026-10-16, after the owner asked how to reduce the downsides below:
+
+- History reads the outbox, so waiting sessions show rather than vanish.
+- A session history refuses for good (the core's `SessionRefused`) is skipped. Moving waiting
+  sessions still stops at any other error, so an outage costs one failed save per archive, not one
+  per waiting session.
+- A waiting file whose contents aren't a session, as after an update changed the format, moves to
+  `Outbox/Unreadable/` and is logged. A later fix release must look there to recover it. A file
+  that only can't be read for now stays put and is retried.
+
 ## Consequences
 
 - Good: practice never stops because history can't save, and no finished session is lost unless the
   disk can't take even a small file.
-- Bad: while history is down, waiting sessions don't show in History. History says it couldn't
-  load, and Practice says how many are waiting.
+- Bad: while history is down, History shows only the waiting sessions, not the earlier ones, with
+  a notice saying so.
 - Bad: a third place a session can be, besides the running-session file and history. Each move
   between them is safe to repeat, which the tests check.
-- Bad: a session history refuses every time (one that wouldn't read back the same, ADR 0006) stays
-  in the outbox, logged, and the sessions listed after it wait behind it. Moving past it would
-  repeat a failed open for each waiting session during an outage. A waiting file that can't be read,
-  as after a format change, is skipped and kept.
+- Bad: a session history refuses for good (one that wouldn't read back the same, ADR 0006) stays
+  in the outbox, logged, and shows as "not saved yet" until a fix release can store it. The other
+  sessions move past it.

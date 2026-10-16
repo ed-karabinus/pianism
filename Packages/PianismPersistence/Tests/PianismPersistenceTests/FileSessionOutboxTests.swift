@@ -57,6 +57,19 @@ final class FileSessionOutboxTests {
         #expect(!FileManager.default.fileExists(atPath: outboxDirectory.appending(path: name).path))
     }
 
+    @Test("A waiting file that can't be read right now stays where it is, to be retried")
+    func unreadableForNowStays() throws {
+        let session = try endedSession(startingAfter: 0)
+        try outbox.add(session)
+        let file = outboxDirectory.appending(path: "\(session.id.uuidString).json")
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file.path) }
+
+        #expect(try outbox.sessions().isEmpty)
+        #expect(FileManager.default.fileExists(atPath: file.path))
+        #expect(!FileManager.default.fileExists(atPath: outboxDirectory.appending(path: "Unreadable").path))
+    }
+
     private func endedSession(startingAfter offset: TimeInterval) throws -> PracticeSession {
         var session = PracticeSession(startedAt: clock.now + offset)
         try session.pause(at: clock.now + offset + 60.5)

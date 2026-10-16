@@ -99,6 +99,11 @@ final class PracticeTests: XCTestCase {
     @MainActor
     func testWhenHistoryCantOpen() throws {
         var app = launch(at: start, reset: true, breakHistory: true)
+        // Nothing saved and nothing waiting: the whole screen says History couldn't load.
+        app.buttons["History"].firstMatch.tap()
+        XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
+        XCTAssertFalse(element(app, "history.session").exists)
+        app.buttons["Practice"].firstMatch.tap()
         for _ in 1...2 {
             tap(app, "practice.start")
             tap(app, "practice.stop")
@@ -109,9 +114,10 @@ final class PracticeTests: XCTestCase {
         attachScreenshot(of: app, named: "Practice, sessions waiting")
         app.buttons["History"].firstMatch.tap()
         XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
+        let notSavedYet = NSPredicate(format: "label ENDSWITH 'not saved yet'")
         let waiting = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertEqual(waiting.count, 2)
-        XCTAssertTrue(waiting.element(boundBy: 0).label.hasSuffix("not saved yet"))
+        XCTAssertEqual(waiting.matching(notSavedYet).count, 2)
         attachScreenshot(of: app, named: "History, sessions waiting")
         app.terminate()
 
@@ -121,7 +127,7 @@ final class PracticeTests: XCTestCase {
         XCTAssertTrue(element(app, "history.day").waitForExistence(timeout: 5))
         let saved = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertEqual(saved.count, 2)
-        XCTAssertFalse(saved.element(boundBy: 0).label.contains("not saved yet"))
+        XCTAssertEqual(saved.matching(notSavedYet).count, 0)
     }
 
     @MainActor
