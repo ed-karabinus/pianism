@@ -44,15 +44,17 @@ final class FileSessionOutboxTests {
         #expect(try outbox.sessions().isEmpty)
     }
 
-    @Test("ADR 0007: a waiting file that can't be read is skipped and kept, so it can't hold back the rest")
-    func unreadableFileIsSkippedAndKept() throws {
+    @Test("ADR 0007: a waiting file that can't be read moves aside, so it can't hold back the rest")
+    func unreadableFileMovesAside() throws {
         let session = try endedSession(startingAfter: 0)
         try outbox.add(session)
-        let unreadable = outboxDirectory.appending(path: "\(UUID().uuidString).json")
-        try Data("not a session".utf8).write(to: unreadable)
+        let name = "\(UUID().uuidString).json"
+        try Data("not a session".utf8).write(to: outboxDirectory.appending(path: name))
 
         #expect(try outbox.sessions() == [session])
-        #expect(FileManager.default.fileExists(atPath: unreadable.path))
+        #expect(try outbox.sessions() == [session])
+        #expect(FileManager.default.fileExists(atPath: outboxDirectory.appending(path: "Unreadable/\(name)").path))
+        #expect(!FileManager.default.fileExists(atPath: outboxDirectory.appending(path: name).path))
     }
 
     private func endedSession(startingAfter offset: TimeInterval) throws -> PracticeSession {

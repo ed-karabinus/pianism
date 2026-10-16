@@ -94,7 +94,7 @@ final class SwiftDataSessionHistoryTests {
         let session = try JSONDecoder().decode(PracticeSession.self, from: Data(stored.utf8))
         let history = SwiftDataSessionHistory(url: storeURL)
 
-        #expect(throws: (any Error).self) { try history.save(session) }
+        #expect(throws: SessionRefused.self) { try history.save(session) }
         #expect(try history.sessions().isEmpty)
     }
 

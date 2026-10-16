@@ -1,5 +1,6 @@
 import Foundation
 import PianismCore
+import os
 
 /// A ``SessionOutbox`` that keeps each waiting session in its own JSON file in `directory`, so adding
 /// or removing one never rewrites another (ADR 0007). Writes are atomic, so a crash never leaves half
@@ -19,10 +20,18 @@ public struct FileSessionOutbox: SessionOutbox {
             return []
         }
         // Atomic writes pass through temporary files, which never end in .json. A file that can't be
-        // read, as after an update that changed the format, is skipped and kept, so it can't hold
-        // back the others.
-        return files.filter { $0.pathExtension == "json" }.compactMap {
-            try? JSONDecoder().decode(PracticeSession.self, from: Data(contentsOf: $0))
+        // read, as after an update that changed the format, moves to Unreadable/, where it's kept for
+        // diagnosis and can't hold back the others.
+        return files.filter { $0.pathExtension == "json" }.compactMap { file in
+            if let session = try? JSONDecoder().decode(PracticeSession.self, from: Data(contentsOf: file)) {
+                return session
+            }
+            Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
+                .error("Moved aside an unreadable waiting session: \(file.lastPathComponent, privacy: .public)")
+            let unreadable = directory.appending(path: "Unreadable")
+            try? FileManager.default.createDirectory(at: unreadable, withIntermediateDirectories: true)
+            try? FileManager.default.moveItem(at: file, to: unreadable.appending(path: file.lastPathComponent))
+            return nil
         }
     }
 

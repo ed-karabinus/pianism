@@ -40,7 +40,9 @@ extension HistoryModel {
             try? session.stop(at: start.addingTimeInterval(Double(minutes) * 60))
             history.save(session)
         }
-        return HistoryModel(history: history, clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)))
+        return HistoryModel(
+            history: history, outbox: InMemorySessionHistory(),
+            clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)))
     }
 }
 
