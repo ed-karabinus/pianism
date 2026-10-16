@@ -17,10 +17,12 @@ to the owner.
 | `make test-app` | Builds the app and runs end-to-end tests on iPhone and iPad simulators (`DEVICES=iPhone` for one) |
 | `make test` | All of the above |
 | `make lint` / `make format` | Check / apply swift-format |
+| `make unused` | Fails on unused code in the app and the package code it builds (Periphery, pinned by checksum). Keep an intentional exception with `// periphery:ignore - <reason>` |
+| `make mutate` | Mutation testing of the core and adapters (minutes). Run before milestone checks and for PRs that add logic there; each survivor gets a test, a deletion or `// mutate:ignore - <reason>` |
 | `make build` | Release build for the simulator, as the app ships; the tests build Debug |
 | `make evidence` | Exports the screenshots the last `test-app` run captured, for the PR's Testing section |
 
-Run `make lint build test` before every push. CI runs the same commands.
+Run `make lint unused build test` before every push. CI runs the same commands.
 
 ## Layout
 

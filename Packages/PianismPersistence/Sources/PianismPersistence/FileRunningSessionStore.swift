@@ -31,7 +31,7 @@ public struct FileRunningSessionStore: RunningSessionStore {
 
     /// The stored session. An unreadable file counts as no session.
     public func current() throws -> PracticeSession? {
-        try coordinate(writing: false) { url in
+        try coordinate(writing: false) { url in  // mutate:ignore - a write claim is also correct, only slower
             if case .session(let session) = try contents(of: url) { session } else { nil }
         }
     }
@@ -84,10 +84,8 @@ public struct FileRunningSessionStore: RunningSessionStore {
             }
             return
         }
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .sortedKeys
         // Readable after the first unlock, so Live Activity buttons work on the Lock Screen.
-        try encoder.encode(session).write(
+        try JSONEncoder().encode(session).write(
             to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 

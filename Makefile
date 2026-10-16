@@ -13,7 +13,7 @@ QUIET       ?= -quiet
 XCODE_FLAGS := SWIFT_SUPPRESS_WARNINGS=NO $(QUIET)
 DEVICES     ?= iPhone iPad
 
-.PHONY: help test test-core test-adapters test-app build evidence lint format clean
+.PHONY: help test test-core test-adapters test-app build evidence lint unused mutate format clean
 
 help: ## List the available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -53,6 +53,12 @@ evidence: ## Export the screenshots the last test-app run captured, one folder p
 
 lint: ## Check formatting without changing files
 	swift format lint --strict --recursive --parallel $(SWIFT_DIRS)
+
+unused: ## Fail on unused code in the app and the package code it builds (Periphery, pinned; ADR 0005)
+	scripts/unused.sh
+
+mutate: ## Plant one bug at a time in the core and adapters and report the ones no test catches (minutes)
+	python3 scripts/mutate.py $(CORE) $(ADAPTERS)
 
 format: ## Format all Swift sources in place
 	swift format --in-place --recursive --parallel $(SWIFT_DIRS)
