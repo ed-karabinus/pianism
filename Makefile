@@ -41,7 +41,7 @@ test-app: ## Build the app once, then run its end-to-end tests on each simulator
 	@for device in $(DEVICES); do \
 		echo "== End-to-end tests on $$device"; \
 		rm -rf $(RESULTS)/app-$$device.xcresult; \
-		destination="$$(scripts/simulator-destination.sh $$device)"; \
+		destination="$$(scripts/simulator-destination.sh $$device)" || exit 1; \
 		udid="$${destination##*id=}"; \
 		xcrun simctl bootstatus "$$udid" -b >/dev/null || exit 1; \
 		xcodebuild test-without-building -project $(PROJECT) -scheme $(SCHEME) -destination "$$destination" \

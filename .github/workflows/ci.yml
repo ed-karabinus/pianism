@@ -61,6 +61,10 @@ jobs:
         run: scripts/select-xcode.sh
       - name: Test the adapter packages
         run: make test-adapters
+      # The tests build Debug, so this catches code that only compiles there, such as preview helpers.
+      # It runs here, without a simulator: next to a booting simulator it took 7 minutes, not 1.
+      - name: Release build
+        run: make build QUIET=
 
   # One job per device, in parallel. Each starts booting its simulator, builds while it boots, then
   # tests (`make test-app`). This repository is public, so the runners cost nothing; GitHub Free
@@ -81,11 +85,7 @@ jobs:
       - name: Start booting the simulator
         run: |
           udid=$(scripts/simulator-destination.sh ${{ matrix.device }} | sed 's/.*id=//')
-          nohup xcrun simctl boot "$udid" > /dev/null 2>&1 &
-      # The tests build Debug, so this catches code that only compiles there, such as preview helpers.
-      - name: Release build
-        if: matrix.device == 'iPhone'
-        run: make build QUIET=
+          xcrun simctl boot "$udid" > /dev/null 2>&1 &
       - name: End-to-end tests
         run: make test-app DEVICES=${{ matrix.device }} QUIET=
       - name: Export screenshots
