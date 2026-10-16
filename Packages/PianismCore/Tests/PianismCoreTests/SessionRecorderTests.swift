@@ -127,7 +127,7 @@ struct SessionRecorderTests {
         let archived = try recorder.archive(to: history)
 
         #expect(archived == ended)
-        #expect(history.sessions == [ended])
+        #expect(history.sessions() == [ended])
         #expect(store.current() == nil)
         #expect(throws: Never.self) { try recorder.start() }
     }
@@ -141,7 +141,7 @@ struct SessionRecorderTests {
         let before = store.current()
 
         #expect(try recorder.archive(to: history) == nil)
-        #expect(history.sessions.isEmpty)
+        #expect(history.sessions().isEmpty)
         #expect(store.current() == before)
     }
 
@@ -155,7 +155,7 @@ struct SessionRecorderTests {
 
         try recorder.archive(to: history)
 
-        #expect(history.sessions == [ended])
+        #expect(history.sessions() == [ended])
         #expect(store.current() == nil)
     }
 
@@ -188,7 +188,7 @@ struct SessionRecorderTests {
         try app.archive(to: history)
 
         #expect(contended.base.current()?.state == .running)
-        #expect(history.sessions.count == 1)
+        #expect(history.sessions().count == 1)
     }
 
     // MARK: Two writers
@@ -246,7 +246,11 @@ enum Command: CustomTestStringConvertible, Sendable {
 struct UnavailableHistory: SessionHistory {
     struct Failure: Error {}
 
-    func save(_ session: PracticeSession) throws {
+    func sessions() throws -> [PracticeSession] {
+        throw Failure()
+    }
+
+    func save(_: PracticeSession) throws {
         throw Failure()
     }
 }

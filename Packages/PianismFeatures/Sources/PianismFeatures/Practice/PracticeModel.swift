@@ -26,6 +26,8 @@ public final class PracticeModel {
         self.recorder = SessionRecorder(store: store, clock: clock)
         self.history = history
         self.clock = clock
+        // Loads the stored session now, so the first frame after a relaunch already shows it.
+        refresh()
     }
 
     func start() {

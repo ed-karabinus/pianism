@@ -4,7 +4,13 @@
     "Couldn't save that change" : {
 
     },
+    "History" : {
+
+    },
     "Last session: %@" : {
+
+    },
+    "No practice yet" : {
 
     },
     "OK" : {
@@ -19,6 +25,9 @@
     "Pianism couldn't reach its storage. Try again in a moment." : {
 
     },
+    "Practice" : {
+
+    },
     "Practice time" : {
 
     },
@@ -31,10 +40,19 @@
     "Resume" : {
 
     },
+    "Sessions you finish appear here." : {
+
+    },
     "Start" : {
 
     },
     "Stop" : {
+
+    },
+    "Today" : {
+
+    },
+    "Yesterday" : {
 
     }
   },
