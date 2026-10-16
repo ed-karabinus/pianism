@@ -29,7 +29,7 @@ Option 3, chosen by the owner on 2026-10-16.
   the outbox fails too does the session stay in the running-session file, and Start is refused, as
   before.
 - **Every archive retries** the waiting sessions: each is saved to history, then removed from the
-  outbox. History replaces by ID, so a crash between those two steps only repeats a save.
+  outbox. History saves each ID once, so a crash between those two steps only repeats a save.
 - **The outbox lives in the app's own Application Support folder,** one JSON file per session, not
   in the App Group. Only the app archives sessions, and separate files mean adding or removing one
   never rewrites another.
