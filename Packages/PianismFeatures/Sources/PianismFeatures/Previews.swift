@@ -4,7 +4,7 @@ import Synchronization
 
 // Not limited to Debug builds: `#Preview` bodies compile in Release too. Unused, this is stripped.
 
-/// 2027-01-01 00:00 UTC, the moment every preview is set at.
+/// 2027-01-01 00:00 UTC, the moment the Practice previews are set at.
 private let previewNow = Date(timeIntervalSince1970: 1_798_761_600)
 
 extension PracticeModel {
@@ -25,20 +25,21 @@ extension PracticeModel {
 }
 
 extension HistoryModel {
-    /// A model with practice today, yesterday and last week, or with none, for previews.
+    /// A model with practice today, yesterday and last week, or with none, for previews. Times are
+    /// local, so "Today" holds in any time zone.
     static func preview(empty: Bool = false) -> HistoryModel {
         let history = InMemorySessionHistory()
+        let midnight = Calendar.autoupdatingCurrent.startOfDay(for: previewNow)
         let hour: TimeInterval = 60 * 60
-        let sessions = empty ? [] : [(-2, 25), (-6, 40), (-26, 15), (-170, 55)]
-        for (hoursAgo, minutes) in sessions {
-            let start = previewNow.addingTimeInterval(Double(hoursAgo) * hour)
+        // (Hours after this midnight, minutes of practice.)
+        let sessions = empty ? [] : [(18, 25), (8, 40), (-5, 15), (-150, 55)]
+        for (hours, minutes) in sessions {
+            let start = midnight.addingTimeInterval(Double(hours) * hour)
             var session = PracticeSession(startedAt: start)
             try? session.stop(at: start.addingTimeInterval(Double(minutes) * 60))
             history.save(session)
         }
-        let model = HistoryModel(history: history, clock: PreviewClock(now: previewNow))
-        model.refresh()
-        return model
+        return HistoryModel(history: history, clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)))
     }
 }
 

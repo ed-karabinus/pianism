@@ -63,17 +63,18 @@ final class PracticeTests: XCTestCase {
     }
 
     /// HIS-1: a finished session appears under Today with its time, and the day shows its total.
+    /// History is visited before and after Stop in one launch, so it must refresh when shown again.
     @MainActor
     func testFinishedSessionAppearsInHistory() throws {
         var app = launch(at: start, reset: true)
-        app.buttons["History"].firstMatch.tap()
-        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
-        attachScreenshot(of: app, named: "History, empty")
-        app.buttons["Practice"].firstMatch.tap()
         tap(app, "practice.start")
         app.terminate()
 
         app = launch(at: start + 25 * 60 + 3)
+        app.buttons["History"].firstMatch.tap()
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "History, empty")
+        app.buttons["Practice"].firstMatch.tap()
         tap(app, "practice.stop")
         app.buttons["History"].firstMatch.tap()
         let day = element(app, "history.day")

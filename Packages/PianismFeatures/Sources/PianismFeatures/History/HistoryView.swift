@@ -14,43 +14,26 @@ struct HistoryView: View {
     }
 
     @ViewBuilder private var content: some View {
-        if model.loadFailed {
-            ContentUnavailableView {
-                Label {
-                    Text("Couldn't load your history", bundle: .module)
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle")
-                }
-            } description: {
-                Text("Try again in a moment.", bundle: .module)
-            }
-        } else if model.days.isEmpty {
-            ContentUnavailableView {
-                Label {
-                    Text("No practice yet", bundle: .module)
-                } icon: {
-                    Image(systemName: "music.note.list")
-                }
-            } description: {
-                Text("Sessions you finish appear here.", bundle: .module)
-            }
+        if model.days.isEmpty {
+            ContentUnavailableView(
+                LocalizedStringResource("No practice yet", bundle: .module), systemImage: "music.note.list",
+                description: Text("Sessions you finish appear here.", bundle: .module)
+            )
             .accessibilityIdentifier(AccessibilityID.historyEmpty)
         } else {
             List(model.days) { day in
                 Section {
                     ForEach(day.sessions) { session in
-                        SessionRow(session: session)
+                        let times = (session.startedAt..<(session.endedAt ?? session.startedAt))
+                            .formatted(.interval.hour().minute())
+                        // A finished session's practice time is fixed, so the date passed here is ignored.
+                        TimedRow(title: Text(times), duration: session.elapsed(at: .distantPast))
+                            .accessibilityIdentifier(AccessibilityID.historySession)
                     }
                 } header: {
-                    HStack {
-                        title(for: day)
-                        Spacer()
-                        Text(ElapsedTime.display(day.total)).monospacedDigit()
-                    }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(title(for: day))
-                    .accessibilityValue(ElapsedTime.spoken(day.total))
-                    .accessibilityIdentifier(AccessibilityID.historyDay)
+                    TimedRow(title: title(for: day), duration: day.total)
+                        .accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier(AccessibilityID.historyDay)
                 }
             }
         }
@@ -58,11 +41,10 @@ struct HistoryView: View {
 
     /// "Today", "Yesterday", or the date, such as "Wednesday, October 14".
     private func title(for day: PracticeDay) -> Text {
-        let now = model.clock.now
-        if model.calendar.isDate(day.start, inSameDayAs: now) {
+        if model.calendar.isDate(day.start, inSameDayAs: model.now) {
             return Text("Today", bundle: .module)
         }
-        if let yesterday = model.calendar.date(byAdding: .day, value: -1, to: now),
+        if let yesterday = model.calendar.date(byAdding: .day, value: -1, to: model.now),
             model.calendar.isDate(day.start, inSameDayAs: yesterday)
         {
             return Text("Yesterday", bundle: .module)
@@ -71,32 +53,29 @@ struct HistoryView: View {
     }
 }
 
-/// One finished session: when it ran, and how long was practice.
-private struct SessionRow: View {
-    let session: PracticeSession
+/// A title with a practice time after it, read by VoiceOver as one element: a day's header or a session.
+private struct TimedRow: View {
+    let title: Text
+    let duration: TimeInterval
 
     var body: some View {
-        // A finished session's practice time is fixed, so the date passed here is ignored.
-        let practiced = session.elapsed(at: .distantPast)
-        let times = (session.startedAt..<(session.endedAt ?? session.startedAt)).formatted(.interval.hour().minute())
-        HStack {
-            Text(times)
-            Spacer()
-            Text(ElapsedTime.display(practiced)).monospacedDigit()
+        LabeledContent {
+            Text(ElapsedTime.display(duration)).monospacedDigit()
+        } label: {
+            title
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(times)
-        .accessibilityValue(ElapsedTime.spoken(practiced))
-        .accessibilityIdentifier(AccessibilityID.historySession)
+        .accessibilityLabel(title)
+        .accessibilityValue(ElapsedTime.spoken(duration))
     }
 }
 
-#Preview("Some practice") {
+#Preview("Some practice, dark, AX5") {
     HistoryView(model: .preview())
-}
-
-#Preview("Empty, dark, AX5") {
-    HistoryView(model: .preview(empty: true))
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("Empty") {
+    HistoryView(model: .preview(empty: true))
 }

@@ -1,9 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Couldn't load your history" : {
-
-    },
     "Couldn't save that change" : {
 
     },
@@ -53,9 +50,6 @@
 
     },
     "Today" : {
-
-    },
-    "Try again in a moment." : {
 
     },
     "Yesterday" : {

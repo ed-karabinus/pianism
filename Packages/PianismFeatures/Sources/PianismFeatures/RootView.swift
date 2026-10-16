@@ -1,4 +1,3 @@
-import Foundation
 import SwiftUI
 
 /// The app's top-level screen: a tab per area.
@@ -15,24 +14,22 @@ public struct RootView: View {
 
     public var body: some View {
         TabView {
-            Tab(Self.title("Practice"), systemImage: "pianokeys") {
+            Tab(LocalizedStringResource("Practice", bundle: .module), systemImage: "pianokeys") {
                 PracticeView(model: practice)
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier(AccessibilityID.root)
             }
-            Tab(Self.title("History"), systemImage: "calendar") {
+            Tab(LocalizedStringResource("History", bundle: .module), systemImage: "calendar") {
                 HistoryView(model: history)
             }
         }
-        // Restores a session after the app was killed, and shows changes made while it was away.
-        .onChange(of: scenePhase, initial: true) {
-            if scenePhase == .active { practice.refresh() }
+        // Shows changes made while the app was away, and moves "today" along after midnight.
+        .onChange(of: scenePhase) {
+            if scenePhase == .active {
+                practice.refresh()
+                history.refresh()
+            }
         }
-    }
-
-    /// A tab title from this package's String Catalog.
-    private static func title(_ key: String.LocalizationValue) -> LocalizedStringResource {
-        LocalizedStringResource(key, bundle: .atURL(Bundle.module.bundleURL))
     }
 }
 
