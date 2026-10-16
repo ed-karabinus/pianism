@@ -85,6 +85,19 @@ final class SwiftDataSessionHistoryTests {
         #expect(json == ["pauses": [["start": start + 60, "end": start + 120]]])
     }
 
+    @Test("A session that wouldn't read back the same is refused, so it can't hide the history")
+    func refusesSessionThatWouldNotReadBack() throws {
+        // Decoding skips the rules that `pause` and `stop` enforce: this pause starts before the session.
+        let stored =
+            #"{"id":"6B1E2A4C-0F5D-4C3B-9A8E-2D7F1C3B5A90","startedAt":820454400,"#
+            + #""pauses":[{"start":820454300,"end":820454350}],"endedAt":820455000}"#
+        let session = try JSONDecoder().decode(PracticeSession.self, from: Data(stored.utf8))
+        let history = SwiftDataSessionHistory(url: storeURL)
+
+        #expect(throws: (any Error).self) { try history.save(session) }
+        #expect(try history.sessions().isEmpty)
+    }
+
     @Test("A store that can't open makes every call fail, rather than the app crash")
     func unopenableStoreFailsEachCall() throws {
         var session = PracticeSession(startedAt: clock.now)

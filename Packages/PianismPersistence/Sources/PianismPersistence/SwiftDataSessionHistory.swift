@@ -40,9 +40,18 @@ public final class SwiftDataSessionHistory: SessionHistory {
                 context.insert(record)
             }
             try record.update(from: session)
+            // A record that wouldn't read back the same would hide the whole history, so refuse it:
+            // the session then stays in the running-session file.
+            guard try record.session() == session else { throw HistoryError.wouldNotReadBack }
             try context.save()
         }
     }
+}
+
+/// Why ``SwiftDataSessionHistory`` refused to save a session.
+enum HistoryError: Error {
+    /// Stored, the session would read back as something else.
+    case wouldNotReadBack
 }
 
 extension SessionRecord {

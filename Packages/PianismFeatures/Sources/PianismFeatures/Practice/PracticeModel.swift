@@ -10,7 +10,8 @@ import os
 @MainActor
 @Observable
 public final class PracticeModel {
-    /// The running or paused session, or `nil` when ready to start.
+    /// The running or paused session, or `nil` when ready to start. Also an ended session that couldn't
+    /// move into history yet, which shows as ready to start.
     private(set) var session: PracticeSession?
     /// The session that just ended, shown until the next one starts.
     private(set) var lastSession: PracticeSession?
