@@ -1,6 +1,7 @@
 # 3. The running session lives in the App Group, not the synced store
 
-- Status: accepted; amended by [ADR 0007](0007-outbox-when-history-cant-save.md)
+- Status: accepted; amended by [ADR 0004](0004-synced-data-model.md) and
+  [ADR 0007](0007-outbox-when-history-cant-save.md)
 - Date: 2026-10-13
 - Issue: #16
 
@@ -37,19 +38,30 @@ appearing on the user's other devices.
 Option 3.
 
 - The running session is a single `PracticeSession` value (see `PianismCore`), encoded as JSON at
-  `<App Group>/running-session.json`. No file means no running session.
+  `<App Group>/running-session.json`. No file means no running session. A file written by an older
+  build must still read: a new field is optional or decoded with `decodeIfPresent` and a default,
+  and every format a build has written to a device keeps a sample in `SessionFileFormatTests`,
+  which every build must decode.
 - The core defines a port, `RunningSessionStore`, with two operations: `current()` and
   `update(_ change: (inout PracticeSession?) throws -> Void)`. Every change is a read-modify-write
   of the whole value.
 - The adapter implements `update` with `NSFileCoordinator`, so the app and the widget extension
   never interleave a read and a write, and writes the file atomically, so a crash never leaves
   half a file.
-- **Only the app moves sessions into SwiftData.** When a session stops in the app, it is inserted
-  into the store and the file is deleted in the same step. When the widget or a Live Activity
-  stops one, it stays in the file, marked ended, and the app moves it on its next launch or
-  return to the foreground. Each store has exactly one writer.
+- **Only the app moves sessions into SwiftData.** When a session stops in the app, history saves it
+  and then the file is cleared. Saving it again is harmless (ADR 0004), and a session history can't
+  take waits in the outbox (ADR 0007). When the widget or a Live Activity stops one, it stays in the
+  file, marked ended, and the app moves it on its next launch or return to the foreground. Each
+  store has exactly one writer.
 - Elapsed time is always derived from the stored timestamps, so there is no periodic save. Each
   change writes once.
+
+Amended 2026-10-16, after a review of every ADR against the code: synthesized `Decodable` ignores a
+property's default value and fails on a missing key, so adding a plain field would have made every
+older file unreadable. An unreadable file counts as no session, so the session running during an
+update would be lost, and the outbox would set its waiting sessions aside. Samples now fix the
+format. Two lines written before ADR 0004 and 0006 are corrected: moving a session into history
+takes two steps, and finished sessions can be edited (SES-5).
 
 Option 1 is rejected because CloudKit mirroring would sync every pause and resume, other devices
 would show sessions that are still running, and SwiftData contexts in two processes would race
@@ -58,8 +70,8 @@ across processes: a widget Stop and an app Pause at the same moment could silent
 
 ## Consequences
 
-- Good: unfinished sessions never sync, and the synced store only ever receives finished,
-  immutable sessions, which also simplifies conflict handling for SYN-1.
+- Good: unfinished sessions never sync, and the synced store only ever receives finished
+  sessions, which also simplifies conflict handling for SYN-1.
 - Good: crash-safe by construction (SES-6). Every change is persisted before it's acknowledged.
 - Good: the port is trivial to fake in core tests (`InMemoryRunningSessionStore`); the coordinated
   adapter gets its own integration tests, including two writers racing.
