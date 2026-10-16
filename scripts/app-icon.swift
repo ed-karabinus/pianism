@@ -4,63 +4,68 @@
 import AppKit
 
 struct Palette {
-    var background: NSColor
-    var track: NSColor
-    var ring: NSColor
-    var whiteKey: NSColor
-    var blackKey: NSColor
+    /// Also the black keys' colour, as on the design board.
+    var background: CGColor
+    var track: CGColor
+    var ring: CGColor
+    var whiteKey: CGColor
 }
 
-func hex(_ value: UInt32) -> NSColor {
-    NSColor(
+func hex(_ value: UInt32) -> CGColor {
+    CGColor(
         srgbRed: CGFloat((value >> 16) & 0xFF) / 255, green: CGFloat((value >> 8) & 0xFF) / 255,
         blue: CGFloat(value & 0xFF) / 255, alpha: 1)
 }
 
+// The colours the owner approved on his iPhone.
 let appearances: [(file: String, palette: Palette)] = [
-    ("AppIcon.png", Palette(background: hex(0x1C2433), track: hex(0x2B3547), ring: hex(0xE8A33D),
-                            whiteKey: hex(0xF3EEE4), blackKey: hex(0x1C2433))),
-    ("AppIcon-Dark.png", Palette(background: hex(0x0E121A), track: hex(0x222A38), ring: hex(0xE8A33D),
-                                 whiteKey: hex(0xF3EEE4), blackKey: hex(0x0E121A))),
+    (
+        "AppIcon.png",
+        Palette(background: hex(0x1C2433), track: hex(0x2B3547), ring: hex(0xE8A33D), whiteKey: hex(0xF3EEE4))
+    ),
+    (
+        "AppIcon-Dark.png",
+        Palette(background: hex(0x0E121A), track: hex(0x222A38), ring: hex(0xE8A33D), whiteKey: hex(0xF3EEE4))
+    ),
     // Tinted: grayscale on black; iOS colours it with the person's tint.
-    ("AppIcon-Tinted.png", Palette(background: hex(0x000000), track: hex(0x3A3A3A), ring: hex(0xD8D8D8),
-                                   whiteKey: hex(0xFFFFFF), blackKey: hex(0x000000))),
+    (
+        "AppIcon-Tinted.png",
+        Palette(background: hex(0x000000), track: hex(0x3A3A3A), ring: hex(0xD8D8D8), whiteKey: hex(0xFFFFFF))
+    ),
 ]
 
 /// The key group's size relative to B0 on the design board: larger, so it reads at 29 points.
 let keyScale: CGFloat = 1.18
 
+/// Draws on the design board's 100-unit square, y pointing down, as in its SVG.
 func draw(_ palette: Palette, in context: CGContext, size: CGFloat) {
-    let unit = size / 100  // The design board's 100-unit square.
-    context.setFillColor(palette.background.cgColor)
-    context.fill(CGRect(x: 0, y: 0, width: size, height: size))
+    context.translateBy(x: 0, y: size)
+    context.scaleBy(x: size / 100, y: -size / 100)
+    context.setFillColor(palette.background)
+    context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
 
-    let center = CGPoint(x: 50 * unit, y: 50 * unit)
-    context.setLineWidth(7 * unit)
-    context.setStrokeColor(palette.track.cgColor)
-    context.addArc(center: center, radius: 31 * unit, startAngle: 0, endAngle: 2 * .pi, clockwise: false)
-    context.strokePath()
-    // Three quarters of the ring, clockwise from the top (Core Graphics' y axis points up).
-    context.setStrokeColor(palette.ring.cgColor)
+    context.setLineWidth(7)
+    context.setStrokeColor(palette.track)
+    context.strokeEllipse(in: CGRect(x: 19, y: 19, width: 62, height: 62))
+    // Three quarters of the ring from the top. With y pointing down, this turns clockwise on screen.
+    context.setStrokeColor(palette.ring)
     context.setLineCap(.round)
-    context.addArc(center: center, radius: 31 * unit, startAngle: .pi / 2, endAngle: .pi / 2 - 1.5 * .pi,
-                   clockwise: true)
+    context.addArc(center: CGPoint(x: 50, y: 50), radius: 31, startAngle: -.pi / 2, endAngle: .pi, clockwise: false)
     context.strokePath()
 
-    // Keys, on the board's coordinates (y down), scaled about the centre.
-    func rect(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat, _ radius: CGFloat,
-              _ color: NSColor) {
-        let scaled = CGRect(x: 50 + (x - 50) * keyScale, y: 50 + (y - 50) * keyScale,
-                            width: width * keyScale, height: height * keyScale)
-        let flipped = CGRect(x: scaled.minX * unit, y: (100 - scaled.maxY) * unit,
-                             width: scaled.width * unit, height: scaled.height * unit)
-        context.setFillColor(color.cgColor)
-        context.addPath(CGPath(roundedRect: flipped, cornerWidth: radius * keyScale * unit,
-                               cornerHeight: radius * keyScale * unit, transform: nil))
+    context.translateBy(x: 50, y: 50)
+    context.scaleBy(x: keyScale, y: keyScale)
+    context.translateBy(x: -50, y: -50)
+    func key(_ x: CGFloat, width: CGFloat, height: CGFloat, radius: CGFloat, color: CGColor) {
+        context.setFillColor(color)
+        context.addPath(
+            CGPath(
+                roundedRect: CGRect(x: x, y: 38, width: width, height: height), cornerWidth: radius,
+                cornerHeight: radius, transform: nil))
         context.fillPath()
     }
-    for x: CGFloat in [36.4, 46, 55.6] { rect(x, 38, 8, 24, 1.6, palette.whiteKey) }
-    for x: CGFloat in [42.7, 52.3] { rect(x, 38, 5, 14, 1, palette.blackKey) }
+    for x: CGFloat in [36.4, 46, 55.6] { key(x, width: 8, height: 24, radius: 1.6, color: palette.whiteKey) }
+    for x: CGFloat in [42.7, 52.3] { key(x, width: 5, height: 14, radius: 1, color: palette.background) }
 }
 
 struct IconError: Error {}
