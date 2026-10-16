@@ -35,6 +35,19 @@ jobs:
       - name: swift-format
         run: swift format lint --strict --recursive --parallel App AppUITests Packages
 
+  # Periphery reads the compiler's index, so it needs an Xcode build (ADR 0005).
+  unused:
+    name: Unused code (Periphery)
+    needs: [core, lint]
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Select the newest stable Xcode
+        run: scripts/select-xcode.sh
+      - name: Scan for unused code
+        run: make unused
+
   # Adapters use Apple-only APIs such as NSFileCoordinator, so they are tested on macOS, against real
   # files. No simulator, so this runs in a few minutes, alongside the end-to-end tests.
   adapters:

@@ -1,0 +1,9 @@
+project: Pianism.xcodeproj
+schemes:
+  - Pianism
+retain_swift_ui_previews: true
+relative_results: true
+build_arguments:
+  - -destination
+  - generic/platform=iOS Simulator
+  - SWIFT_SUPPRESS_WARNINGS=NO

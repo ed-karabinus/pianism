@@ -48,5 +48,5 @@ private final class PreviewStore: RunningSessionStore {
 }
 
 private struct PreviewHistory: SessionHistory {
-    func save(_ session: PracticeSession) {}
+    func save(_: PracticeSession) {}
 }

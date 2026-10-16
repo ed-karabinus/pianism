@@ -1,6 +1,6 @@
 # 5. Unused code found by Periphery 3.8.0, and mutation testing by a script in the repository
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-15
 - Pull request: the review discussion after #27, and #33
 
