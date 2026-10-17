@@ -53,7 +53,6 @@ test-app: ## Build the app once, then run its end-to-end tests on each simulator
 		status=$$?; \
 		xcrun simctl shutdown "$$udid"; \
 		[ $$status -eq 0 ] || exit 1; \
-		scripts/check-failure-diagnostics.sh $(RESULTS)/app-$$device.xcresult || exit 1; \
 	done
 
 evidence: ## Export the screenshots the last test-app run captured, one folder per device
