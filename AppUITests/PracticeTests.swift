@@ -4,7 +4,7 @@ import XCTest
 ///
 /// Each launch fixes the app's clock (see `App/PianismApp.swift`), so times are exact. Time
 /// passes between launches, which also proves a session survives the app being killed.
-final class PracticeTests: XCTestCase {
+final class PracticeTests: UITestCase {
     /// 2027-01-01 00:00:00 UTC.
     private let start: TimeInterval = 1_798_761_600
 
