@@ -32,8 +32,9 @@ final class SwiftDataTagLibraryTests {
 
         #expect(
             Set(try reopened.tags()) == [
-                Tag(id: ballade.id, kind: .piece, name: "Ballade No. 1 in G minor", isArchived: false),
-                Tag(id: pedalling.id, kind: .skill, name: "Pedalling", isArchived: true),
+                Tag(
+                    id: ballade.id, kind: .piece, name: "Ballade No. 1 in G minor", isArchived: false, createdAt: added),
+                Tag(id: pedalling.id, kind: .skill, name: "Pedalling", isArchived: true, createdAt: added),
             ])
         #expect(UUID(uuidString: ballade.id) != nil && ballade.id == ballade.id.lowercased())
         let records = try records()
@@ -66,9 +67,21 @@ final class SwiftDataTagLibraryTests {
     func newerVersionIsReadOnly() throws {
         try insertRecord(id: "a", name: "Étude", modifiedAfter: 1, version: 2)
 
+        #expect(try library.tags() == [Tag(id: "a", kind: .piece, name: "Étude", isArchived: false, isReadOnly: true)])
         #expect(throws: RecordFromNewerVersion.self) { try self.library.rename(id: "a", to: "Etude") }
         #expect(throws: RecordFromNewerVersion.self) { try self.library.setArchived(true, id: "a") }
-        #expect(try library.tags() == [Tag(id: "a", kind: .piece, name: "Étude", isArchived: false)])
+        #expect(try library.tags().map(\.name) == ["Étude"])
+    }
+
+    @Test("ADR 0004: a tag merged on another device says which tag it was merged into")
+    func mergedIntoIsRead() throws {
+        try insertRecord(id: "a", name: "Ballade", modifiedAfter: 1, mergedInto: "b")
+        try insertRecord(id: "b", name: "Ballade No. 1", modifiedAfter: 1)
+
+        let tags = Dictionary(uniqueKeysWithValues: try library.tags().map { ($0.id, $0) })
+
+        #expect(tags["a"]?.mergedInto == "b")
+        #expect(tags["b"]?.mergedInto == nil)
     }
 
     @Test("ADR 0006: a kind this version doesn't know reads as the default, a piece")
@@ -105,7 +118,7 @@ final class SwiftDataTagLibraryTests {
     /// Inserts a record as sync would deliver it, bypassing the library.
     private func insertRecord(
         id: String, name: String, modifiedAfter modified: TimeInterval, kind: String = "piece", version: Int = 1,
-        isArchived: Bool = false
+        isArchived: Bool = false, mergedInto: String = ""
     ) throws {
         let context = ModelContext(try HistoryStore(url: storeURL).container())
         let record = TagRecord()
@@ -115,6 +128,7 @@ final class SwiftDataTagLibraryTests {
         record.modifiedAt = clock.now + modified
         record.version = version
         record.isArchived = isArchived
+        record.mergedInto = mergedInto
         context.insert(record)
         try context.save()
     }

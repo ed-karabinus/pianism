@@ -17,7 +17,6 @@ enum HistorySchemaV1: VersionedSchema {
         var endedAt: Date = Date.distantPast
         /// The pauses as JSON (``StoredPauses``); empty means none.
         var pauses: Data = Data()
-        // periphery:ignore - schema v1; tags arrive with TAG-2
         var tagIDs: [String] = []
         // periphery:ignore - schema v1; notes arrive with SES-5
         var note: String = ""
@@ -46,7 +45,7 @@ enum HistorySchemaV1: VersionedSchema {
         var composer: String = ""
         // periphery:ignore - schema v1; piece details arrive with TAG-3, in BPM
         var targetTempo: Int?
-        // periphery:ignore - schema v1; merging arrives with TAG-4, and resolving with tags on screen
+        /// The ID of the tag this one was merged into; empty if none.
         var mergedInto: String = ""
         var createdAt: Date = Date.distantPast
         var modifiedAt: Date = Date.distantPast
