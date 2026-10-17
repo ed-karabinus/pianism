@@ -29,7 +29,6 @@ public struct RootView: View {
         .onChange(of: scenePhase) {
             if scenePhase == .active {
                 practice.refresh()
-                tags.refresh()
                 history.refresh()
             }
         }

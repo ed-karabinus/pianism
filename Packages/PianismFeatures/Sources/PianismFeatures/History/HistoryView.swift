@@ -91,9 +91,7 @@ private struct TimedRow: View {
             Text(ElapsedTime.display(duration)).monospacedDigit()
         } label: {
             title
-            if let detail {
-                detail
-            }
+            detail
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(detail.map { Text("\(title), \($0)", bundle: .module) } ?? title)

@@ -50,16 +50,11 @@ struct PracticeView: View {
         .padding(24)
         .frame(maxWidth: 560)
         .sheet(isPresented: $isPickingTags) {
+            // Tagging stores the session, so its failure shows over the picker, which covers this screen.
             TagPickerView(model: tags)
+                .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
         }
-        .alert(Text("Couldn't save that change", bundle: .module), isPresented: $model.isShowingStorageError) {
-            Button(role: .cancel) {
-            } label: {
-                Text("OK", bundle: .module)
-            }
-        } message: {
-            Text("Pianism couldn't reach its storage. Try again in a moment.", bundle: .module)
-        }
+        .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
     }
 
     /// The session's pieces and skills, which opens the tag picker (TAG-2).
@@ -107,6 +102,8 @@ struct PracticeView: View {
         }
     }
 
+    private let storageErrorTitle: LocalizedStringKey = "Couldn't save that change"
+
     /// Larger on iPad, which often sits on a music stand, read from the bench.
     private var timeScale: CGFloat {
         sizeClass == .regular ? 1.8 : 1
@@ -117,6 +114,16 @@ struct PracticeView: View {
         case nil, .ended: "Ready to practice"
         case .running: "Practicing"
         case .paused: "Paused"
+        }
+    }
+}
+
+extension View {
+    /// Says that Pianism couldn't reach its storage, under `title`.
+    func storageAlert(_ title: Text, isPresented: Binding<Bool>) -> some View {
+        alert(title, isPresented: isPresented) {
+        } message: {
+            Text("Pianism couldn't reach its storage. Try again in a moment.", bundle: .module)
         }
     }
 }

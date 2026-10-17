@@ -85,6 +85,17 @@ struct TagPickerModelTests {
         #expect(practice.session?.tagIDs == [BuiltInSkill.scales.rawValue, "not-synced-yet"])
     }
 
+    @Test("TAG-1, ADR 0004: a merged tag's old name offers the tag it was merged into, not the merged one")
+    func mergedNameOffersKeptTag() {
+        let merged = PianismCore.Tag(
+            id: "old", kind: .piece, name: "Chopin G minor", isArchived: true, mergedInto: "ballade")
+        let model = TagPickerModel(practice: practice, library: InMemoryTagLibrary([ballade, merged]))
+        model.query = "chopin g minor"
+
+        #expect(model.newName(.piece) == nil)
+        #expect(model.shown(.piece) == [ballade])
+    }
+
     @Test("TAG-1: archiving stops offering a tag, except to the session that has it, which keeps it")
     func archiveKeepsSessionTags() {
         let invention = PianismCore.Tag(id: "invention", kind: .piece, name: "Invention", isArchived: false)

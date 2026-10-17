@@ -22,9 +22,6 @@
     "Arpeggios" : {
       "comment" : "A built-in skill"
     },
-    "Cancel" : {
-
-    },
     "Couldn't change your tags" : {
 
     },
@@ -35,9 +32,6 @@
 
     },
     "Couldn't save that change" : {
-
-    },
-    "Done" : {
 
     },
     "Find or add a piece or skill" : {
@@ -56,9 +50,6 @@
 
     },
     "No practice yet" : {
-
-    },
-    "OK" : {
 
     },
     "%@, not saved yet" : {

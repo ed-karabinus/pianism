@@ -9,7 +9,7 @@ import os
 @Observable
 public final class TagPickerModel {
     /// Every tag, built-in skills first, archived ones included.
-    private(set) var tags: [Tag] = []
+    private var tags: [Tag] = []
     /// What the user typed, to find a tag or to name a new one.
     var query = ""
     /// Whether to show that the tags couldn't be loaded or changed.
@@ -33,10 +33,11 @@ public final class TagPickerModel {
     }
 
     /// The tags of `kind` to offer, by name: unarchived ones and the session's own, narrowed to names
-    /// containing the query, plus an archived tag the query names, so that it can come back (TAG-1).
+    /// containing the query, plus the tag the query names, archived or not, so it can come back
+    /// (TAG-1). A merged tag's name offers the tag it was merged into.
     func shown(_ kind: Tag.Kind) -> [Tag] {
         let search = Self.trimmed(query)
-        let named = Tag.existing(named: search, kind: kind, in: tags)
+        let named = Tag.existing(named: search, kind: kind, in: tags).flatMap { index[$0.id] }
         let selectedIDs = Set(selected.map(\.id))
         return tags.filter { tag in
             guard tag.kind == kind else { return false }
@@ -94,8 +95,7 @@ public final class TagPickerModel {
         perform { try library.setArchived(true, id: tag.id) }
     }
 
-    /// Loads the tags again. Call when the picker opens and when the app becomes active: another
-    /// device, or a newer version of the app, may have changed them.
+    /// Loads the tags again. Call when the picker opens.
     func refresh() {
         perform {}
     }
