@@ -36,6 +36,7 @@ let package = Package(
                 .product(name: "PianismCore", package: "PianismCore"),
                 .product(name: "PianismCoreTestSupport", package: "PianismCore"),
             ],
+            resources: [.copy("Fixtures")],
             swiftSettings: strict
         ),
     ]

@@ -38,7 +38,7 @@ can't prevent? How do we evolve the schema?
 Option 2.
 
 **Core values and ports.** The core owns plain values: `PracticeSession` (from #18, which gains tag
-IDs, a note and a source as those features land), `Tag`, and `TagID`. It also defines two ports
+IDs, a note and a source as those features land), and `Tag`. It also defines two ports
 the adapter implements:
 
 - `SessionHistory`: save, which inserts each ID once; sessions in a date range; delete.
@@ -46,6 +46,10 @@ the adapter implements:
 
 Both ports also report when anything they hold changes, on this device or from iCloud, so view
 models know when to fetch again.
+
+Amended 2026-10-16 by TAG-1: a tag's ID is `Tag.ID`, a `String`, rather than a separate `TagID`
+type, since a session stores built-in and user tag IDs alike as strings. Both adapters share one
+SwiftData store, `HistoryStore`, so a session and the tags it names live, and later sync, together.
 
 Grouping by day, day totals and week totals are pure core functions over values (HIS-1, HIS-2). They
 are tested on Linux, including time zones and daylight-saving changes. **A session counts toward
