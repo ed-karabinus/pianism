@@ -9,7 +9,9 @@ import Testing
 /// History stores as builds have written them to devices, opened with the current schema. Every build
 /// must open every fixture, or an update loses the user's history (ADR 0004). Never edit a fixture;
 /// when the schema changes, add one that sets every field to a value other than its default, so a
-/// change in how a field is stored fails a test (ADR 0006).
+/// change in how a field is stored fails a test (ADR 0006). Write it through `HistoryStore` from a
+/// scratch test, then run `sqlite3 <store> 'PRAGMA journal_mode=DELETE'`: until then, its records
+/// may be only in the `-wal` file beside it.
 final class HistoryStoreFormatTests {
     let clock = ManualClock()
     let directory = FileManager.default.temporaryDirectory.appending(path: "HistoryStoreFormatTests-\(UUID())")
@@ -47,13 +49,13 @@ final class HistoryStoreFormatTests {
             #"{"pauses":[{"start":820454700.5,"end":820454760.75},{"start":820455300.375,"end":820455361.125}]}"#
         let tagIDs = [ballade, BuiltInSkill.scales.rawValue, pedalling]
 
-        // Every field in schema order. A version above 1 would mean a newer app wrote the record.
+        // Every field in schema order. Two records have version 2, as sync from a newer app leaves them.
         let sessions = try context.fetch(FetchDescriptor<SessionRecord>(sortBy: [SortDescriptor(\.startedAt)]))
         #expect(
             sessions.map(\.fields) == [
                 [
                     deleted, start - 86_400, start - 85_199.5, Data(), [String](), "", "timer", "America/Los_Angeles",
-                    start - 3_600, 1, start - 3_600,
+                    start - 3_600, 2, start - 3_600,
                 ],
                 [
                     live, start, start + 1_800.625, Data(pauses.utf8), tagIDs, "Left hand alone, slowly", "midi",
@@ -65,7 +67,7 @@ final class HistoryStoreFormatTests {
             tags.map(\.fields) == [
                 [ballade, "piece", "Ballade No. 1", false, "Chopin", 72, "", start - 172_800, start - 7_200, 1],
                 [pedalling, "skill", "Pedalling", true, "", nil, "", start - 172_740, start - 7_140, 1],
-                [gMinor, "piece", "Chopin G minor", true, "", nil, ballade, start - 172_680, start - 7_080, 1],
+                [gMinor, "piece", "Chopin G minor", true, "", nil, ballade, start - 172_680, start - 7_080, 2],
             ])
 
         var session = PracticeSession(id: live, startedAt: start, timeZone: vienna)
@@ -82,7 +84,7 @@ final class HistoryStoreFormatTests {
                 Tag(id: pedalling, kind: .skill, name: "Pedalling", isArchived: true, createdAt: start - 172_740),
                 Tag(
                     id: gMinor, kind: .piece, name: "Chopin G minor", isArchived: true, mergedInto: ballade,
-                    createdAt: start - 172_680),
+                    createdAt: start - 172_680, isReadOnly: true),
             ])
     }
 
@@ -97,14 +99,15 @@ final class HistoryStoreFormatTests {
     }
 }
 
+// `as` pins the numeric types, which AnyHashable compares across Int and Double.
 extension SessionRecord {
     fileprivate var fields: [AnyHashable?] {
-        [id, startedAt, endedAt, pauses, tagIDs, note, source, timeZoneID, modifiedAt, version, deletedAt]
+        [id, startedAt, endedAt, pauses, tagIDs, note, source, timeZoneID, modifiedAt, version as Int, deletedAt]
     }
 }
 
 extension TagRecord {
     fileprivate var fields: [AnyHashable?] {
-        [id, kind, name, isArchived, composer, targetTempo, mergedInto, createdAt, modifiedAt, version]
+        [id, kind, name, isArchived, composer, targetTempo as Int?, mergedInto, createdAt, modifiedAt, version as Int]
     }
 }
