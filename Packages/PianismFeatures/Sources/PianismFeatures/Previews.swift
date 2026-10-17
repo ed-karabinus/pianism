@@ -25,6 +25,32 @@ extension PracticeModel {
     }
 }
 
+/// Pieces and skills for previews, one archived.
+private let previewTags = [
+    Tag(id: "ballade", kind: .piece, name: "Ballade No. 1 in G minor", isArchived: false),
+    Tag(id: "invention", kind: .piece, name: "Invention No. 1 in C major", isArchived: false),
+    Tag(id: "nocturne", kind: .piece, name: "Nocturne in E-flat major", isArchived: true),
+    Tag(id: "pedalling", kind: .skill, name: "Pedalling", isArchived: false),
+]
+
+extension TagPickerModel {
+    /// A picker for `practice`'s session, which it tags with a piece and a built-in skill if running.
+    static func preview(for practice: PracticeModel) -> TagPickerModel {
+        let model = TagPickerModel(practice: practice, library: InMemoryTagLibrary(previewTags))
+        if practice.session?.state == .running {
+            practice.setTags(["ballade", BuiltInSkill.scales.rawValue])
+        }
+        return model
+    }
+
+    /// A picker for a running, tagged session, with `query` typed.
+    static func preview(query: String = "") -> TagPickerModel {
+        let model = preview(for: .preview(.running))
+        model.query = query
+        return model
+    }
+}
+
 extension HistoryModel {
     /// A model with practice today, yesterday and last week, or with none, for previews. Times are
     /// local, so "Today" holds in any time zone. `waiting` puts the sessions in the outbox and makes
@@ -38,13 +64,16 @@ extension HistoryModel {
         for (hours, minutes) in practice {
             let start = midnight.addingTimeInterval(Double(hours) * hour)
             var session = PracticeSession(startedAt: start)
+            // Every other session tagged, so both kinds of row show.
+            try? session.setTags(hours.isMultiple(of: 2) ? ["ballade", BuiltInSkill.scales.rawValue] : [])
             try? session.stop(at: start.addingTimeInterval(Double(minutes) * 60))
             sessions.save(session)
         }
         let history: any SessionHistory = waiting ? PreviewUnavailableHistory() : sessions
         let outbox = waiting ? sessions : InMemorySessionHistory()
         return HistoryModel(
-            history: history, outbox: outbox, clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)))
+            history: history, tags: InMemoryTagLibrary(previewTags), outbox: outbox,
+            clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)))
     }
 }
 

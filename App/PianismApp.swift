@@ -11,6 +11,7 @@ struct PianismApp: App {
     static let appGroup = "group.com.edkarabinus.Pianism"
 
     @State private var practice: PracticeModel
+    @State private var tags: TagPickerModel
     @State private var history: HistoryModel
 
     init() {
@@ -40,15 +41,20 @@ struct PianismApp: App {
                 historyURL = URL(filePath: "/dev/null/History.store")
             }
         #endif
-        let sessions = SwiftDataSessionHistory(store: HistoryStore(url: historyURL), clock: clock)
+        // One store for both, so sessions and the tags they name are kept, and later synced, together.
+        let historyStore = HistoryStore(url: historyURL)
+        let sessions = SwiftDataSessionHistory(store: historyStore, clock: clock)
+        let library = SwiftDataTagLibrary(store: historyStore, clock: clock)
         let outbox = FileSessionOutbox(directory: outboxURL)
-        practice = PracticeModel(store: store, history: sessions, outbox: outbox, clock: clock)
-        history = HistoryModel(history: sessions, outbox: outbox, clock: clock)
+        let practice = PracticeModel(store: store, history: sessions, outbox: outbox, clock: clock)
+        self.practice = practice
+        tags = TagPickerModel(practice: practice, library: library)
+        history = HistoryModel(history: sessions, tags: library, outbox: outbox, clock: clock)
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(practice: practice, history: history)
+            RootView(practice: practice, tags: tags, history: history)
         }
     }
 }

@@ -88,6 +88,33 @@ struct PracticeSessionTests {
         #expect(session.elapsed(at: clock.now) == 900)
     }
 
+    // MARK: TAG-2: tags
+
+    @Test("TAG-2: a running or paused session can be tagged, and its tags replaced", arguments: [false, true])
+    func tagsWhileRunningOrPaused(paused: Bool) throws {
+        var session = PracticeSession(startedAt: clock.now)
+        if paused {
+            try session.pause(at: clock.now)
+        }
+        #expect(session.tagIDs.isEmpty)
+
+        try session.setTags(["skill.scales", "a"])
+        try session.setTags(["a", "b"])
+
+        #expect(session.tagIDs == ["a", "b"])
+    }
+
+    @Test("TAG-2: removing every tag leaves the session as it was untagged, so history reads it back the same")
+    func removingAllTagsUntags() throws {
+        let untagged = PracticeSession(startedAt: clock.now)
+        var session = untagged
+
+        try session.setTags(["a"])
+        try session.setTags([])
+
+        #expect(session == untagged)
+    }
+
     // MARK: Invalid changes are rejected and leave the session untouched
 
     @Test("Changes in the wrong state are rejected", arguments: InvalidChange.allCases)
@@ -125,6 +152,7 @@ struct PracticeSessionTests {
     @Test("SES-6: a session paused mid-practice survives an encode and decode round trip")
     func codableRoundTrip() throws {
         var session = PracticeSession(startedAt: clock.now, timeZone: TimeZone(identifier: "Asia/Tokyo"))
+        try session.setTags(["skill.scales", "3f2b8c1e-7a4d-4e9b-8c2f-1d5a6b7c8e90"])
         clock.advance(by: 200)
         try session.pause(at: clock.now)
         clock.advance(by: 50)
@@ -147,13 +175,14 @@ enum InvalidChange: CaseIterable, CustomTestStringConvertible {
     case pauseAfterStop
     case resumeAfterStop
     case stopAfterStop
+    case tagAfterStop
     case changeDatedBeforeLastChange
 
     var expectedError: SessionError {
         switch self {
         case .pauseWhilePaused: .alreadyPaused
         case .resumeWhileRunning: .notPaused
-        case .pauseAfterStop, .resumeAfterStop, .stopAfterStop: .alreadyEnded
+        case .pauseAfterStop, .resumeAfterStop, .stopAfterStop, .tagAfterStop: .alreadyEnded
         case .changeDatedBeforeLastChange: .timeWentBackwards
         }
     }
@@ -165,6 +194,7 @@ enum InvalidChange: CaseIterable, CustomTestStringConvertible {
         case .pauseAfterStop: "pause after stop"
         case .resumeAfterStop: "resume after stop"
         case .stopAfterStop: "stop after stop"
+        case .tagAfterStop: "tag after stop"
         case .changeDatedBeforeLastChange: "a change dated before the last change"
         }
     }
@@ -173,7 +203,7 @@ enum InvalidChange: CaseIterable, CustomTestStringConvertible {
         switch self {
         case .pauseWhilePaused: try session.pause(at: clock.now)
         case .resumeWhileRunning, .changeDatedBeforeLastChange: break
-        case .pauseAfterStop, .resumeAfterStop, .stopAfterStop: try session.stop(at: clock.now)
+        case .pauseAfterStop, .resumeAfterStop, .stopAfterStop, .tagAfterStop: try session.stop(at: clock.now)
         }
     }
 
@@ -182,6 +212,7 @@ enum InvalidChange: CaseIterable, CustomTestStringConvertible {
         case .pauseWhilePaused, .pauseAfterStop: try session.pause(at: clock.now)
         case .resumeWhileRunning, .resumeAfterStop: try session.resume(at: clock.now)
         case .stopAfterStop: try session.stop(at: clock.now)
+        case .tagAfterStop: try session.setTags(["skill.scales"])
         case .changeDatedBeforeLastChange: try session.pause(at: session.startedAt.addingTimeInterval(-1))
         }
     }

@@ -15,15 +15,19 @@ public final class HistoryModel {
     private(set) var now: Date
     /// Whether the last refresh couldn't read the history. Waiting sessions still show.
     private(set) var loadFailed = false
+    /// The tags sessions show, each merged tag as the tag it was merged into (ADR 0004).
+    private(set) var tagIndex = TagIndex([])
 
     let calendar = Calendar.autoupdatingCurrent
     private let clock: any WallClock
     private let history: any SessionHistory
+    private let tags: any TagLibrary
     private let outbox: any SessionOutbox
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
 
-    public init(history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock) {
+    public init(history: any SessionHistory, tags: any TagLibrary, outbox: any SessionOutbox, clock: any WallClock) {
         self.history = history
+        self.tags = tags
         self.outbox = outbox
         self.clock = clock
         self.now = clock.now
@@ -38,6 +42,7 @@ public final class HistoryModel {
         var saved: [PracticeSession] = []
         do {
             saved = try history.sessions()
+            tagIndex = TagIndex(try tags.allTags())
             loadFailed = false
         } catch {
             logger.error("Couldn't load the history: \(error, privacy: .public)")

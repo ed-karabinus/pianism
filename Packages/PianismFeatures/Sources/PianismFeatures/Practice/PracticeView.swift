@@ -4,6 +4,9 @@ import SwiftUI
 /// The Practice screen: one tap to start, the time always visible (SES-1, SES-2, P1).
 struct PracticeView: View {
     @Bindable var model: PracticeModel
+    let tags: TagPickerModel
+
+    @State private var isPickingTags = false
 
     @ScaledMetric(relativeTo: .largeTitle) private var timeSize = 76
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -39,10 +42,16 @@ struct PracticeView: View {
                     .accessibilityIdentifier(AccessibilityID.practiceWaiting)
             }
             Spacer()
+            if model.session?.state == .running || model.session?.state == .paused {
+                tagsButton
+            }
             controls
         }
         .padding(24)
         .frame(maxWidth: 560)
+        .sheet(isPresented: $isPickingTags) {
+            TagPickerView(model: tags)
+        }
         .alert(Text("Couldn't save that change", bundle: .module), isPresented: $model.isShowingStorageError) {
             Button(role: .cancel) {
             } label: {
@@ -51,6 +60,24 @@ struct PracticeView: View {
         } message: {
             Text("Pianism couldn't reach its storage. Try again in a moment.", bundle: .module)
         }
+    }
+
+    /// The session's pieces and skills, which opens the tag picker (TAG-2).
+    private var tagsButton: some View {
+        Button {
+            isPickingTags = true
+        } label: {
+            Label {
+                tags.selected.isEmpty ? Text("Add tags", bundle: .module) : Text(tags: tags.selected)
+            } icon: {
+                Image(systemName: "tag")
+            }
+            .lineLimit(2)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityLabel(Text("Tags", bundle: .module))
+        .accessibilityValue(Text(tags: tags.selected))
+        .accessibilityIdentifier(AccessibilityID.practiceTags)
     }
 
     @ViewBuilder private var controls: some View {
@@ -139,15 +166,18 @@ private struct CommandButton: View {
 }
 
 #Preview("Ready") {
-    PracticeView(model: .preview(.ready))
+    let model = PracticeModel.preview(.ready)
+    PracticeView(model: model, tags: .preview(for: model))
 }
 
-#Preview("Practicing") {
-    PracticeView(model: .preview(.running))
+#Preview("Practicing, tagged") {
+    let model = PracticeModel.preview(.running)
+    PracticeView(model: model, tags: .preview(for: model))
 }
 
 #Preview("Paused, dark, AX5") {
-    PracticeView(model: .preview(.paused))
+    let model = PracticeModel.preview(.paused)
+    PracticeView(model: model, tags: .preview(for: model))
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }
