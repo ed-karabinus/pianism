@@ -3,8 +3,15 @@ import Observation
 import PianismCore
 import os
 
-/// State and commands for the tag picker, which tags the running session and adds, renames and
-/// archives tags (TAG-1, TAG-2).
+/// What the tag picker tags: the running session (TAG-2), or a finished one being edited (SES-5).
+@MainActor
+protocol TagTarget: AnyObject {
+    var tagIDs: [Tag.ID] { get }
+    func setTags(_ ids: [Tag.ID])
+}
+
+/// State and commands for the tag picker, which tags a session and adds, renames and archives tags
+/// (TAG-1, TAG-2).
 @MainActor
 @Observable
 public final class TagPickerModel {
@@ -16,20 +23,25 @@ public final class TagPickerModel {
     var isShowingError = false
 
     private var index = TagIndex([])
-    private let practice: PracticeModel
+    private let target: any TagTarget
     private let library: any TagLibrary
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "tags")
 
-    /// Tags `practice`'s session with tags kept in `library`.
-    public init(practice: PracticeModel, library: any TagLibrary) {
-        self.practice = practice
+    /// Tags `practice`'s running session with tags kept in `library`.
+    public convenience init(practice: PracticeModel, library: any TagLibrary) {
+        self.init(target: practice, library: library)
+    }
+
+    /// Tags `target` with tags kept in `library`.
+    init(target: any TagTarget, library: any TagLibrary) {
+        self.target = target
         self.library = library
         refresh()
     }
 
-    /// The running session's tags, each merged tag as the tag it was merged into (ADR 0004).
+    /// The session's tags, each merged tag as the tag it was merged into (ADR 0004).
     var selected: [Tag] {
-        index.tags(for: practice.session?.tagIDs ?? [])
+        index.tags(for: target.tagIDs)
     }
 
     /// The tags of `kind` to offer, by name: unarchived ones and the session's own, narrowed to names
@@ -58,15 +70,15 @@ public final class TagPickerModel {
     /// Adds `tag` to the session, or removes it with any tag merged into it. Choosing an archived tag
     /// brings it back.
     func toggle(_ tag: Tag) {
-        let ids = practice.session?.tagIDs ?? []
+        let ids = target.tagIDs
         if selected.contains(where: { $0.id == tag.id }) {
-            practice.setTags(ids.filter { index[$0]?.id != tag.id })
+            target.setTags(ids.filter { index[$0]?.id != tag.id })
             return
         }
         if tag.isArchived {
             perform { try library.setArchived(false, id: tag.id) }
         }
-        practice.setTags(ids + [tag.id])
+        target.setTags(ids + [tag.id])
     }
 
     /// Adds the query as a new tag of `kind`, and tags the session with it.
@@ -75,7 +87,7 @@ public final class TagPickerModel {
         perform {
             let tag = try library.add(name: name, kind: kind)
             query = ""
-            practice.setTags((practice.session?.tagIDs ?? []) + [tag.id])
+            target.setTags(target.tagIDs + [tag.id])
         }
     }
 

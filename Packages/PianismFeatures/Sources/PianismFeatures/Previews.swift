@@ -77,11 +77,30 @@ extension HistoryModel {
     }
 }
 
+extension SessionEdit {
+    /// A finished session, tagged with a piece and a built-in skill, to edit; read-only as if a newer
+    /// version wrote it, if `readOnly`.
+    @MainActor
+    static func preview(readOnly: Bool = false) -> SessionEdit {
+        var session = PracticeSession(startedAt: previewNow)
+        try? session.stop(at: previewNow.addingTimeInterval(25 * 60 + 3))
+        try? session.editTags(["ballade", BuiltInSkill.scales.rawValue])
+        let history = InMemorySessionHistory(readOnlyIDs: readOnly ? [session.id] : [])
+        history.save(session)
+        let editor = SessionEditorModel(session: session, history: history)
+        return SessionEdit(
+            id: session.id, editor: editor,
+            tags: TagPickerModel(target: editor, library: InMemoryTagLibrary(previewTags)))
+    }
+}
+
 private struct PreviewUnavailableHistory: SessionHistory {
     struct Unavailable: Error {}
 
     func sessions() throws -> [PracticeSession] { throw Unavailable() }
     func save(_: PracticeSession) throws { throw Unavailable() }
+    func canEdit(id _: UUID) throws -> Bool { throw Unavailable() }
+    func edit(_: PracticeSession) throws { throw Unavailable() }
 }
 
 private struct PreviewClock: WallClock {

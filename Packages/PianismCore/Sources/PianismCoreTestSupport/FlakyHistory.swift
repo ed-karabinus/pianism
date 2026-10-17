@@ -1,3 +1,4 @@
+import Foundation
 import PianismCore
 import Synchronization
 
@@ -25,6 +26,16 @@ public final class FlakyHistory: SessionHistory {
     public func save(_ session: PracticeSession) throws {
         try failIfUnreachable()
         saved.save(session)
+    }
+
+    public func canEdit(id: UUID) throws -> Bool {
+        try failIfUnreachable()
+        return saved.canEdit(id: id)
+    }
+
+    public func edit(_ session: PracticeSession) throws {
+        try failIfUnreachable()
+        try saved.edit(session)
     }
 
     private func failIfUnreachable() throws {

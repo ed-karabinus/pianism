@@ -4,6 +4,9 @@
     "%@, %@" : {
 
     },
+    "A newer version of Pianism changed this session. Update Pianism to change it." : {
+
+    },
     "Add piece “%@”" : {
 
     },
@@ -32,6 +35,12 @@
 
     },
     "Couldn't save that change" : {
+
+    },
+    "Couldn't save your changes" : {
+
+    },
+    "Edit Session" : {
 
     },
     "Find or add a piece or skill" : {

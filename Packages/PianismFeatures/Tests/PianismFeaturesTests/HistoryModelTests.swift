@@ -90,6 +90,24 @@ struct HistoryModelTests {
         #expect(model.now == clock.now)
     }
 
+    @Test("SES-5: a saved session opens for editing; one still waiting to be saved doesn't (ADR 0007)")
+    func savedSessionsOpenForEditing() throws {
+        let history = InMemorySessionHistory()
+        let saved = try endedSession(startingAfter: 0)
+        let waiting = try endedSession(startingAfter: 3_600)
+        history.save(saved)
+        outbox.add(waiting)
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        model.refresh()
+
+        model.edit(waiting)
+        #expect(model.editing == nil)
+        model.edit(saved)
+
+        #expect(model.editing?.id == saved.id)
+        #expect(model.editing?.editor.session == saved)
+    }
+
     private func endedSession(startingAfter seconds: TimeInterval) throws -> PracticeSession {
         var session = PracticeSession(startedAt: clock.now + seconds)
         try session.stop(at: clock.now + seconds + 600)

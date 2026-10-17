@@ -17,6 +17,8 @@ public final class HistoryModel {
     private(set) var loadFailed = false
     /// The tags sessions show, each merged tag as the tag it was merged into (ADR 0004).
     private(set) var tagIndex = TagIndex([])
+    /// The finished session being edited, if any (SES-5).
+    var editing: SessionEdit?
 
     let calendar = Calendar.autoupdatingCurrent
     private let clock: any WallClock
@@ -54,5 +56,12 @@ public final class HistoryModel {
         let unsaved = waiting.filter { !savedIDs.contains($0.id) }
         waitingIDs = Set(unsaved.map(\.id))
         days = PracticeDay.group(saved + unsaved, in: calendar)
+    }
+
+    /// Starts editing `session`, unless it's still waiting to be saved (ADR 0007).
+    func edit(_ session: PracticeSession) {
+        guard !waitingIDs.contains(session.id) else { return }
+        let editor = SessionEditorModel(session: session, history: history)
+        editing = SessionEdit(id: session.id, editor: editor, tags: TagPickerModel(target: editor, library: tags))
     }
 }

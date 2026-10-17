@@ -23,9 +23,7 @@ public final class SwiftDataSessionHistory: SessionHistory {
     public func sessions() throws -> [PracticeSession] {
         let records = try ModelContext(store.container()).fetch(FetchDescriptor<SessionRecord>())
         return Dictionary(grouping: records, by: \.id).values.compactMap { duplicates in
-            guard duplicates.allSatisfy({ $0.deletedAt == nil }),
-                let latest = duplicates.max(by: { $0.modifiedAt < $1.modifiedAt })  // mutate:ignore - only ties differ
-            else { return nil }
+            guard let latest = Self.shown(among: duplicates) else { return nil }
             do {
                 return try latest.session()
             } catch {
@@ -39,24 +37,54 @@ public final class SwiftDataSessionHistory: SessionHistory {
     public func save(_ session: PracticeSession) throws {
         try saving.withLock { _ in
             let context = ModelContext(try store.container())
-            let id = session.id
             // A record with this ID, even a deleted one, is never replaced (ADR 0004, as amended).
-            guard try context.fetchCount(FetchDescriptor<SessionRecord>(predicate: #Predicate { $0.id == id })) == 0
-            else { return }
+            guard try context.fetchCount(Self.copies(of: session.id)) == 0 else { return }
             let record = SessionRecord()
             context.insert(record)
-            try record.update(from: session)
-            record.modifiedAt = clock.now
-            // A record that wouldn't read back the same would hide the whole history, so refuse it:
-            // the session then waits in the outbox (ADR 0007), where this log line explains it.
-            // A record that can't be rebuilt at all is refused too, not treated as history failing.
-            guard (try? record.session()) == session else {
-                logger.error(  // mutate:ignore - a log line; no test reads logs
-                    "Refused session \(session.id, privacy: .public): it wouldn't read back the same")
-                throw SessionRefused()
-            }
+            try write(session, to: record, modifiedAt: clock.now)
             try context.save()
         }
+    }
+
+    public func canEdit(id: UUID) throws -> Bool {
+        let copies = try ModelContext(store.container()).fetch(Self.copies(of: id))
+        return Self.shown(among: copies).map { $0.version <= HistoryStore.recordVersion } ?? false
+    }
+
+    public func edit(_ session: PracticeSession) throws {
+        try saving.withLock { _ in
+            let context = ModelContext(try store.container())
+            guard let shown = Self.shown(among: try context.fetch(Self.copies(of: session.id))) else { return }
+            guard shown.version <= HistoryStore.recordVersion else { throw RecordFromNewerVersion() }
+            // Never earlier than before: a copy from a device whose clock runs ahead must not overtake it.
+            try write(session, to: shown, modifiedAt: max(clock.now, shown.modifiedAt))
+            try context.save()
+        }
+    }
+
+    /// Writes `session` into `record`, stamped with this app's record version (ADR 0006).
+    private func write(_ session: PracticeSession, to record: SessionRecord, modifiedAt: Date) throws {
+        try record.update(from: session)
+        record.modifiedAt = modifiedAt
+        record.version = HistoryStore.recordVersion  // mutate:ignore - the default until a release raises it
+        // A record that wouldn't read back the same would hide the whole history, so refuse it:
+        // the session then waits in the outbox (ADR 0007), where this log line explains it.
+        // A record that can't be rebuilt at all is refused too, not treated as history failing.
+        guard (try? record.session()) == session else {
+            logger.error(  // mutate:ignore - a log line; no test reads logs
+                "Refused session \(session.id, privacy: .public): it wouldn't read back the same")
+            throw SessionRefused()
+        }
+    }
+
+    private static func copies(of id: UUID) -> FetchDescriptor<SessionRecord> {
+        FetchDescriptor(predicate: #Predicate { $0.id == id })
+    }
+
+    /// The copy of a session that shows: its latest change, or none if any copy was deleted (ADR 0006).
+    private static func shown(among copies: [SessionRecord]) -> SessionRecord? {
+        guard copies.allSatisfy({ $0.deletedAt == nil }) else { return nil }
+        return copies.max { $0.modifiedAt < $1.modifiedAt }  // mutate:ignore - only ties differ
     }
 }
 

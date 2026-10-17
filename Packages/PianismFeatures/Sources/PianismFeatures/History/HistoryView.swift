@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The History screen: finished sessions grouped by day, newest first, with each day's total (HIS-1).
 struct HistoryView: View {
-    let model: HistoryModel
+    @Bindable var model: HistoryModel
 
     var body: some View {
         NavigationStack {
@@ -11,6 +11,9 @@ struct HistoryView: View {
                 .navigationTitle(Text("History", bundle: .module))
         }
         .onAppear { model.refresh() }
+        .sheet(item: $model.editing, onDismiss: model.refresh) { edit in
+            SessionEditorView(editor: edit.editor, tags: edit.tags)
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -45,14 +48,25 @@ struct HistoryView: View {
                         ForEach(day.sessions) { session in
                             let times = (session.startedAt..<(session.endedAt ?? session.startedAt))
                                 .formatted(.interval.hour().minute())
-                            let title =
-                                model.waitingIDs.contains(session.id)
-                                ? Text("\(times), not saved yet", bundle: .module) : Text(times)
+                            let isWaiting = model.waitingIDs.contains(session.id)
+                            let title = isWaiting ? Text("\(times), not saved yet", bundle: .module) : Text(times)
                             // A finished session's practice time is fixed, so the date passed here is ignored.
-                            TimedRow(
+                            let row = TimedRow(
                                 title: title, detail: Text(tags: model.tagIndex.tags(for: session.tagIDs)),
-                                duration: session.elapsed(at: .distantPast)
-                            )
+                                duration: session.elapsed(at: .distantPast))
+                            // A session waiting to be saved can't be edited yet (ADR 0007).
+                            Group {
+                                if isWaiting {
+                                    row
+                                } else {
+                                    Button {
+                                        model.edit(session)
+                                    } label: {
+                                        row
+                                    }
+                                    .tint(.primary)
+                                }
+                            }
                             .accessibilityIdentifier(AccessibilityID.historySession)
                         }
                     } header: {
@@ -81,7 +95,7 @@ struct HistoryView: View {
 
 /// A title, and any detail under it, with a practice time after them, read by VoiceOver as one element:
 /// a day's header or a session.
-private struct TimedRow: View {
+struct TimedRow: View {
     let title: Text
     var detail: Text?
     let duration: TimeInterval

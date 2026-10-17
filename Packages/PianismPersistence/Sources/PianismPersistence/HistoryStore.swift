@@ -6,6 +6,9 @@ import Synchronization
 ///
 /// Sync through iCloud is off until SYN-1 (#15) deploys the schema.
 public final class HistoryStore: Sendable {
+    /// The record version this app writes; it changes only records up to it (ADR 0006).
+    static let recordVersion = 1
+
     private let url: URL
     /// The store once it has opened. Until then, each call tries to open it and throws why it
     /// couldn't, so a passing failure such as a full disk heals itself, and the app keeps running:
