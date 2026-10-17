@@ -69,7 +69,8 @@ dependency.
 
 - It mutates the sources of the packages that have their own tests, `PianismCore` and
   `PianismPersistence`. The app and features layers are covered by end-to-end tests, which are too
-  slow to run once per mutation.
+  slow to run once per mutation. (Amended 2026-10-16: the features layer's view models now have
+  Mac tests too, but the layer isn't mutated yet, since most of its code is views.)
 - Mutations: flip a comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`), swap `&&` and `||`, swap `+` and
   `-`, swap `true` and `false`, and delete a one-line statement.
 - Each mutation is built and tested on its own. A failing test means the mutation was caught, and

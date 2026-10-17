@@ -177,7 +177,7 @@ struct SessionRecorderTests {
         clock.advance(by: 60)
         let ended = try recorder.stop()
 
-        let archived = try recorder.archive(to: UnavailableHistory(), or: outbox)
+        let archived = try recorder.archive(to: FlakyHistory(), or: outbox)
 
         #expect(archived == ended)
         #expect(outbox.sessions() == [ended])
@@ -191,7 +191,7 @@ struct SessionRecorderTests {
         try recorder.start()
         clock.advance(by: 60)
         let first = try recorder.stop()
-        try recorder.archive(to: UnavailableHistory(), or: outbox)
+        try recorder.archive(to: FlakyHistory(), or: outbox)
         clock.advance(by: 60)
         try recorder.start()
         clock.advance(by: 60)
@@ -212,7 +212,7 @@ struct SessionRecorderTests {
             try recorder.start()
             clock.advance(by: 60)
             ended.append(try recorder.stop())
-            try recorder.archive(to: UnavailableHistory(), or: outbox)
+            try recorder.archive(to: FlakyHistory(), or: outbox)
         }
         // The outbox lists the refused session first, so it would block the other if it stopped the loop.
         let history = RefusingHistory(refusing: ended[0].id, asOutage: !refused)
@@ -230,7 +230,7 @@ struct SessionRecorderTests {
         let ended = try recorder.stop()
 
         #expect(throws: UnavailableOutbox.Failure.self) {
-            try recorder.archive(to: UnavailableHistory(), or: UnavailableOutbox())
+            try recorder.archive(to: FlakyHistory(), or: UnavailableOutbox())
         }
 
         #expect(store.current() == ended)
@@ -322,39 +322,9 @@ struct RefusingHistory: SessionHistory {
 
     func save(_ session: PracticeSession) throws {
         if session.id == refusing {
-            if asOutage { throw UnavailableHistory.Failure() } else { throw SessionRefused() }
+            if asOutage { throw FlakyHistory.Failure() } else { throw SessionRefused() }
         }
         saved.save(session)
-    }
-}
-
-/// An outbox that can't be written, as on a full disk.
-struct UnavailableOutbox: SessionOutbox {
-    struct Failure: Error {}
-
-    func sessions() throws -> [PracticeSession] {
-        throw Failure()
-    }
-
-    func add(_: PracticeSession) throws {
-        throw Failure()
-    }
-
-    func remove(id _: UUID) throws {
-        throw Failure()
-    }
-}
-
-/// A history that can't be reached, as when its store fails to open.
-struct UnavailableHistory: SessionHistory {
-    struct Failure: Error {}
-
-    func sessions() throws -> [PracticeSession] {
-        throw Failure()
-    }
-
-    func save(_: PracticeSession) throws {
-        throw Failure()
     }
 }
 

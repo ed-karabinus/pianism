@@ -42,8 +42,13 @@ Option 3.
 ## Platform baseline (updated 2026-10-13)
 
 Owner decisions after the plan review: **iOS 26 minimum**, **universal for iPhone and iPad**.
-`Config/Shared.xcconfig` sets the deployment target and device family. Both packages use
-`swift-tools-version: 6.2`, declare `.iOS(.v26)`, and set `.treatAllWarnings(as: .error)` on every
-target, so warnings are fatal wherever a package is built from. This replaced a command-line
+`Config/Shared.xcconfig` sets the deployment target and device family. Every package uses
+`swift-tools-version: 6.2`, declares `.iOS(.v26)` plus the macOS version its tests need on the Mac,
+and sets `.treatAllWarnings(as: .error)` on every target, so warnings are fatal wherever a package
+is built from. This replaced a command-line
 override that clashed with Xcode 26's `-suppress-warnings` for dependency packages. End-to-end
 tests run on both an iPhone and an iPad simulator.
+
+Amended 2026-10-16: `PianismFeatures` declares macOS 26 so its view models are tested on the Mac in
+seconds (`make test-features`). Its views must therefore compile for macOS too; an iOS-only API needs
+`#if os(iOS)`. The app still ships on iOS only.
