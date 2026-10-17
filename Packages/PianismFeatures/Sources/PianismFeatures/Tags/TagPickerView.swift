@@ -17,6 +17,8 @@ struct TagPickerView: View {
                 section(.skill, title: Text("Skills", bundle: .module))
             }
             .searchable(text: $model.query, prompt: Text("Find or add a piece or skill", bundle: .module))
+            // Searching is how tags are added, so Done stays in reach while typing.
+            .searchPresentationToolbarBehavior(.avoidHidingContent)
             .navigationTitle(Text("Tags", bundle: .module))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -67,8 +69,9 @@ struct TagPickerView: View {
             model.toggle(tag)
         } label: {
             HStack {
+                // `Color.primary`, since `.primary` inside a button is its tint.
                 Text(tag.name)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color.primary)
                 if tag.isArchived {
                     Text("Archived", bundle: .module)
                         .foregroundStyle(.secondary)
