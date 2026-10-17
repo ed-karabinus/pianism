@@ -70,6 +70,7 @@ extension SessionRecord {
         startedAt = session.startedAt
         endedAt = ended
         timeZoneID = session.timeZone?.identifier ?? ""
+        tagIDs = session.tagIDs
         let stored = session.pauses.map { StoredPauses.Pause(start: $0.start, end: $0.end ?? ended) }
         pauses = stored.isEmpty ? Data() : try JSONEncoder().encode(StoredPauses(pauses: stored))
     }
@@ -78,6 +79,7 @@ extension SessionRecord {
     /// rules as any other session.
     fileprivate func session() throws -> PracticeSession {
         var session = PracticeSession(id: id, startedAt: startedAt, timeZone: TimeZone(identifier: timeZoneID))
+        try session.setTags(tagIDs)
         if !pauses.isEmpty {
             for pause in try JSONDecoder().decode(StoredPauses.self, from: pauses).pauses {
                 try session.pause(at: pause.start)

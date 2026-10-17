@@ -3,7 +3,6 @@ import PianismCore
 import SwiftData
 
 /// The user's pieces and skills, kept in the ``HistoryStore`` beside finished sessions (TAG-1, ADR 0004).
-// periphery:ignore - the tag picker uses it (TAG-2, the next PR)
 public final class SwiftDataTagLibrary: TagLibrary {
     /// The record version this app writes; it changes only records up to it (ADR 0006).
     static let version = 1
@@ -20,10 +19,12 @@ public final class SwiftDataTagLibrary: TagLibrary {
     /// Each ID once, as its latest change, in case sync delivers a duplicate (ADR 0004).
     public func tags() throws -> [Tag] {
         let records = try ModelContext(store.container()).fetch(FetchDescriptor<TagRecord>())
-        return Dictionary(grouping: records, by: \.id).values.compactMap(Self.shown)
-            .map {
-                Tag(id: $0.id, kind: Tag.Kind(rawValue: $0.kind) ?? .piece, name: $0.name, isArchived: $0.isArchived)
-            }
+        return Dictionary(grouping: records, by: \.id).values.compactMap(Self.shown).map { record in
+            Tag(
+                id: record.id, kind: Tag.Kind(rawValue: record.kind) ?? .piece, name: record.name,
+                isArchived: record.isArchived, mergedInto: record.mergedInto.isEmpty ? nil : record.mergedInto,
+                createdAt: record.createdAt, isReadOnly: record.version > Self.version)
+        }
     }
 
     public func add(name: String, kind: Tag.Kind) throws -> Tag {
@@ -38,7 +39,7 @@ public final class SwiftDataTagLibrary: TagLibrary {
         record.version = Self.version  // mutate:ignore - equals the schema default until a release raises it
         context.insert(record)
         try context.save()
-        return Tag(id: record.id, kind: kind, name: name, isArchived: false)
+        return Tag(id: record.id, kind: kind, name: name, isArchived: false, createdAt: now)
     }
 
     public func rename(id: Tag.ID, to name: String) throws {

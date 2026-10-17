@@ -49,8 +49,11 @@ struct HistoryView: View {
                                 model.waitingIDs.contains(session.id)
                                 ? Text("\(times), not saved yet", bundle: .module) : Text(times)
                             // A finished session's practice time is fixed, so the date passed here is ignored.
-                            TimedRow(title: title, duration: session.elapsed(at: .distantPast))
-                                .accessibilityIdentifier(AccessibilityID.historySession)
+                            TimedRow(
+                                title: title, detail: Text(tags: model.tagIndex.tags(for: session.tagIDs)),
+                                duration: session.elapsed(at: .distantPast)
+                            )
+                            .accessibilityIdentifier(AccessibilityID.historySession)
                         }
                     } header: {
                         TimedRow(title: title(for: day), duration: day.total)
@@ -76,9 +79,11 @@ struct HistoryView: View {
     }
 }
 
-/// A title with a practice time after it, read by VoiceOver as one element: a day's header or a session.
+/// A title, and any detail under it, with a practice time after them, read by VoiceOver as one element:
+/// a day's header or a session.
 private struct TimedRow: View {
     let title: Text
+    var detail: Text?
     let duration: TimeInterval
 
     var body: some View {
@@ -86,9 +91,10 @@ private struct TimedRow: View {
             Text(ElapsedTime.display(duration)).monospacedDigit()
         } label: {
             title
+            detail
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(title)
+        .accessibilityLabel(detail.map { Text("\(title), \($0)", bundle: .module) } ?? title)
         .accessibilityValue(ElapsedTime.spoken(duration))
     }
 }

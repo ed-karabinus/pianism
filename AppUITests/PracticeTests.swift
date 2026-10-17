@@ -93,6 +93,44 @@ final class PracticeTests: XCTestCase {
         XCTAssertEqual(relaunched.value as? String, "25 minutes, 3 seconds")
     }
 
+    /// TAG-1, TAG-2: a running session is tagged from Practice with a new piece and a built-in skill,
+    /// and History shows them; a session left untagged shows "Untagged". The tags are stored, so
+    /// they're still there after the app is killed and relaunched.
+    @MainActor
+    func testTagARunningSession() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        XCTAssertEqual(element(app, "practice.tags").value as? String, "Untagged")
+        tap(app, "practice.tags")
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("Ballade No. 1")
+        tap(app, "tags.add-piece")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5), "Adding should put the keyboard away")
+        XCTAssertTrue(app.buttons["Ballade No. 1"].isSelected)
+        tap(app, "Scales")
+        XCTAssertTrue(app.buttons["Scales"].wait(for: \.isSelected, toEqual: true, timeout: 5))
+        attachScreenshot(of: app, named: "Tag picker")
+        tap(app, "tags.done")
+        XCTAssertEqual(element(app, "practice.tags").value as? String, "Ballade No. 1, Scales")
+        attachScreenshot(of: app, named: "Practicing, tagged")
+        app.terminate()
+
+        app = launch(at: start + 25 * 60)
+        XCTAssertEqual(element(app, "practice.tags").value as? String, "Ballade No. 1, Scales")
+        tap(app, "practice.stop")
+        tap(app, "practice.start")
+        tap(app, "practice.stop")
+        app.buttons["History"].firstMatch.tap()
+        XCTAssertTrue(element(app, "history.day").waitForExistence(timeout: 5))
+        let sessions = app.descendants(matching: .any).matching(identifier: "history.session")
+        XCTAssertEqual(sessions.count, 2)
+        XCTAssertEqual(sessions.matching(NSPredicate(format: "label ENDSWITH 'Ballade No. 1, Scales'")).count, 1)
+        XCTAssertEqual(sessions.matching(NSPredicate(format: "label ENDSWITH 'Untagged'")).count, 1)
+        attachScreenshot(of: app, named: "History, tagged and untagged")
+    }
+
     /// ADR 0007: when the history can't open, practice goes on. Each finished session waits in the
     /// outbox, Practice says how many are waiting, and History shows them marked "not saved yet" under
     /// a notice. Once the history opens, the waiting sessions move into it.
@@ -114,7 +152,7 @@ final class PracticeTests: XCTestCase {
         attachScreenshot(of: app, named: "Practice, sessions waiting")
         app.buttons["History"].firstMatch.tap()
         XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
-        let notSavedYet = NSPredicate(format: "label ENDSWITH 'not saved yet'")
+        let notSavedYet = NSPredicate(format: "label CONTAINS 'not saved yet'")
         let waiting = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertEqual(waiting.count, 2)
         XCTAssertEqual(waiting.matching(notSavedYet).count, 2)

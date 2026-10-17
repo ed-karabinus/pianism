@@ -5,7 +5,6 @@ public struct RecordFromNewerVersion: Error {
 }
 
 /// The user's own pieces and skills (TAG-1, ADR 0004). Built-in skills aren't stored.
-// periphery:ignore - the tag picker uses it (TAG-2, the next PR)
 public protocol TagLibrary: Sendable {
     /// Every tag the user added, archived ones included, each ID once.
     func tags() throws -> [Tag]

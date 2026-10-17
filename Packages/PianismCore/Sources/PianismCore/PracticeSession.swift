@@ -26,6 +26,12 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
     public let timeZone: TimeZone?
     public private(set) var pauses: [Pause] = []
     public private(set) var endedAt: Date?
+    /// The pieces and skills practiced, in the order they were added (TAG-2). A session with none is
+    /// valid, and shows as "Untagged".
+    public var tagIDs: [Tag.ID] { tags ?? [] }
+    /// Optional, so sessions written before tags existed still decode (ADR 0003), and `nil` rather than
+    /// empty, so an untagged session equals itself after a round trip through history.
+    private var tags: [Tag.ID]?
 
     /// Starts a new, running session (SES-1).
     public init(id: UUID = UUID(), startedAt: Date, timeZone: TimeZone? = nil) {
@@ -73,6 +79,12 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
             pauses[pauses.count - 1].end = date
         }
         endedAt = date
+    }
+
+    /// Replaces the session's tags (TAG-2). A finished session's tags change through editing (SES-5).
+    public mutating func setTags(_ ids: [Tag.ID]) throws(SessionError) {
+        guard state != .ended else { throw .alreadyEnded }
+        tags = ids.isEmpty ? nil : ids
     }
 
     /// The most recent moment anything happened to this session.

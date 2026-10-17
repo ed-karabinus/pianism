@@ -55,6 +55,18 @@ struct SessionRecorderTests {
         #expect(stopped.elapsed(at: clock.now) == 420)
     }
 
+    @Test("TAG-2: tags set on the running session are stored, and stay through pause and stop")
+    func tagsAreStored() throws {
+        try recorder.start()
+
+        let tagged = try recorder.setTags(["skill.scales", "a"])
+        #expect(store.current() == tagged)
+
+        try recorder.pause()
+        let stopped = try recorder.stop()
+        #expect(stopped.tagIDs == ["skill.scales", "a"])
+    }
+
     // MARK: Rejected commands leave the stored session untouched
 
     @Test("SES-1: starting never overwrites a session that is running or paused", arguments: [false, true])
@@ -78,7 +90,7 @@ struct SessionRecorderTests {
         #expect(store.current() == ended)
     }
 
-    @Test("Pause, resume and stop need a session", arguments: Command.changes)
+    @Test("Pause, resume, stop and tagging need a session", arguments: Command.changes)
     func changesNeedSession(command: Command) {
         #expect(throws: RecorderError.noSession) { try command.run(on: recorder) }
         #expect(store.current() == nil)
@@ -294,9 +306,9 @@ struct SessionRecorderTests {
 
 /// A recorder command that changes an existing session.
 enum Command: CustomTestStringConvertible, Sendable {
-    case pause, resume, stop
+    case pause, resume, stop, tag
 
-    static let changes: [Command] = [.pause, .resume, .stop]
+    static let changes: [Command] = [.pause, .resume, .stop, .tag]
 
     var testDescription: String { "\(self)" }
 
@@ -305,6 +317,7 @@ enum Command: CustomTestStringConvertible, Sendable {
         case .pause: try recorder.pause()
         case .resume: try recorder.resume()
         case .stop: try recorder.stop()
+        case .tag: try recorder.setTags(["skill.scales"])
         }
     }
 }
