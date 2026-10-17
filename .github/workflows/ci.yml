@@ -69,19 +69,22 @@ jobs:
       - name: Release build
         run: make build QUIET=
 
-  # One job per device, in parallel (`make test-app` builds, boots the simulator, then tests). Booting
-  # in the background during the build didn't help: on these 3-core runners it slowed the build as
-  # much as it saved. This repository is public, so the runners cost nothing; GitHub Free runs at
-  # most 5 macOS jobs at once, and a CI run uses 4.
+  # One job per device and iOS version, in parallel (`make test-app` builds, boots the simulator, then
+  # tests). iOS 26 is the oldest the app supports. Only GitHub's `xcode-27` image, a preview, has
+  # iOS 27, and the versions differ: an iOS 26 iPad hid a search field that iOS 27 shows. Booting in
+  # the background during the build didn't help: on these 3-core runners it slowed the build as much
+  # as it saved. This repository is public, so the runners cost nothing; GitHub Free runs at most 5
+  # macOS jobs at once, so of a CI run's 6, one waits a minute or two for a short one to finish.
   e2e:
-    name: End-to-end tests (${{ matrix.device }})
+    name: End-to-end tests (${{ matrix.device }}, iOS ${{ matrix.ios }})
     needs: [core, lint]
-    runs-on: macos-26
+    runs-on: ${{ matrix.ios == 26 && 'macos-26' || 'xcode-27' }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         device: [iPhone, iPad]
+        ios: [26, 27]
     steps:
       - uses: actions/checkout@v5
       - name: Select the newest stable Xcode
@@ -95,14 +98,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: screenshots-${{ matrix.device }}
+          name: screenshots-${{ matrix.device }}-iOS${{ matrix.ios }}
           path: build/evidence
           retention-days: 14
       - name: Upload test results
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: app-xcresult-${{ matrix.device }}
+          name: app-xcresult-${{ matrix.device }}-iOS${{ matrix.ios }}
           path: build/results/*.xcresult
           retention-days: 7
 
@@ -114,5 +117,5 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Both devices passed
+      - name: Every device and iOS version passed
         run: test "${{ needs.e2e.result }}" = success
