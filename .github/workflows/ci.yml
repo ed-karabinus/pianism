@@ -73,8 +73,11 @@ jobs:
   # tests). iOS 26 is the oldest the app supports. Only GitHub's `xcode-27` image, a preview, has
   # iOS 27, and the versions differ: an iOS 26 iPad hid a search field that iOS 27 shows. Booting in
   # the background during the build didn't help: on these 3-core runners it slowed the build as much
-  # as it saved. This repository is public, so the runners cost nothing; GitHub Free runs at most 5
-  # macOS jobs at once, so of a CI run's 6, one waits a minute or two for a short one to finish.
+  # as it saved. The scheme has XCTest capture screenshots, not video: these runners have no hardware
+  # video encoder, and while recording an iPad's screen the simulator's renderer grew to 3.7 GB of
+  # their 7 GB and XCTest lost track of the app. This repository is public, so the runners cost
+  # nothing; GitHub Free runs at most 5 macOS jobs at once, so of a CI run's 6, one waits a minute or
+  # two for a short one to finish.
   e2e:
     name: End-to-end tests (${{ matrix.device }}, iOS ${{ matrix.ios }})
     needs: [core, lint]
