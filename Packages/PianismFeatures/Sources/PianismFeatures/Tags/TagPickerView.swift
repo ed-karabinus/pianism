@@ -18,7 +18,7 @@ struct TagPickerView: View {
                 section(.skill, title: Text("Skills", bundle: .module))
             }
             .searchable(
-                text: $model.query, isPresented: $isSearching,
+                text: $model.query, isPresented: $isSearching, placement: .tagSearch,
                 prompt: Text("Find or add a piece or skill", bundle: .module)
             )
             // Searching is how tags are added, so Done stays in reach while typing.
@@ -107,6 +107,18 @@ struct TagPickerView: View {
                 .tint(.indigo)
             }
         }
+    }
+}
+
+extension SearchFieldPlacement {
+    /// Under the title, always shown. Searching is how tags are added, and on an iOS 26 iPad the
+    /// default placement hides the field until the list is pulled down.
+    fileprivate static var tagSearch: SearchFieldPlacement {
+        #if os(iOS)
+            .navigationBarDrawer(displayMode: .always)
+        #else
+            .automatic
+        #endif
     }
 }
 
