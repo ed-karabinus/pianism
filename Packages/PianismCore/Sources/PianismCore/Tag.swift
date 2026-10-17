@@ -15,7 +15,7 @@ public struct Tag: Sendable, Hashable, Identifiable {
     // periphery:ignore - the tag picker hides archived tags (TAG-2, the next PR)
     public let isArchived: Bool
 
-    public init(id: String, kind: Kind, name: String, isArchived: Bool = false) {
+    public init(id: String, kind: Kind, name: String, isArchived: Bool) {
         self.id = id
         self.kind = kind
         self.name = name

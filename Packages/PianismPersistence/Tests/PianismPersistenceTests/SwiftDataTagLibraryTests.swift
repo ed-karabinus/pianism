@@ -32,7 +32,7 @@ final class SwiftDataTagLibraryTests {
 
         #expect(
             Set(try reopened.tags()) == [
-                Tag(id: ballade.id, kind: .piece, name: "Ballade No. 1 in G minor"),
+                Tag(id: ballade.id, kind: .piece, name: "Ballade No. 1 in G minor", isArchived: false),
                 Tag(id: pedalling.id, kind: .skill, name: "Pedalling", isArchived: true),
             ])
         #expect(UUID(uuidString: ballade.id) != nil && ballade.id == ballade.id.lowercased())
@@ -55,11 +55,11 @@ final class SwiftDataTagLibraryTests {
         try insertRecord(id: "a", name: "Old", modifiedAfter: 1, isArchived: true)
         try insertRecord(id: "a", name: "New", modifiedAfter: 2)
 
-        #expect(try library.tags() == [Tag(id: "a", kind: .piece, name: "New")])
+        #expect(try library.tags() == [Tag(id: "a", kind: .piece, name: "New", isArchived: false)])
 
         try library.rename(id: "a", to: "Renamed")
 
-        #expect(try library.tags() == [Tag(id: "a", kind: .piece, name: "Renamed")])
+        #expect(try library.tags() == [Tag(id: "a", kind: .piece, name: "Renamed", isArchived: false)])
     }
 
     @Test("ADR 0006: a tag a newer version wrote can't be renamed or archived, so this version can't damage it")
@@ -68,7 +68,7 @@ final class SwiftDataTagLibraryTests {
 
         #expect(throws: RecordFromNewerVersion.self) { try self.library.rename(id: "a", to: "Etude") }
         #expect(throws: RecordFromNewerVersion.self) { try self.library.setArchived(true, id: "a") }
-        #expect(try library.tags() == [Tag(id: "a", kind: .piece, name: "Étude")])
+        #expect(try library.tags() == [Tag(id: "a", kind: .piece, name: "Étude", isArchived: false)])
     }
 
     @Test("ADR 0006: a kind this version doesn't know reads as the default, a piece")

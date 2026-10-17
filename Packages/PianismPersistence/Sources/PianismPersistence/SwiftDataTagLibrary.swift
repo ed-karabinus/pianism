@@ -38,7 +38,7 @@ public final class SwiftDataTagLibrary: TagLibrary {
         record.version = Self.version  // mutate:ignore - equals the schema default until a release raises it
         context.insert(record)
         try context.save()
-        return Tag(id: record.id, kind: kind, name: name)
+        return Tag(id: record.id, kind: kind, name: name, isArchived: false)
     }
 
     public func rename(id: Tag.ID, to name: String) throws {

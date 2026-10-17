@@ -4,7 +4,7 @@ import Testing
 struct TagTests {
     let tags = [
         Tag(id: "1", kind: .piece, name: "Für Elise", isArchived: true),
-        Tag(id: "2", kind: .skill, name: "Pedalling"),
+        Tag(id: "2", kind: .skill, name: "Pedalling", isArchived: false),
     ]
 
     @Test(
