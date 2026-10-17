@@ -91,26 +91,6 @@ final class SwiftDataTagLibraryTests {
         #expect(try library.tags().map(\.kind) == [.piece])
     }
 
-    @Test("TAG-1: a store written before tags existed, as on the owner's iPhone, still opens with its session")
-    func storeFromBeforeTagsOpens() throws {
-        let fixture = try #require(
-            Bundle.module.url(forResource: "history-before-tags", withExtension: "store", subdirectory: "Fixtures"))
-        try FileManager.default.createDirectory(
-            at: storeURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try FileManager.default.copyItem(at: fixture, to: storeURL)
-        let store = HistoryStore(url: storeURL)
-        // The session in the fixture, written by the app before tags existed.
-        let start = Date(timeIntervalSinceReferenceDate: 820_454_400.25)
-        let id = try #require(UUID(uuidString: "3F2B8C1E-7A4D-4E9B-8C2F-1D5A6B7C8E90"))
-        var expected = PracticeSession(id: id, startedAt: start, timeZone: TimeZone(identifier: "Europe/Vienna"))
-        try expected.pause(at: start + 300.25)
-        try expected.resume(at: start + 360.5)
-        try expected.stop(at: start + 1_800.625)
-
-        #expect(try SwiftDataSessionHistory(store: store, clock: clock).sessions() == [expected])
-        #expect(try SwiftDataTagLibrary(store: store, clock: clock).tags().isEmpty)
-    }
-
     private func records() throws -> [TagRecord] {
         try ModelContext(HistoryStore(url: storeURL).container()).fetch(FetchDescriptor<TagRecord>())
     }

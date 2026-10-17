@@ -51,8 +51,9 @@ Run `make lint unused build test` before every push. CI runs the same commands.
   `SessionFileFormatTests` (ADR 0003). The synced schema follows ADR 0006.
 - Every user-facing string goes through the String Catalog; every control gets a VoiceOver label.
 - New views get `#Preview`s in light, dark and AX5 text size.
-- Tests use Swift Testing (`import Testing`) except UI tests, which use XCTest. Name each test after
-  the behaviour it proves and tag it with its requirement ID.
+- Tests use Swift Testing (`import Testing`) except UI tests, which use XCTest and subclass
+  `UITestCase`, so a failure keeps its screen and UI tree. Name each test after the behaviour it
+  proves and tag it with its requirement ID.
 
 ## Keeping the code small
 
