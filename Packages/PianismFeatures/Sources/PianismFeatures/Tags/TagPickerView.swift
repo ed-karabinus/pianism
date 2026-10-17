@@ -9,6 +9,7 @@ struct TagPickerView: View {
     @State private var renaming: Tag?
     @State private var isRenaming = false
     @State private var newName = ""
+    @State private var isSearching = false
 
     var body: some View {
         NavigationStack {
@@ -16,7 +17,10 @@ struct TagPickerView: View {
                 section(.piece, title: Text("Pieces", bundle: .module))
                 section(.skill, title: Text("Skills", bundle: .module))
             }
-            .searchable(text: $model.query, prompt: Text("Find or add a piece or skill", bundle: .module))
+            .searchable(
+                text: $model.query, isPresented: $isSearching,
+                prompt: Text("Find or add a piece or skill", bundle: .module)
+            )
             // Searching is how tags are added, so Done stays in reach while typing.
             .searchPresentationToolbarBehavior(.avoidHidingContent)
             .navigationTitle(Text("Tags", bundle: .module))
@@ -52,7 +56,12 @@ struct TagPickerView: View {
                         ? LocalizedStringResource("Add piece “\(name)”", bundle: .module)
                         : LocalizedStringResource("Add skill “\(name)”", bundle: .module),
                     systemImage: "plus"
-                ) { model.add(kind) }
+                ) {
+                    model.add(kind)
+                    // Ends the search, so every tag is in reach to add next. Only putting the keyboard away
+                    // leaves the search active, and on iPad the next tap on a tag then just ends it.
+                    isSearching = false
+                }
                 .accessibilityIdentifier(kind == .piece ? AccessibilityID.tagsAddPiece : AccessibilityID.tagsAddSkill)
             }
             ForEach(model.shown(kind)) { tag in
