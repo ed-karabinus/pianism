@@ -46,8 +46,15 @@ final class SessionEditorModel: TagTarget {
 
 /// A finished session being edited, with the picker for its tags.
 struct SessionEdit: Identifiable {
-    /// The session's ID.
     let id: UUID
     let editor: SessionEditorModel
     let tags: TagPickerModel
+
+    /// Edits `session`, saved in `history`, with tags from `library`.
+    @MainActor
+    init(session: PracticeSession, history: any SessionHistory, library: any TagLibrary) {
+        id = session.id
+        editor = SessionEditorModel(session: session, history: history)
+        tags = TagPickerModel(target: editor, library: library)
+    }
 }

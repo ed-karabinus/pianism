@@ -87,10 +87,7 @@ extension SessionEdit {
         try? session.editTags(["ballade", BuiltInSkill.scales.rawValue])
         let history = InMemorySessionHistory(readOnlyIDs: readOnly ? [session.id] : [])
         history.save(session)
-        let editor = SessionEditorModel(session: session, history: history)
-        return SessionEdit(
-            id: session.id, editor: editor,
-            tags: TagPickerModel(target: editor, library: InMemoryTagLibrary(previewTags)))
+        return SessionEdit(session: session, history: history, library: InMemoryTagLibrary(previewTags))
     }
 }
 

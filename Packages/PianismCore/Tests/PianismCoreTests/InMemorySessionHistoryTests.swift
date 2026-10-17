@@ -32,7 +32,7 @@ struct InMemorySessionHistoryTests {
         let history = InMemorySessionHistory(readOnlyIDs: [newer.id])
         history.save(mine)
         history.save(newer)
-        #expect(history.canEdit(id: mine.id) && !history.canEdit(id: newer.id))
+        #expect(history.canEdit(id: mine.id) && !history.canEdit(id: newer.id) && !history.canEdit(id: UUID()))
 
         var edited = mine
         try edited.editTags(["skill.scales"])

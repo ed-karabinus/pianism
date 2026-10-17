@@ -33,6 +33,8 @@ struct SessionEditorModelTests {
         let newer = try endedSession()
         let mine = try endedSession()
         let history = InMemorySessionHistory(readOnlyIDs: [newer.id])
+        history.save(newer)
+        history.save(mine)
 
         #expect(SessionEditorModel(session: newer, history: history).isReadOnly)
         #expect(!SessionEditorModel(session: mine, history: history).isReadOnly)

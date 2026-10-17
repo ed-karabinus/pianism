@@ -221,6 +221,25 @@ final class SwiftDataSessionHistoryTests {
         #expect(records.map(\.modifiedAt) == [clock.now])
     }
 
+    @Test("ADR 0006: an edit keeps what this version doesn't show: the note, the source and an unknown time zone")
+    func editKeepsWhatItDoesntShow() throws {
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
+        try insertRecord(in: history, id: UUID(), endingAfter: 600, modifiedAfter: 0)
+        let context = ModelContext(try history.store.container())
+        let record = try #require(try context.fetch(FetchDescriptor<SessionRecord>()).first)
+        (record.note, record.source, record.timeZoneID) = ("Left hand alone", "midi", "Mars/Olympus_Mons")
+        try context.save()
+        var edited = try #require(try history.sessions().first)
+        try edited.editTags(["skill.scales"])
+
+        try history.edit(edited)
+
+        let stored = try #require(
+            try ModelContext(history.store.container()).fetch(FetchDescriptor<SessionRecord>()).first)
+        #expect([stored.note, stored.source, stored.timeZoneID] == ["Left hand alone", "midi", "Mars/Olympus_Mons"])
+        #expect(stored.tagIDs == ["skill.scales"])
+    }
+
     @Test("ADR 0006: an edit changes the copy that shows and keeps it the latest, even with this clock behind")
     func editKeepsShownCopyLatest() throws {
         let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)

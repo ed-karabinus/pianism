@@ -153,7 +153,9 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "Edit session")
         tap(app, "editor.save")
         XCTAssertTrue(app.buttons["editor.save"].waitForNonExistence(timeout: 5))
-        XCTAssertTrue(element(app, "history.session").label.hasSuffix("Scales"))
+        let tagged = app.descendants(matching: .any).matching(identifier: "history.session")
+            .matching(NSPredicate(format: "label ENDSWITH 'Scales'"))
+        XCTAssertTrue(tagged.firstMatch.waitForExistence(timeout: 5), session.label)
         attachScreenshot(of: app, named: "History, edited")
         app.terminate()
 

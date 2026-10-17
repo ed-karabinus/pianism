@@ -61,7 +61,6 @@ public final class HistoryModel {
     /// Starts editing `session`, unless it's still waiting to be saved (ADR 0007).
     func edit(_ session: PracticeSession) {
         guard !waitingIDs.contains(session.id) else { return }
-        let editor = SessionEditorModel(session: session, history: history)
-        editing = SessionEdit(id: session.id, editor: editor, tags: TagPickerModel(target: editor, library: tags))
+        editing = SessionEdit(session: session, history: history, library: tags)
     }
 }

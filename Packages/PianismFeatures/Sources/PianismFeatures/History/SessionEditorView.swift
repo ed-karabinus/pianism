@@ -56,7 +56,7 @@ struct SessionEditorView: View {
                 TagPickerView(model: tags)
             }
         }
-        .storageAlert(Text("Couldn't save your changes", bundle: .module), isPresented: $editor.isShowingError)
+        .storageAlert(Text("Couldn't save that change", bundle: .module), isPresented: $editor.isShowingError)
     }
 }
 

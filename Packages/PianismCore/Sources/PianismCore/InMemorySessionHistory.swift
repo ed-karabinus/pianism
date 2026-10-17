@@ -24,11 +24,11 @@ public final class InMemorySessionHistory: SessionHistory {
     }
 
     public func canEdit(id: UUID) -> Bool {
-        !readOnlyIDs.contains(id)
+        !readOnlyIDs.contains(id) && saved.withLock { $0.contains { $0.id == id } }
     }
 
     public func edit(_ session: PracticeSession) throws {
-        guard canEdit(id: session.id) else { throw RecordFromNewerVersion() }
+        guard !readOnlyIDs.contains(session.id) else { throw RecordFromNewerVersion() }
         saved.withLock { sessions in
             if let index = sessions.firstIndex(where: { $0.id == session.id }) {
                 sessions[index] = session

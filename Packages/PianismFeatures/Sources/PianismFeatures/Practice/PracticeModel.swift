@@ -56,7 +56,6 @@ public final class PracticeModel: TagTarget {
         perform { try recorder.stop() }
     }
 
-    /// The running session's tags.
     var tagIDs: [Tag.ID] { session?.tagIDs ?? [] }
 
     /// Replaces the running session's tags (TAG-2).
