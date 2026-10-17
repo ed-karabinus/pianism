@@ -74,7 +74,9 @@ public struct TagIndex: Sendable {
             var current = tag
             while let next = current.mergedInto.flatMap({ byID[$0] }) {
                 if let loop = chain.firstIndex(where: { $0.id == next.id }) {
-                    return chain[loop...].reduce(next) { ($1.createdAt, $1.id) < ($0.createdAt, $0.id) ? $1 : $0 }
+                    return chain[loop...].reduce(next) {
+                        ($1.createdAt, $1.id) < ($0.createdAt, $0.id) ? $1 : $0  // mutate:ignore - IDs never tie
+                    }
                 }
                 chain.append(next)
                 current = next
