@@ -3,6 +3,7 @@
 PROJECT     := Pianism.xcodeproj
 SCHEME      := Pianism
 CORE        := Packages/PianismCore
+FEATURES    := Packages/PianismFeatures
 ADAPTERS    := Packages/PianismPersistence
 SWIFT_DIRS  := App AppUITests Packages scripts
 RESULTS     := build/results
@@ -15,15 +16,18 @@ XCODE_FLAGS := SWIFT_SUPPRESS_WARNINGS=NO $(QUIET)
 NO_WARNINGS := scripts/fail-on-warnings.sh
 DEVICES     ?= iPhone iPad
 
-.PHONY: help test test-core test-adapters test-app build evidence lint unused mutate format clean
+.PHONY: help test test-core test-features test-adapters test-app build evidence lint unused mutate format clean
 
 help: ## List the available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
 
-test: test-core test-adapters test-app ## Run every automated test
+test: test-core test-features test-adapters test-app ## Run every automated test
 
 test-core: ## Unit-test the platform-independent core (fast, no simulator)
 	$(NO_WARNINGS) swift test --package-path $(CORE)
+
+test-features: ## Unit-test the screens' view models on the Mac (seconds, no simulator)
+	$(NO_WARNINGS) swift test --package-path $(FEATURES)
 
 test-adapters: ## Integration-test the adapter packages, which need Apple-only APIs (macOS, no simulator)
 	@for package in $(ADAPTERS); do $(NO_WARNINGS) swift test --package-path $$package || exit 1; done

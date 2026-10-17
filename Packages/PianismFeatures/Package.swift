@@ -12,7 +12,10 @@ let package = Package(
     name: "PianismFeatures",
     defaultLocalization: "en",
     platforms: [
-        .iOS(.v26)
+        .iOS(.v26),
+        // The app ships on iOS only. The Mac is here so `make test-features` can test the view models in
+        // seconds, without a simulator; views must therefore also compile for macOS.
+        .macOS(.v26),
     ],
     products: [
         .library(name: "PianismFeatures", targets: ["PianismFeatures"])
@@ -28,6 +31,14 @@ let package = Package(
             ],
             resources: [.process("Resources")],
             swiftSettings: strict
-        )
+        ),
+        .testTarget(
+            name: "PianismFeaturesTests",
+            dependencies: [
+                "PianismFeatures",
+                .product(name: "PianismCoreTestSupport", package: "PianismCore"),
+            ],
+            swiftSettings: strict
+        ),
     ]
 )
