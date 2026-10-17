@@ -56,6 +56,11 @@ public final class PracticeModel {
         perform { try recorder.stop() }
     }
 
+    /// Replaces the running session's tags (TAG-2).
+    func setTags(_ ids: [Tag.ID]) {
+        perform { try recorder.setTags(ids) }
+    }
+
     /// Shows the stored session, after moving an ended one into history, or into the outbox if
     /// history can't save it (ADR 0007).
     ///

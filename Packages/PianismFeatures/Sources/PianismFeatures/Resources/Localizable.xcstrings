@@ -1,6 +1,30 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@, %@" : {
+
+    },
+    "Add piece “%@”" : {
+
+    },
+    "Add skill “%@”" : {
+
+    },
+    "Add tags" : {
+
+    },
+    "Archive" : {
+
+    },
+    "Archived" : {
+
+    },
+    "Arpeggios" : {
+      "comment" : "A built-in skill"
+    },
+    "Couldn't change your tags" : {
+
+    },
     "Couldn't load your earlier history. Sessions waiting to be saved are shown." : {
 
     },
@@ -10,16 +34,22 @@
     "Couldn't save that change" : {
 
     },
+    "Find or add a piece or skill" : {
+
+    },
     "History" : {
 
+    },
+    "Improvisation" : {
+      "comment" : "A built-in skill"
     },
     "Last session: %@" : {
 
     },
-    "No practice yet" : {
+    "Name" : {
 
     },
-    "OK" : {
+    "No practice yet" : {
 
     },
     "%@, not saved yet" : {
@@ -34,6 +64,9 @@
     "Pianism couldn't reach its storage. Try again in a moment." : {
 
     },
+    "Pieces" : {
+
+    },
     "Practice" : {
 
     },
@@ -46,13 +79,31 @@
     "Ready to practice" : {
 
     },
+    "Rename" : {
+
+    },
+    "Repertoire" : {
+      "comment" : "A built-in skill"
+    },
     "Restart Pianism to try again." : {
 
     },
     "Resume" : {
 
     },
+    "Save" : {
+
+    },
+    "Scales" : {
+      "comment" : "A built-in skill"
+    },
     "Sessions you finish appear here." : {
+
+    },
+    "Sight-reading" : {
+      "comment" : "A built-in skill"
+    },
+    "Skills" : {
 
     },
     "Start" : {
@@ -61,7 +112,16 @@
     "Stop" : {
 
     },
+    "Tags" : {
+
+    },
+    "Technique" : {
+      "comment" : "A built-in skill"
+    },
     "Today" : {
+
+    },
+    "Untagged" : {
 
     },
     "Yesterday" : {

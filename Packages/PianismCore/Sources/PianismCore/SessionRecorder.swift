@@ -63,6 +63,12 @@ public struct SessionRecorder: Sendable {
         try change { session, now in try session.stop(at: now) }
     }
 
+    /// Replaces the running or paused session's tags (TAG-2).
+    @discardableResult
+    public func setTags(_ ids: [Tag.ID]) throws -> PracticeSession {
+        try change { session, _ in try session.setTags(ids) }
+    }
+
     /// Moves an ended session out of the store, so a new one can start: into `history`, or into
     /// `outbox` if history can't save it (ADR 0007). Then moves any waiting sessions into history.
     /// Returns the ended session, or `nil` if none had ended.

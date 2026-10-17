@@ -17,10 +17,11 @@ final class SwiftDataSessionHistoryTests {
         try? FileManager.default.removeItem(at: directory)
     }
 
-    @Test("HIS-1: saved sessions are still there when the store is opened again, as after a relaunch")
+    @Test("HIS-1, TAG-2: saved sessions and their tags are still there when the store is opened again")
     func sessionsSurviveReopening() throws {
         let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
         var paused = PracticeSession(startedAt: clock.now, timeZone: tokyo)
+        try paused.setTags(["skill.scales", "3f2b8c1e-7a4d-4e9b-8c2f-1d5a6b7c8e90"])
         try paused.pause(at: clock.now + 300.25)
         try paused.resume(at: clock.now + 360.5)
         try paused.stop(at: clock.now + 1_500.75)
