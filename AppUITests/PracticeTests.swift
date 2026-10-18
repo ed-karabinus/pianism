@@ -255,6 +255,8 @@ final class PracticeTests: UITestCase {
         // It now ends where the session added above starts, so ending at :45 shares 15 minutes with it.
         XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
         setEndMinute(app, to: "45", title: "Add Session")
+        let practiceTime = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Practice time'"))
+        XCTAssertEqual(practiceTime.firstMatch.value as? String, "45 minutes")
         XCTAssertFalse(element(app, "editor.overlap").exists)
     }
 

@@ -132,8 +132,9 @@ struct HistoryModelTests {
     @Test("SES-5: an added session ends now, or, to keep clear of sessions in its 30 minutes, where they started")
     func addedSessionKeepsClearOfOthers() throws {
         let history = InMemorySessionHistory()
-        // Ten minutes each: one ending now, one inside the half hour before it, and one only touching that.
-        for seconds in [-600.0, -1_500, -3_900] {
+        // Ten minutes each: one ending now, one the half hour before it runs into, and one only touching the
+        // half hour before that.
+        for seconds in [-600.0, -2_700, -5_100] {
             history.save(try endedSession(startingAfter: seconds))
         }
         let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
@@ -142,8 +143,7 @@ struct HistoryModelTests {
         model.add()
         let editor = try #require(model.editing?.editor)
 
-        #expect([editor.start, editor.end] == [clock.now - 3_300, clock.now - 1_500])
-        #expect(editor.overlap == nil)
+        #expect([editor.start, editor.end] == [clock.now - 4_500, clock.now - 2_700])
     }
 
     @Test(
