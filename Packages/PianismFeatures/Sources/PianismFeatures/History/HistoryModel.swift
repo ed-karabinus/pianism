@@ -96,7 +96,8 @@ public final class HistoryModel {
                 // History too, in case it saved a waiting session since.
                 try history.delete(id: id)
             } catch  where waitingIDs.contains(id) {
-                // History being down is why it was waiting; out of the outbox, it's gone.
+                // History being down is why it was waiting; out of the outbox, it's gone. If history had saved
+                // it and only a copy lingered, it shows again once history opens (Ed's call: stay quiet).
                 logger.error("Couldn't delete a waiting session from history: \(error, privacy: .public)")
             }
         } catch {

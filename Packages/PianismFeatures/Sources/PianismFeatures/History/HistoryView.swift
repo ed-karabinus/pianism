@@ -6,6 +6,8 @@ struct HistoryView: View {
     @Bindable var model: HistoryModel
     /// The session a swipe asked to delete, until the deletion is confirmed or cancelled (SES-5).
     @State private var confirmingDeletion: PracticeSession?
+    /// Moves VoiceOver to Undo when it appears, since it lasts only 5 seconds.
+    @AccessibilityFocusState private var isUndoFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -39,9 +41,12 @@ struct HistoryView: View {
             }
             .accessibilityIdentifier(AccessibilityID.deleteConfirm)
         }
-        // Undo lasts 5 seconds. A new deletion or Undo cancels the wait, and neither needs a commit here.
+        // Undo lasts 5 seconds. A new deletion or Undo cancels the wait, but only at the next update, so
+        // the ID is checked again: a late wait mustn't commit the next deletion.
         .task(id: model.pendingDeletion?.id) {
-            guard model.pendingDeletion != nil, (try? await Task.sleep(for: .seconds(5))) != nil else { return }
+            guard let id = model.pendingDeletion?.id, (try? await Task.sleep(for: .seconds(5))) != nil,
+                model.pendingDeletion?.id == id
+            else { return }
             model.commitDelete()
         }
         .storageAlert(Text("Couldn't delete that session", bundle: .module), isPresented: $model.isShowingDeleteError)
@@ -54,11 +59,13 @@ struct HistoryView: View {
             Spacer()
             Button(LocalizedStringResource("Undo", bundle: .module)) { model.undoDelete() }
                 .bold()
+                .accessibilityFocused($isUndoFocused)
                 .accessibilityIdentifier(AccessibilityID.historyUndo)
         }
         .padding()
         .background(.regularMaterial, in: .capsule)
         .padding()
+        .onAppear { isUndoFocused = true }
     }
 
     @ViewBuilder private var content: some View {
@@ -175,6 +182,16 @@ struct TimedRow: View {
 
 #Preview("Some practice, dark, AX5") {
     HistoryView(model: .preview())
+        .preferredColorScheme(.dark)
+        .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("Undo after deleting") {
+    HistoryView(model: .preview(deleting: true))
+}
+
+#Preview("Undo after deleting, dark, AX5") {
+    HistoryView(model: .preview(deleting: true))
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }

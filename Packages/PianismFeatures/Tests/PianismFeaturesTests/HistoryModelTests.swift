@@ -318,6 +318,26 @@ struct HistoryModelTests {
         #expect(!model.isShowingDeleteError)
     }
 
+    @Test(
+        "SES-5: deleting a saved session's leftover outbox copy while history is down shows no error, and the session shows again once history opens"
+    )
+    func leftoverCopyComesBackAfterOutage() throws {
+        let session = try endedSession(startingAfter: 0)
+        let history = FlakyHistory()
+        history.saved.save(session)
+        outbox.add(session)
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        model.refresh()
+
+        model.delete(session)
+        model.commitDelete()
+        #expect(!model.isShowingDeleteError)
+        history.heal()
+        model.refresh()
+
+        #expect(model.days.flatMap(\.sessions) == [session])
+    }
+
     @Test("SES-5: if the outbox can't let a session go, nothing is deleted, and it shows again with an error")
     func outboxFailureKeepsSession() throws {
         let history = InMemorySessionHistory()

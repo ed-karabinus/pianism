@@ -271,6 +271,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         app.buttons["History"].firstMatch.tap()
         deleteBySwipe(app)
+        XCTAssertTrue(app.staticTexts["Session deleted"].exists)
         attachScreenshot(of: app, named: "Undo")
         tap(app, "history.undo")
         let session = element(app, "history.session")
@@ -278,6 +279,7 @@ final class PracticeTests: UITestCase {
 
         session.tap()
         tap(app, "editor.delete")
+        XCTAssertTrue(app.staticTexts["Delete this session?"].waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "Delete this session")
         confirmDelete(app)
         XCTAssertTrue(session.waitForNonExistence(timeout: 5))
