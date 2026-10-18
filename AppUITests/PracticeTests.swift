@@ -151,14 +151,7 @@ final class PracticeTests: UITestCase {
         tap(app, "Scales")
         XCTAssertTrue(app.buttons["Scales"].wait(for: \.isSelected, toEqual: true, timeout: 5))
         tap(app, "tags.done")
-        // The end picker's time button opens its wheels: hours, then minutes.
-        app.datePickers["editor.end"].buttons.matching(NSPredicate(format: "label CONTAINS ':'")).firstMatch.tap()
-        app.pickerWheels.element(boundBy: 1).adjust(toPickerWheelValue: "20")
-        // Closes the wheels with a tap on the editor's title, which does nothing if the tap gets through.
-        // Elsewhere a tap can land on the wheels or the Tags row, and the status bar doesn't reach the app.
-        let title = app.navigationBars.staticTexts["Edit Session"].frame
-        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: title.midX, dy: title.midY)).tap()
-        XCTAssertTrue(app.buttons["PopoverDismissRegion"].waitForNonExistence(timeout: 5))
+        setEndMinute(app, to: "20", title: "Edit Session")
         let note = element(app, "editor.note")
         note.tap()
         note.typeText("Coda, slowly")
@@ -243,6 +236,10 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         app.buttons["History"].firstMatch.tap()
         tap(app, "history.add")
+        // The added session ends where the practiced one starts, so it warns only once it ends 20 minutes in.
+        XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
+        XCTAssertFalse(element(app, "editor.overlap").exists, "The added session overlaps before any change")
+        setEndMinute(app, to: "20", title: "Add Session")
         XCTAssertTrue(element(app, "editor.overlap").waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "Add session, overlapping")
         tap(app, "editor.overlap-off")
@@ -255,7 +252,9 @@ final class PracticeTests: UITestCase {
         app = launch(at: start + 30 * 60)
         app.buttons["History"].firstMatch.tap()
         tap(app, "history.add")
+        // It now ends where the session added above starts, so ending at :45 shares 15 minutes with it.
         XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
+        setEndMinute(app, to: "45", title: "Add Session")
         XCTAssertFalse(element(app, "editor.overlap").exists)
     }
 
@@ -321,6 +320,18 @@ final class PracticeTests: UITestCase {
         let button = app.buttons[identifier]
         XCTAssertTrue(button.waitForExistence(timeout: 5), "No \(identifier) button")
         button.tap()
+    }
+
+    /// Sets the editor's end minute with the end picker's wheels: hours, then minutes.
+    @MainActor
+    private func setEndMinute(_ app: XCUIApplication, to minute: String, title: String) {
+        app.datePickers["editor.end"].buttons.matching(NSPredicate(format: "label CONTAINS ':'")).firstMatch.tap()
+        app.pickerWheels.element(boundBy: 1).adjust(toPickerWheelValue: minute)
+        // Closes the wheels with a tap on the editor's title, which does nothing if the tap gets through.
+        // Elsewhere a tap can land on the wheels or the Tags row, and the status bar doesn't reach the app.
+        let frame = app.navigationBars.staticTexts[title].frame
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
+        XCTAssertTrue(app.buttons["PopoverDismissRegion"].waitForNonExistence(timeout: 5))
     }
 
     @MainActor

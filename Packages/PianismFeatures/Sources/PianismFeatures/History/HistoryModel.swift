@@ -65,13 +65,21 @@ public final class HistoryModel {
             session: session, others: days.flatMap(\.sessions), history: history, library: tags, now: clock.now)
     }
 
-    /// Starts adding a session after the fact: one ending now and 30 minutes long, to adjust (SES-5).
+    /// Starts adding a session after the fact, 30 minutes long, to adjust (SES-5). It ends now, or, if that
+    /// would overlap sessions, where the earliest of them started, so the overlap warning doesn't show
+    /// before anything has been changed.
     func add() {
-        let now = clock.now
-        var session = PracticeSession(startedAt: now.addingTimeInterval(-30 * 60), timeZone: .current)
+        let length: TimeInterval = 30 * 60
+        let others = days.flatMap(\.sessions)
+        var end = clock.now
+        // Newest first, as days list them, so each overlapping session moves the end back past it in turn.
+        for other in others where other.startedAt < end && (other.endedAt ?? end) > end - length {
+            end = other.startedAt
+        }
+        var session = PracticeSession(startedAt: end - length, timeZone: .current)
         // Can't fail: the session is running, and ends after it started.
-        try? session.stop(at: now)
+        try? session.stop(at: end)
         editing = SessionEdit(
-            session: session, isNew: true, others: days.flatMap(\.sessions), history: history, library: tags, now: now)
+            session: session, isNew: true, others: others, history: history, library: tags, now: clock.now)
     }
 }
