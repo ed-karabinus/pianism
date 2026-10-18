@@ -271,8 +271,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         openHistory(app)
         deleteBySwipe(app)
-        XCTAssertTrue(app.staticTexts["Session deleted"].exists)
-        attachScreenshot(of: app, named: "Undo")
+        // Straight to Undo: it lasts 5 seconds, which a slow simulator's checks and screenshots can use up.
         tap(app, "history.undo")
         let session = element(app, "history.session")
         XCTAssertTrue(session.waitForExistence(timeout: 5))
@@ -285,6 +284,8 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(session.waitForNonExistence(timeout: 5))
         let undo = app.buttons["history.undo"]
         XCTAssertTrue(undo.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Session deleted"].exists)
+        attachScreenshot(of: app, named: "Undo")
         XCTAssertTrue(undo.waitForNonExistence(timeout: 10), "Undo outlasted its 5 seconds")
         app.terminate()
 
