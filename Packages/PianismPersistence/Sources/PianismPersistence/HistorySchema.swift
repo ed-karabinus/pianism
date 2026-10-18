@@ -25,7 +25,6 @@ enum HistorySchemaV1: VersionedSchema {
         /// Such as `America/Los_Angeles`; empty if unknown.
         var timeZoneID: String = ""
         var modifiedAt: Date = Date.distantPast
-        // periphery:ignore - schema v1; checked once sessions can be edited (SES-5, ADR 0006)
         var version: Int = 1
         var deletedAt: Date?
 

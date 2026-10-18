@@ -4,9 +4,6 @@ import SwiftData
 
 /// The user's pieces and skills, kept in the ``HistoryStore`` beside finished sessions (TAG-1, ADR 0004).
 public final class SwiftDataTagLibrary: TagLibrary {
-    /// The record version this app writes; it changes only records up to it (ADR 0006).
-    static let version = 1
-
     private let store: HistoryStore
     private let clock: any WallClock
 
@@ -23,7 +20,7 @@ public final class SwiftDataTagLibrary: TagLibrary {
             Tag(
                 id: record.id, kind: Tag.Kind(rawValue: record.kind) ?? .piece, name: record.name,
                 isArchived: record.isArchived, mergedInto: record.mergedInto.isEmpty ? nil : record.mergedInto,
-                createdAt: record.createdAt, isReadOnly: record.version > Self.version)
+                createdAt: record.createdAt, isReadOnly: record.version > HistoryStore.recordVersion)
         }
     }
 
@@ -36,7 +33,7 @@ public final class SwiftDataTagLibrary: TagLibrary {
         record.name = name
         record.createdAt = now
         record.modifiedAt = now
-        record.version = Self.version  // mutate:ignore - equals the schema default until a release raises it
+        record.version = HistoryStore.recordVersion  // mutate:ignore - the default until a release raises it
         context.insert(record)
         try context.save()
         return Tag(id: record.id, kind: kind, name: name, isArchived: false, createdAt: now)
@@ -56,9 +53,9 @@ public final class SwiftDataTagLibrary: TagLibrary {
         let context = ModelContext(try store.container())
         let copies = try context.fetch(FetchDescriptor<TagRecord>(predicate: #Predicate { $0.id == id }))
         guard let shown = Self.shown(among: copies) else { return }
-        guard shown.version <= Self.version else { throw RecordFromNewerVersion() }
+        guard shown.version <= HistoryStore.recordVersion else { throw RecordFromNewerVersion() }
         apply(shown)
-        shown.version = Self.version  // mutate:ignore - equals the schema default until a release raises it
+        shown.version = HistoryStore.recordVersion  // mutate:ignore - the default until a release raises it
         // Never earlier than before: a copy from a device whose clock runs ahead must not overtake it.
         shown.modifiedAt = max(clock.now, shown.modifiedAt)
         try context.save()

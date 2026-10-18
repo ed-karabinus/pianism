@@ -198,12 +198,94 @@ final class SwiftDataSessionHistoryTests {
 
         #expect(throws: (any Error).self) { try history.sessions() }
         #expect(throws: (any Error).self) { try history.save(session) }
+        #expect(throws: (any Error).self) { try history.canEdit(id: session.id) }
+        #expect(throws: (any Error).self) { try history.edit(session) }
+    }
+
+    @Test("SES-5: an edit replaces the saved session, stamped with when it changed, and survives reopening")
+    func editReplacesSession() throws {
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
+        var session = PracticeSession(startedAt: clock.now)
+        try session.stop(at: clock.now + 600)
+        try history.save(session)
+        clock.advance(by: 3_600)
+        var edited = session
+        try edited.editTags(["skill.scales"])
+
+        #expect(try history.canEdit(id: session.id))
+        try history.edit(edited)
+
+        let reopened = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
+        #expect(try reopened.sessions() == [edited])
+        let records = try ModelContext(reopened.store.container()).fetch(FetchDescriptor<SessionRecord>())
+        #expect(records.map(\.modifiedAt) == [clock.now])
+    }
+
+    @Test("ADR 0006: an edit keeps what this version doesn't show: the note, the source and an unknown time zone")
+    func editKeepsWhatItDoesntShow() throws {
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
+        try insertRecord(in: history, id: UUID(), endingAfter: 600, modifiedAfter: 0)
+        let context = ModelContext(try history.store.container())
+        let record = try #require(try context.fetch(FetchDescriptor<SessionRecord>()).first)
+        (record.note, record.source, record.timeZoneID) = ("Left hand alone", "midi", "Mars/Olympus_Mons")
+        try context.save()
+        var edited = try #require(try history.sessions().first)
+        try edited.editTags(["skill.scales"])
+
+        try history.edit(edited)
+
+        let stored = try #require(
+            try ModelContext(history.store.container()).fetch(FetchDescriptor<SessionRecord>()).first)
+        #expect([stored.note, stored.source, stored.timeZoneID] == ["Left hand alone", "midi", "Mars/Olympus_Mons"])
+        #expect(stored.tagIDs == ["skill.scales"])
+    }
+
+    @Test("ADR 0006: an edit changes the copy that shows and keeps it the latest, even with this clock behind")
+    func editKeepsShownCopyLatest() throws {
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
+        let id = UUID()
+        // From another device whose clock runs ahead, and an older copy.
+        try insertRecord(in: history, id: id, endingAfter: 600, modifiedAfter: 7_200)
+        try insertRecord(in: history, id: id, endingAfter: 300, modifiedAfter: 60)
+        var edited = try #require(try history.sessions().first)
+        try edited.editTags(["skill.scales"])
+
+        try history.edit(edited)
+
+        #expect(try history.sessions() == [edited])
+    }
+
+    @Test("ADR 0006: a session a newer version wrote can't be edited, and a deleted or unsaved one is left alone")
+    func editRefusesNewerDeletedAndUnsaved() throws {
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
+        let newer = UUID()
+        let deleted = UUID()
+        try insertRecord(in: history, id: newer, endingAfter: 600, modifiedAfter: 0, version: 2)
+        try insertRecord(in: history, id: deleted, endingAfter: 600, modifiedAfter: 0, isDeleted: true)
+        let before = try history.sessions()
+        var fromNewer = try #require(before.first)
+        try fromNewer.editTags(["skill.scales"])
+        var gone = PracticeSession(id: deleted, startedAt: clock.now)
+        try gone.stop(at: clock.now + 600)
+        try gone.editTags(["skill.scales"])
+        var unsaved = PracticeSession(startedAt: clock.now)
+        try unsaved.stop(at: clock.now + 600)
+
+        for id in [newer, deleted, unsaved.id] {
+            #expect(try !history.canEdit(id: id))
+        }
+        #expect(throws: RecordFromNewerVersion.self) { try history.edit(fromNewer) }
+        try history.edit(gone)
+        try history.edit(unsaved)
+
+        #expect(try history.sessions() == before)
+        #expect(try ModelContext(history.store.container()).fetchCount(FetchDescriptor<SessionRecord>()) == 2)
     }
 
     /// Inserts a record as sync would deliver it, bypassing `save`.
     private func insertRecord(
         in history: SwiftDataSessionHistory, id: UUID, endingAfter seconds: TimeInterval,
-        modifiedAfter modified: TimeInterval, isDeleted: Bool = false, pauses: Data = Data()
+        modifiedAfter modified: TimeInterval, isDeleted: Bool = false, pauses: Data = Data(), version: Int = 1
     ) throws {
         let context = ModelContext(try history.store.container())
         let record = SessionRecord()
@@ -213,6 +295,7 @@ final class SwiftDataSessionHistoryTests {
         record.pauses = pauses
         record.modifiedAt = clock.now + modified
         record.deletedAt = isDeleted ? clock.now + modified : nil
+        record.version = version
         context.insert(record)
         try context.save()
     }

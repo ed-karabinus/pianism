@@ -131,6 +131,41 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "History, tagged and untagged")
     }
 
+    /// SES-5, TAG-2: a finished session is tagged from History, which shows the tags once the edit is
+    /// saved. They're stored, so they're still there after the app is killed and relaunched.
+    @MainActor
+    func testTagAFinishedSession() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        app.terminate()
+        app = launch(at: start + 25 * 60)
+        tap(app, "practice.stop")
+        app.buttons["History"].firstMatch.tap()
+        let session = element(app, "history.session")
+        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        XCTAssertTrue(session.label.hasSuffix("Untagged"), session.label)
+
+        session.tap()
+        tap(app, "editor.tags")
+        tap(app, "Scales")
+        XCTAssertTrue(app.buttons["Scales"].wait(for: \.isSelected, toEqual: true, timeout: 5))
+        tap(app, "tags.done")
+        attachScreenshot(of: app, named: "Edit session")
+        tap(app, "editor.save")
+        XCTAssertTrue(app.buttons["editor.save"].waitForNonExistence(timeout: 5))
+        let tagged = app.descendants(matching: .any).matching(identifier: "history.session")
+            .matching(NSPredicate(format: "label ENDSWITH 'Scales'"))
+        XCTAssertTrue(tagged.firstMatch.waitForExistence(timeout: 5), session.label)
+        attachScreenshot(of: app, named: "History, edited")
+        app.terminate()
+
+        app = launch(at: start + 60 * 60)
+        app.buttons["History"].firstMatch.tap()
+        let relaunched = element(app, "history.session")
+        XCTAssertTrue(relaunched.waitForExistence(timeout: 5))
+        XCTAssertTrue(relaunched.label.hasSuffix("Scales"), relaunched.label)
+    }
+
     /// ADR 0007: when the history can't open, practice goes on. Each finished session waits in the
     /// outbox, Practice says how many are waiting, and History shows them marked "not saved yet" under
     /// a notice. Once the history opens, the waiting sessions move into it.

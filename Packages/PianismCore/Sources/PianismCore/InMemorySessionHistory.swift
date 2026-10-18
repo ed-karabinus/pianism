@@ -4,8 +4,12 @@ import Synchronization
 /// A ``SessionHistory`` kept in memory, for previews and tests.
 public final class InMemorySessionHistory: SessionHistory {
     private let saved = Mutex<[PracticeSession]>([])
+    private let readOnlyIDs: Set<UUID>
 
-    public init() {}
+    /// An empty history, in which sessions saved with `readOnlyIDs` act as if a newer version wrote them.
+    public init(readOnlyIDs: Set<UUID> = []) {
+        self.readOnlyIDs = readOnlyIDs
+    }
 
     public func sessions() -> [PracticeSession] {
         saved.withLock { $0 }
@@ -15,6 +19,19 @@ public final class InMemorySessionHistory: SessionHistory {
         saved.withLock { sessions in
             if !sessions.contains(where: { $0.id == session.id }) {
                 sessions.append(session)
+            }
+        }
+    }
+
+    public func canEdit(id: UUID) -> Bool {
+        !readOnlyIDs.contains(id) && saved.withLock { $0.contains { $0.id == id } }
+    }
+
+    public func edit(_ session: PracticeSession) throws {
+        guard !readOnlyIDs.contains(session.id) else { throw RecordFromNewerVersion() }
+        saved.withLock { sessions in
+            if let index = sessions.firstIndex(where: { $0.id == session.id }) {
+                sessions[index] = session
             }
         }
     }

@@ -115,6 +115,19 @@ struct PracticeSessionTests {
         #expect(session == untagged)
     }
 
+    @Test("SES-5: a finished session's tags can be edited, and removing them all leaves it untagged")
+    func finishedSessionTagsCanBeEdited() throws {
+        var untagged = PracticeSession(startedAt: clock.now)
+        try untagged.stop(at: clock.now + 600)
+        var session = untagged
+
+        try session.editTags(["skill.scales", "a"])
+        #expect(session.tagIDs == ["skill.scales", "a"])
+        try session.editTags([])
+
+        #expect(session == untagged)
+    }
+
     // MARK: Invalid changes are rejected and leave the session untouched
 
     @Test("Changes in the wrong state are rejected", arguments: InvalidChange.allCases)
@@ -176,6 +189,7 @@ enum InvalidChange: CaseIterable, CustomTestStringConvertible {
     case resumeAfterStop
     case stopAfterStop
     case tagAfterStop
+    case editWhileRunning
     case changeDatedBeforeLastChange
 
     var expectedError: SessionError {
@@ -183,6 +197,7 @@ enum InvalidChange: CaseIterable, CustomTestStringConvertible {
         case .pauseWhilePaused: .alreadyPaused
         case .resumeWhileRunning: .notPaused
         case .pauseAfterStop, .resumeAfterStop, .stopAfterStop, .tagAfterStop: .alreadyEnded
+        case .editWhileRunning: .notEnded
         case .changeDatedBeforeLastChange: .timeWentBackwards
         }
     }
@@ -195,6 +210,7 @@ enum InvalidChange: CaseIterable, CustomTestStringConvertible {
         case .resumeAfterStop: "resume after stop"
         case .stopAfterStop: "stop after stop"
         case .tagAfterStop: "tag after stop"
+        case .editWhileRunning: "edit while running"
         case .changeDatedBeforeLastChange: "a change dated before the last change"
         }
     }
@@ -202,7 +218,7 @@ enum InvalidChange: CaseIterable, CustomTestStringConvertible {
     func prepare(_ session: inout PracticeSession, _ clock: ManualClock) throws {
         switch self {
         case .pauseWhilePaused: try session.pause(at: clock.now)
-        case .resumeWhileRunning, .changeDatedBeforeLastChange: break
+        case .resumeWhileRunning, .editWhileRunning, .changeDatedBeforeLastChange: break
         case .pauseAfterStop, .resumeAfterStop, .stopAfterStop, .tagAfterStop: try session.stop(at: clock.now)
         }
     }
@@ -213,6 +229,7 @@ enum InvalidChange: CaseIterable, CustomTestStringConvertible {
         case .resumeWhileRunning, .resumeAfterStop: try session.resume(at: clock.now)
         case .stopAfterStop: try session.stop(at: clock.now)
         case .tagAfterStop: try session.setTags(["skill.scales"])
+        case .editWhileRunning: try session.editTags(["skill.scales"])
         case .changeDatedBeforeLastChange: try session.pause(at: session.startedAt.addingTimeInterval(-1))
         }
     }
