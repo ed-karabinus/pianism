@@ -25,11 +25,14 @@ public struct RootView: View {
                 HistoryView(model: history)
             }
         }
-        // Shows changes made while the app was away, and moves "today" along after midnight.
+        // Shows changes made while the app was away, and moves "today" along after midnight. Leaving the
+        // app ends a deletion's undo (SES-5).
         .onChange(of: scenePhase) {
             if scenePhase == .active {
                 practice.refresh()
                 history.refresh()
+            } else if scenePhase == .background {
+                history.commitDelete()
             }
         }
     }
@@ -62,6 +65,10 @@ enum AccessibilityID {
     static let editorNote = "editor.note"
     static let editorOverlap = "editor.overlap"
     static let editorOverlapOff = "editor.overlap-off"
+    static let editorDelete = "editor.delete"
+    static let historyDelete = "history.delete"
+    static let historyUndo = "history.undo"
+    static let deleteConfirm = "delete.confirm"
 }
 
 #Preview {

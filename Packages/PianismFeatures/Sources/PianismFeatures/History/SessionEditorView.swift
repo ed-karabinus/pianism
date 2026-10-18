@@ -6,10 +6,13 @@ import SwiftUI
 struct SessionEditorView: View {
     @Bindable var editor: SessionEditorModel
     let tags: TagPickerModel
+    /// Deletes the session once it's confirmed; History then offers Undo (SES-5).
+    var onDelete: () -> Void = {}
 
     @Environment(\.dismiss) private var dismiss
     @State private var isPickingTags = false
     @State private var isConfirmingDiscard = false
+    @State private var isConfirmingDelete = false
     /// Off once the user asks not to be warned about overlapping sessions again, on this device.
     @AppStorage("showsOverlapWarning") private var showsOverlapWarning = true
 
@@ -66,6 +69,23 @@ struct SessionEditorView: View {
                 }
                 .disabled(editor.isReadOnly)
                 .accessibilityIdentifier(AccessibilityID.editorNote)
+                if !editor.isNew, !editor.isReadOnly {
+                    Section {
+                        Button(LocalizedStringResource("Delete Session", bundle: .module), role: .destructive) {
+                            isConfirmingDelete = true
+                        }
+                        .accessibilityIdentifier(AccessibilityID.editorDelete)
+                        .confirmationDialog(
+                            Text("Delete this session?", bundle: .module), isPresented: $isConfirmingDelete,
+                            titleVisibility: .visible
+                        ) {
+                            Button(LocalizedStringResource("Delete Session", bundle: .module), role: .destructive) {
+                                onDelete()
+                            }
+                            .accessibilityIdentifier(AccessibilityID.deleteConfirm)
+                        }
+                    }
+                }
             }
             .navigationTitle(
                 editor.isNew ? Text("Add Session", bundle: .module) : Text("Edit Session", bundle: .module)

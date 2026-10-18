@@ -260,6 +260,77 @@ final class PracticeTests: UITestCase {
         XCTAssertFalse(element(app, "editor.overlap").exists)
     }
 
+    /// SES-5: a session is deleted with a swipe or from the editor, each confirmed first. Undo brings it
+    /// back; once its 5 seconds are up, the deletion holds, across a relaunch too.
+    @MainActor
+    func testDeleteASessionWithUndo() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        app.terminate()
+        app = launch(at: start + 25 * 60)
+        tap(app, "practice.stop")
+        app.buttons["History"].firstMatch.tap()
+        deleteBySwipe(app)
+        attachScreenshot(of: app, named: "Undo")
+        tap(app, "history.undo")
+        let session = element(app, "history.session")
+        XCTAssertTrue(session.waitForExistence(timeout: 5))
+
+        session.tap()
+        tap(app, "editor.delete")
+        attachScreenshot(of: app, named: "Delete this session")
+        confirmDelete(app)
+        XCTAssertTrue(session.waitForNonExistence(timeout: 5))
+        let undo = app.buttons["history.undo"]
+        XCTAssertTrue(undo.waitForExistence(timeout: 5))
+        XCTAssertTrue(undo.waitForNonExistence(timeout: 10), "Undo outlasted its 5 seconds")
+        app.terminate()
+
+        app = launch(at: start + 30 * 60)
+        app.buttons["History"].firstMatch.tap()
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
+    }
+
+    /// SES-5: a deletion is saved only when its undo ends, so a session deleted just before Pianism is killed
+    /// is still there. Leaving History, or the app, ends the undo at once.
+    @MainActor
+    func testDeletionWaitsForUndoToEnd() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        app.terminate()
+        app = launch(at: start + 25 * 60)
+        tap(app, "practice.stop")
+        tap(app, "practice.start")
+        app.terminate()
+        app = launch(at: start + 50 * 60)
+        tap(app, "practice.stop")
+        app.buttons["History"].firstMatch.tap()
+        deleteBySwipe(app)
+        app.terminate()
+
+        app = launch(at: start + 51 * 60)
+        app.buttons["History"].firstMatch.tap()
+        var sessions = app.descendants(matching: .any).matching(identifier: "history.session")
+        XCTAssertTrue(sessions.element(boundBy: 1).waitForExistence(timeout: 5), "A kill didn't keep the session")
+        deleteBySwipe(app)
+        app.buttons["Practice"].firstMatch.tap()
+        app.terminate()
+
+        app = launch(at: start + 52 * 60)
+        app.buttons["History"].firstMatch.tap()
+        sessions = app.descendants(matching: .any).matching(identifier: "history.session")
+        XCTAssertTrue(sessions.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(sessions.count, 1, "Leaving History didn't save the deletion")
+        deleteBySwipe(app)
+        XCUIDevice.shared.press(.home)
+        XCTAssertTrue(app.wait(for: .runningBackground, timeout: 5))
+        app.terminate()
+
+        app = launch(at: start + 53 * 60)
+        app.buttons["History"].firstMatch.tap()
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "Leaving the app didn't save it")
+    }
+
     /// ADR 0007: when the history can't open, practice goes on. Each finished session waits in the
     /// outbox, Practice says how many are waiting, and History shows them marked "not saved yet" under
     /// a notice. Once the history opens, the waiting sessions move into it.
@@ -322,6 +393,26 @@ final class PracticeTests: UITestCase {
         let button = app.buttons[identifier]
         XCTAssertTrue(button.waitForExistence(timeout: 5), "No \(identifier) button")
         button.tap()
+    }
+
+    /// Taps Delete Session in the confirmation, which iOS nests in a button with the same frame and identifier.
+    @MainActor
+    private func confirmDelete(_ app: XCUIApplication) {
+        let confirm = app.buttons["delete.confirm"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "No delete.confirm button")
+        confirm.tap()
+    }
+
+    /// Deletes History's first session with a swipe, confirmed, and checks the list lost one.
+    @MainActor
+    private func deleteBySwipe(_ app: XCUIApplication) {
+        let sessions = app.descendants(matching: .any).matching(identifier: "history.session")
+        XCTAssertTrue(sessions.firstMatch.waitForExistence(timeout: 5), "No session to delete")
+        let count = sessions.count
+        sessions.firstMatch.swipeLeft()
+        tap(app, "history.delete")
+        confirmDelete(app)
+        XCTAssertTrue(sessions.element(boundBy: count - 1).waitForNonExistence(timeout: 5))
     }
 
     /// Sets the editor's end minute with the end picker's wheels: hours, then minutes.

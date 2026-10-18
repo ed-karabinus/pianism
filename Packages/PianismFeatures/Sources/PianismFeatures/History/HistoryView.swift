@@ -4,6 +4,8 @@ import SwiftUI
 /// The History screen: finished sessions grouped by day, newest first, with each day's total (HIS-1).
 struct HistoryView: View {
     @Bindable var model: HistoryModel
+    /// The session a swipe asked to delete, until the deletion is confirmed or cancelled (SES-5).
+    @State private var confirmingDeletion: PracticeSession?
 
     var body: some View {
         NavigationStack {
@@ -13,11 +15,50 @@ struct HistoryView: View {
                     Button(LocalizedStringResource("Add Session", bundle: .module), systemImage: "plus") { model.add() }
                         .accessibilityIdentifier(AccessibilityID.historyAdd)
                 }
+                .safeAreaInset(edge: .bottom) {
+                    if model.pendingDeletion != nil { undoBar }
+                }
         }
         .onAppear { model.refresh() }
+        // Leaving History ends a deletion's undo, as leaving the app does (Ed's call, 2026-10-18).
+        .onDisappear { model.commitDelete() }
         .sheet(item: $model.editing, onDismiss: model.refresh) { edit in
-            SessionEditorView(editor: edit.editor, tags: edit.tags)
+            SessionEditorView(editor: edit.editor, tags: edit.tags) { model.delete(edit.editor.session) }
         }
+        .confirmationDialog(
+            Text("Delete this session?", bundle: .module),
+            isPresented: Binding {
+                confirmingDeletion != nil
+            } set: {
+                if !$0 { confirmingDeletion = nil }
+            },
+            titleVisibility: .visible, presenting: confirmingDeletion
+        ) { session in
+            Button(LocalizedStringResource("Delete Session", bundle: .module), role: .destructive) {
+                model.delete(session)
+            }
+            .accessibilityIdentifier(AccessibilityID.deleteConfirm)
+        }
+        // Undo lasts 5 seconds. A new deletion or Undo cancels the wait, and neither needs a commit here.
+        .task(id: model.pendingDeletion?.id) {
+            guard model.pendingDeletion != nil, (try? await Task.sleep(for: .seconds(5))) != nil else { return }
+            model.commitDelete()
+        }
+        .storageAlert(Text("Couldn't delete that session", bundle: .module), isPresented: $model.isShowingDeleteError)
+    }
+
+    /// Says a session was deleted, with Undo while it can be (SES-5).
+    private var undoBar: some View {
+        HStack {
+            Text("Session deleted", bundle: .module)
+            Spacer()
+            Button(LocalizedStringResource("Undo", bundle: .module)) { model.undoDelete() }
+                .bold()
+                .accessibilityIdentifier(AccessibilityID.historyUndo)
+        }
+        .padding()
+        .background(.regularMaterial, in: .capsule)
+        .padding()
     }
 
     @ViewBuilder private var content: some View {
@@ -72,6 +113,16 @@ struct HistoryView: View {
                                 }
                             }
                             .accessibilityIdentifier(AccessibilityID.historySession)
+                            .swipeActions {
+                                if model.canDelete(session) {
+                                    // Not the destructive role, which would remove the row before it's confirmed.
+                                    Button(LocalizedStringResource("Delete", bundle: .module), systemImage: "trash") {
+                                        confirmingDeletion = session
+                                    }
+                                    .tint(.red)
+                                    .accessibilityIdentifier(AccessibilityID.historyDelete)
+                                }
+                            }
                         }
                     } header: {
                         TimedRow(title: title(for: day), duration: day.total)
