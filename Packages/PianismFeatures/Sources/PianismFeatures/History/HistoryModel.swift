@@ -23,6 +23,8 @@ public final class HistoryModel {
     private(set) var pendingDeletion: PracticeSession?
     /// Whether to show that a deletion couldn't be saved.
     var isShowingDeleteError = false
+    /// How long Undo lasts. End-to-end tests lengthen it, as a slow simulator's steps can outlast 5 seconds.
+    public var undoDuration: Duration = .seconds(5)
 
     let calendar = Calendar.autoupdatingCurrent
     private let clock: any WallClock

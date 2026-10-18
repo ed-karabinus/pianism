@@ -267,11 +267,13 @@ final class PracticeTests: UITestCase {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
         app.terminate()
-        app = launch(at: start + 25 * 60)
+        // A long Undo, so a slow simulator's checks and screenshots can't outlast it.
+        app = launch(at: start + 25 * 60, undoSeconds: 60)
         tap(app, "practice.stop")
         openHistory(app)
         deleteBySwipe(app)
-        // Straight to Undo: it lasts 5 seconds, which a slow simulator's checks and screenshots can use up.
+        XCTAssertTrue(app.staticTexts["Session deleted"].exists)
+        attachScreenshot(of: app, named: "Undo")
         tap(app, "history.undo")
         let session = element(app, "history.session")
         XCTAssertTrue(session.waitForExistence(timeout: 5))
@@ -282,14 +284,18 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "Delete this session")
         confirmDelete(app)
         XCTAssertTrue(session.waitForNonExistence(timeout: 5))
-        let undo = app.buttons["history.undo"]
-        XCTAssertTrue(undo.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Session deleted"].exists)
-        attachScreenshot(of: app, named: "Undo")
-        XCTAssertTrue(undo.waitForNonExistence(timeout: 10), "Undo outlasted its 5 seconds")
+        tap(app, "history.undo")
+        XCTAssertTrue(session.waitForExistence(timeout: 5))
         app.terminate()
 
+        // The real 5 seconds.
         app = launch(at: start + 30 * 60)
+        openHistory(app)
+        deleteBySwipe(app)
+        XCTAssertTrue(app.buttons["history.undo"].waitForNonExistence(timeout: 15), "Undo outlasted its 5 seconds")
+        app.terminate()
+
+        app = launch(at: start + 31 * 60)
         openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
     }
@@ -305,13 +311,14 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         tap(app, "practice.start")
         app.terminate()
-        app = launch(at: start + 50 * 60)
+        // A long Undo, so only a kill, leaving History or leaving the app can end it.
+        app = launch(at: start + 50 * 60, undoSeconds: 60)
         tap(app, "practice.stop")
         openHistory(app)
         deleteBySwipe(app)
         app.terminate()
 
-        app = launch(at: start + 51 * 60)
+        app = launch(at: start + 51 * 60, undoSeconds: 60)
         openHistory(app)
         var sessions = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertTrue(sessions.element(boundBy: 1).waitForExistence(timeout: 5), "A kill didn't keep the session")
@@ -319,7 +326,7 @@ final class PracticeTests: UITestCase {
         app.buttons["Practice"].firstMatch.tap()
         app.terminate()
 
-        app = launch(at: start + 52 * 60)
+        app = launch(at: start + 52 * 60, undoSeconds: 60)
         openHistory(app)
         sessions = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertTrue(sessions.firstMatch.waitForExistence(timeout: 5))
@@ -377,9 +384,14 @@ final class PracticeTests: UITestCase {
     }
 
     @MainActor
-    private func launch(at now: TimeInterval, reset: Bool = false, breakHistory: Bool = false) -> XCUIApplication {
+    private func launch(
+        at now: TimeInterval, reset: Bool = false, breakHistory: Bool = false, undoSeconds: Int? = nil
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["PIANISM_NOW"] = String(now)
+        if let undoSeconds {
+            app.launchEnvironment["PIANISM_UNDO_SECONDS"] = String(undoSeconds)
+        }
         if reset {
             app.launchEnvironment["PIANISM_RESET"] = "1"
         }

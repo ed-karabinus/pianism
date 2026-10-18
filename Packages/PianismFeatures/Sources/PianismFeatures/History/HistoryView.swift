@@ -41,10 +41,10 @@ struct HistoryView: View {
             }
             .accessibilityIdentifier(AccessibilityID.deleteConfirm)
         }
-        // Undo lasts 5 seconds. A new deletion or Undo cancels the wait, but only at the next update, so
+        // Undo lasts 5 seconds (`undoDuration`). A new deletion or Undo cancels the wait, but only at the next update, so
         // the ID is checked again: a late wait mustn't commit the next deletion.
         .task(id: model.pendingDeletion?.id) {
-            guard let id = model.pendingDeletion?.id, (try? await Task.sleep(for: .seconds(5))) != nil,
+            guard let id = model.pendingDeletion?.id, (try? await Task.sleep(for: model.undoDuration)) != nil,
                 model.pendingDeletion?.id == id
             else { return }
             model.commitDelete()
