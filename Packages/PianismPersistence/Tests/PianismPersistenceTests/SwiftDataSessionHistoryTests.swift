@@ -202,15 +202,21 @@ final class SwiftDataSessionHistoryTests {
         #expect(throws: (any Error).self) { try history.edit(session) }
     }
 
-    @Test("SES-5: an edit replaces the saved session, stamped with when it changed, and survives reopening")
+    @Test(
+        "SES-5: an edit of tags, times and note replaces the saved session, stamped with when it changed, and survives reopening"
+    )
     func editReplacesSession() throws {
         let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         var session = PracticeSession(startedAt: clock.now)
+        try session.pause(at: clock.now + 100)
+        try session.resume(at: clock.now + 200)
         try session.stop(at: clock.now + 600)
         try history.save(session)
         clock.advance(by: 3_600)
         var edited = session
         try edited.editTags(["skill.scales"])
+        try edited.editTimes(start: session.startedAt + 150, end: session.startedAt + 500)
+        try edited.editNote("Coda, slowly")
 
         #expect(try history.canEdit(id: session.id))
         try history.edit(edited)
@@ -221,7 +227,9 @@ final class SwiftDataSessionHistoryTests {
         #expect(records.map(\.modifiedAt) == [clock.now])
     }
 
-    @Test("ADR 0006: an edit keeps what this version doesn't show: the note, the source and an unknown time zone")
+    @Test(
+        "ADR 0006: an edit keeps the note it didn't change, and what this version doesn't show: the source and an unknown time zone"
+    )
     func editKeepsWhatItDoesntShow() throws {
         let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         try insertRecord(in: history, id: UUID(), endingAfter: 600, modifiedAfter: 0)

@@ -56,6 +56,8 @@ enum AccessibilityID {
     static let historySession = "history.session"
     static let editorTags = "editor.tags"
     static let editorSave = "editor.save"
+    static let editorEnd = "editor.end"
+    static let editorNote = "editor.note"
 }
 
 #Preview {

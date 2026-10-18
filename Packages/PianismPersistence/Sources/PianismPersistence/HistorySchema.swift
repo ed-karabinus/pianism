@@ -18,7 +18,6 @@ enum HistorySchemaV1: VersionedSchema {
         /// The pauses as JSON (``StoredPauses``); empty means none.
         var pauses: Data = Data()
         var tagIDs: [String] = []
-        // periphery:ignore - schema v1; notes arrive with SES-5
         var note: String = ""
         // periphery:ignore - schema v1; manual entries (SES-5) and MIDI (MIDI-1) set it
         var source: String = "timer"

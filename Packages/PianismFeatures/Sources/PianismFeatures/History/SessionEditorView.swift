@@ -13,13 +13,19 @@ struct SessionEditorView: View {
         NavigationStack {
             Form {
                 Section {
-                    let session = editor.session
+                    DatePicker(selection: $editor.start, in: ...editor.end) {
+                        Text("Start", bundle: .module)
+                    }
+                    .disabled(editor.isReadOnly)
+                    DatePicker(selection: $editor.end, in: editor.start...editor.latestEnd) {
+                        Text("End", bundle: .module)
+                    }
+                    .disabled(editor.isReadOnly)
+                    .accessibilityIdentifier(AccessibilityID.editorEnd)
                     // A finished session's practice time is fixed, so the date passed here is ignored.
                     TimedRow(
-                        title: Text(
-                            session.startedAt..<(session.endedAt ?? session.startedAt),
-                            format: .interval.month(.wide).day().hour().minute()),
-                        duration: session.elapsed(at: .distantPast))
+                        title: Text("Practice time", bundle: .module),
+                        duration: editor.session.elapsed(at: .distantPast))
                 } footer: {
                     if editor.isReadOnly {
                         Text(
@@ -38,6 +44,11 @@ struct SessionEditorView: View {
                 }
                 .disabled(editor.isReadOnly)
                 .accessibilityIdentifier(AccessibilityID.editorTags)
+                TextField(text: $editor.note, axis: .vertical) {
+                    Text("Note", bundle: .module)
+                }
+                .disabled(editor.isReadOnly)
+                .accessibilityIdentifier(AccessibilityID.editorNote)
             }
             .navigationTitle(Text("Edit Session", bundle: .module))
             .toolbar {
