@@ -411,7 +411,8 @@ final class PracticeTests: UITestCase {
         let sessions = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertTrue(sessions.firstMatch.waitForExistence(timeout: 5), "No session to delete")
         let count = sessions.count
-        sessions.firstMatch.swipeLeft()
+        // Fast, so a slow simulator can't read it as a tap, which would open the editor.
+        sessions.firstMatch.swipeLeft(velocity: .fast)
         tap(app, "history.delete")
         confirmDelete(app)
         XCTAssertTrue(sessions.element(boundBy: count - 1).waitForNonExistence(timeout: 5))
