@@ -72,12 +72,12 @@ final class PracticeTests: UITestCase {
         app.terminate()
 
         app = launch(at: start + 25 * 60 + 3)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "History, empty")
         app.buttons["Practice"].firstMatch.tap()
         tap(app, "practice.stop")
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         let day = element(app, "history.day")
         XCTAssertTrue(day.waitForExistence(timeout: 5))
         XCTAssertEqual(day.label, "Today")
@@ -87,7 +87,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
 
         app = launch(at: start + 60 * 60)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         let relaunched = element(app, "history.day")
         XCTAssertTrue(relaunched.waitForExistence(timeout: 5))
         XCTAssertEqual(relaunched.value as? String, "25 minutes, 3 seconds")
@@ -122,7 +122,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         tap(app, "practice.start")
         tap(app, "practice.stop")
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         XCTAssertTrue(element(app, "history.day").waitForExistence(timeout: 5))
         let sessions = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertEqual(sessions.count, 2)
@@ -141,7 +141,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
         app = launch(at: start + 25 * 60)
         tap(app, "practice.stop")
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         let session = element(app, "history.session")
         XCTAssertTrue(session.waitForExistence(timeout: 5))
         XCTAssertTrue(session.label.hasSuffix("Untagged"), session.label)
@@ -166,7 +166,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
 
         app = launch(at: start + 60 * 60)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         let relaunched = element(app, "history.session")
         XCTAssertTrue(relaunched.waitForExistence(timeout: 5))
         XCTAssertTrue(relaunched.label.hasSuffix("Scales"), relaunched.label)
@@ -182,7 +182,7 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testAddASessionAfterTheFact() throws {
         let app = launch(at: start, reset: true)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         tap(app, "history.add")
         XCTAssertTrue(app.navigationBars["Add Session"].waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "Add session")
@@ -200,7 +200,7 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testUnsavedChangesAskBeforeClosing() throws {
         let app = launch(at: start, reset: true)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         let editor = app.navigationBars["Add Session"]
         tap(app, "history.add")
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
@@ -234,7 +234,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
         app = launch(at: start + 25 * 60)
         tap(app, "practice.stop")
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         tap(app, "history.add")
         // The added session ends where the practiced one starts, so it warns only once it ends 20 minutes in.
         XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
@@ -250,7 +250,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
 
         app = launch(at: start + 30 * 60)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         tap(app, "history.add")
         // It now ends where the session added above starts, so ending at :45 shares 15 minutes with it.
         XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
@@ -269,7 +269,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
         app = launch(at: start + 25 * 60)
         tap(app, "practice.stop")
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         deleteBySwipe(app)
         XCTAssertTrue(app.staticTexts["Session deleted"].exists)
         attachScreenshot(of: app, named: "Undo")
@@ -289,7 +289,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
 
         app = launch(at: start + 30 * 60)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
     }
 
@@ -306,12 +306,12 @@ final class PracticeTests: UITestCase {
         app.terminate()
         app = launch(at: start + 50 * 60)
         tap(app, "practice.stop")
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         deleteBySwipe(app)
         app.terminate()
 
         app = launch(at: start + 51 * 60)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         var sessions = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertTrue(sessions.element(boundBy: 1).waitForExistence(timeout: 5), "A kill didn't keep the session")
         deleteBySwipe(app)
@@ -319,7 +319,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
 
         app = launch(at: start + 52 * 60)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         sessions = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertTrue(sessions.firstMatch.waitForExistence(timeout: 5))
         XCTAssertEqual(sessions.count, 1, "Leaving History didn't save the deletion")
@@ -329,7 +329,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
 
         app = launch(at: start + 53 * 60)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "Leaving the app didn't save it")
     }
 
@@ -340,7 +340,7 @@ final class PracticeTests: UITestCase {
     func testWhenHistoryCantOpen() throws {
         var app = launch(at: start, reset: true, breakHistory: true)
         // Nothing saved and nothing waiting: the whole screen says History couldn't load.
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
         XCTAssertFalse(element(app, "history.session").exists)
         app.buttons["Practice"].firstMatch.tap()
@@ -352,7 +352,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.buttons["practice.start"].waitForExistence(timeout: 5))
         XCTAssertEqual(text(app, "practice.waiting"), "2 sessions waiting to be saved")
         attachScreenshot(of: app, named: "Practice, sessions waiting")
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
         let notSavedYet = NSPredicate(format: "label CONTAINS 'not saved yet'")
         let waiting = app.descendants(matching: .any).matching(identifier: "history.session")
@@ -363,7 +363,7 @@ final class PracticeTests: UITestCase {
 
         app = launch(at: start + 60 * 60)
         XCTAssertFalse(app.staticTexts["practice.waiting"].exists)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         XCTAssertTrue(element(app, "history.day").waitForExistence(timeout: 5))
         let saved = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertEqual(saved.count, 2)
@@ -395,6 +395,17 @@ final class PracticeTests: UITestCase {
         let button = app.buttons[identifier]
         XCTAssertTrue(button.waitForExistence(timeout: 5), "No \(identifier) button")
         button.tap()
+    }
+
+    /// Opens the History tab. On iOS 26 a tap can land while the tab bar is still animating and not switch
+    /// tabs, so it taps once more if History doesn't appear.
+    @MainActor
+    private func openHistory(_ app: XCUIApplication) {
+        let tab = app.buttons["History"].firstMatch
+        let history = app.navigationBars["History"]
+        tab.tap()
+        if !history.waitForExistence(timeout: 3) { tab.tap() }
+        XCTAssertTrue(history.waitForExistence(timeout: 5), "History didn't open")
     }
 
     /// Taps Delete Session in the confirmation, which iOS nests in a button with the same frame and identifier.
