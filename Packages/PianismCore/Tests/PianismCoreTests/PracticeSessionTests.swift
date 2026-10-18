@@ -166,6 +166,21 @@ struct PracticeSessionTests {
         #expect(session == plain)
     }
 
+    @Test("SES-5: finished sessions overlap when they share time, not when they only touch")
+    func finishedSessionsOverlap() throws {
+        func finished(_ from: TimeInterval, _ to: TimeInterval) throws -> PracticeSession {
+            var session = PracticeSession(startedAt: clock.now + from)
+            try session.stop(at: clock.now + to)
+            return session
+        }
+        let session = try finished(0, 600)
+
+        #expect(try [finished(599, 900), finished(-100, 1), finished(100, 200)].allSatisfy(session.overlaps))
+        #expect(try ![finished(600, 900), finished(-100, 0)].contains(where: session.overlaps))
+        #expect(!session.overlaps(PracticeSession(startedAt: clock.now + 100)))
+        #expect(!PracticeSession(startedAt: clock.now + 100).overlaps(session))
+    }
+
     // MARK: Invalid changes are rejected and leave the session untouched
 
     @Test("Changes in the wrong state are rejected", arguments: InvalidChange.allCases)

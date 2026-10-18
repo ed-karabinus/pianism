@@ -232,6 +232,31 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
     }
 
+    /// SES-5: a session that overlaps another says so, but can still be saved. "Don't Show Again" turns
+    /// the warning off for good, even after a relaunch.
+    @MainActor
+    func testOverlapWarningCanBeTurnedOff() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        app.terminate()
+        app = launch(at: start + 25 * 60)
+        tap(app, "practice.stop")
+        app.buttons["History"].firstMatch.tap()
+        tap(app, "history.add")
+        XCTAssertTrue(element(app, "editor.overlap").waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["editor.save"].isEnabled)
+        attachScreenshot(of: app, named: "Add session, overlapping")
+        tap(app, "editor.overlap-off")
+        XCTAssertTrue(element(app, "editor.overlap").waitForNonExistence(timeout: 5))
+        app.terminate()
+
+        app = launch(at: start + 30 * 60)
+        app.buttons["History"].firstMatch.tap()
+        tap(app, "history.add")
+        XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
+        XCTAssertFalse(element(app, "editor.overlap").exists)
+    }
+
     /// ADR 0007: when the history can't open, practice goes on. Each finished session waits in the
     /// outbox, Practice says how many are waiting, and History shows them marked "not saved yet" under
     /// a notice. Once the history opens, the waiting sessions move into it.

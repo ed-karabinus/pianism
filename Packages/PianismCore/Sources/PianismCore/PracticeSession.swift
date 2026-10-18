@@ -117,6 +117,13 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         notes = text.isEmpty ? nil : text
     }
 
+    /// Whether this finished session shares any time with `other`, between their starts and ends (SES-5).
+    /// Sessions that only touch don't overlap, and a running session overlaps nothing.
+    public func overlaps(_ other: PracticeSession) -> Bool {
+        guard let end = endedAt, let otherEnd = other.endedAt else { return false }
+        return startedAt < otherEnd && other.startedAt < end
+    }
+
     /// The most recent moment anything happened to this session.
     private var latestEvent: Date {
         guard let last = pauses.last else { return startedAt }

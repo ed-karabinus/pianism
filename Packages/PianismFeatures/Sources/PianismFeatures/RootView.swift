@@ -60,6 +60,8 @@ enum AccessibilityID {
     static let editorCancel = "editor.cancel"
     static let editorEnd = "editor.end"
     static let editorNote = "editor.note"
+    static let editorOverlap = "editor.overlap"
+    static let editorOverlapOff = "editor.overlap-off"
 }
 
 #Preview {

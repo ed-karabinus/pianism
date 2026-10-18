@@ -46,6 +46,9 @@
     "Discard changes?" : {
 
     },
+    "Don't Show Again" : {
+
+    },
     "Edit Session" : {
 
     },
@@ -138,6 +141,9 @@
     },
     "Technique" : {
       "comment" : "A built-in skill"
+    },
+    "This overlaps your %@ session, so the day's total counts their shared time twice." : {
+
     },
     "Today" : {
 

@@ -79,18 +79,20 @@ extension HistoryModel {
 
 extension SessionEdit {
     /// A finished session, tagged with a piece and a built-in skill, to edit; read-only as if a newer
-    /// version wrote it, if `readOnly`.
+    /// version wrote it, if `readOnly`; overlapping another session, if `overlapping`.
     @MainActor
-    static func preview(readOnly: Bool = false) -> SessionEdit {
+    static func preview(readOnly: Bool = false, overlapping: Bool = false) -> SessionEdit {
         var session = PracticeSession(startedAt: previewNow)
         try? session.stop(at: previewNow.addingTimeInterval(25 * 60 + 3))
         try? session.editTags(["ballade", BuiltInSkill.scales.rawValue])
         try? session.editNote("Coda hands separately, slowly. Left hand still rushes the run.")
         let history = InMemorySessionHistory(readOnlyIDs: readOnly ? [session.id] : [])
         history.save(session)
+        var other = PracticeSession(startedAt: previewNow.addingTimeInterval(-10 * 60))
+        try? other.stop(at: previewNow.addingTimeInterval(5 * 60))
         return SessionEdit(
-            session: session, history: history, library: InMemoryTagLibrary(previewTags),
-            now: previewNow.addingTimeInterval(60 * 60))
+            session: session, others: overlapping ? [other] : [], history: history,
+            library: InMemoryTagLibrary(previewTags), now: previewNow.addingTimeInterval(60 * 60))
     }
 }
 

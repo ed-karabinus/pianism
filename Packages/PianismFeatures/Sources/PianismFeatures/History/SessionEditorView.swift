@@ -10,6 +10,8 @@ struct SessionEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isPickingTags = false
     @State private var isConfirmingDiscard = false
+    /// Off once the user asks not to be warned about overlapping sessions again, on this device.
+    @AppStorage("showsOverlapWarning") private var showsOverlapWarning = true
 
     var body: some View {
         NavigationStack {
@@ -33,6 +35,16 @@ struct SessionEditorView: View {
                         Text(
                             "A newer version of Pianism changed this session. Update Pianism to change it.",
                             bundle: .module)
+                    } else if showsOverlapWarning, let other = editor.overlapping {
+                        Text(
+                            "This overlaps your \(other.times) session, so the day's total counts their shared time twice.",
+                            bundle: .module
+                        )
+                        .accessibilityIdentifier(AccessibilityID.editorOverlap)
+                        Button(LocalizedStringResource("Don't Show Again", bundle: .module)) {
+                            showsOverlapWarning = false
+                        }
+                        .accessibilityIdentifier(AccessibilityID.editorOverlapOff)
                     }
                 }
                 Button {
@@ -87,6 +99,11 @@ struct SessionEditorView: View {
 
 #Preview("Tagged") {
     let edit = SessionEdit.preview()
+    SessionEditorView(editor: edit.editor, tags: edit.tags)
+}
+
+#Preview("Overlapping another session") {
+    let edit = SessionEdit.preview(overlapping: true)
     SessionEditorView(editor: edit.editor, tags: edit.tags)
 }
 

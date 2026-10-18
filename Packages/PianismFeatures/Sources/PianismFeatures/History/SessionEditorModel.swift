@@ -21,14 +21,20 @@ final class SessionEditorModel: TagTarget {
 
     /// The session as it was opened, so moving its start or end works from the original pauses.
     private let original: PracticeSession
+    /// History's other sessions, to warn when this one overlaps them.
+    private let others: [PracticeSession]
     private let history: any SessionHistory
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
 
-    init(session: PracticeSession, isNew: Bool = false, history: any SessionHistory, now: Date) {
+    init(
+        session: PracticeSession, isNew: Bool = false, others: [PracticeSession] = [], history: any SessionHistory,
+        now: Date
+    ) {
         self.session = session
         self.isNew = isNew
         latestEnd = max(now, session.endedAt ?? now)
         original = session
+        self.others = others
         self.history = history
         // If history can't say, the edit is offered, and saving reports what went wrong.
         isReadOnly = !isNew && (try? history.canEdit(id: session.id)) == false
@@ -36,6 +42,11 @@ final class SessionEditorModel: TagTarget {
 
     /// Whether the session differs from how it opened, so closing without saving asks first.
     var hasChanges: Bool { session != original }
+
+    /// Another session this one shares time with, if any, which the day's total would count twice.
+    var overlapping: PracticeSession? {
+        others.first { $0.id != session.id && $0.overlaps(session) }
+    }
 
     var start: Date {
         get { session.startedAt }
@@ -95,12 +106,15 @@ struct SessionEdit: Identifiable {
     let editor: SessionEditorModel
     let tags: TagPickerModel
 
-    /// Edits `session`, saved in `history` or added to it if `isNew`, with tags from `library`, at `now`.
+    /// Edits `session`, saved in `history` or added to it if `isNew`, beside history's `others`, with tags
+    /// from `library`, at `now`.
     @MainActor
-    init(session: PracticeSession, isNew: Bool = false, history: any SessionHistory, library: any TagLibrary, now: Date)
-    {
+    init(
+        session: PracticeSession, isNew: Bool = false, others: [PracticeSession], history: any SessionHistory,
+        library: any TagLibrary, now: Date
+    ) {
         id = session.id
-        editor = SessionEditorModel(session: session, isNew: isNew, history: history, now: now)
+        editor = SessionEditorModel(session: session, isNew: isNew, others: others, history: history, now: now)
         tags = TagPickerModel(target: editor, library: library)
     }
 }
