@@ -54,8 +54,10 @@ enum AccessibilityID {
     static let historyUnavailable = "history.unavailable"
     static let historyDay = "history.day"
     static let historySession = "history.session"
+    static let historyAdd = "history.add"
     static let editorTags = "editor.tags"
     static let editorSave = "editor.save"
+    static let editorCancel = "editor.cancel"
     static let editorEnd = "editor.end"
     static let editorNote = "editor.note"
 }

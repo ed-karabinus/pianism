@@ -1,13 +1,15 @@
 import PianismCore
 import SwiftUI
 
-/// Edits a finished session (SES-5). Changes reach history only when saved.
+/// Edits a finished session, or one being added (SES-5). Changes reach history only when saved, and
+/// closing with unsaved changes asks first.
 struct SessionEditorView: View {
     @Bindable var editor: SessionEditorModel
     let tags: TagPickerModel
 
     @Environment(\.dismiss) private var dismiss
     @State private var isPickingTags = false
+    @State private var isConfirmingDiscard = false
 
     var body: some View {
         NavigationStack {
@@ -50,10 +52,21 @@ struct SessionEditorView: View {
                 .disabled(editor.isReadOnly)
                 .accessibilityIdentifier(AccessibilityID.editorNote)
             }
-            .navigationTitle(Text("Edit Session", bundle: .module))
+            .navigationTitle(
+                editor.isNew ? Text("Add Session", bundle: .module) : Text("Edit Session", bundle: .module)
+            )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(role: .cancel) { dismiss() }
+                    Button(role: .cancel) {
+                        if editor.hasChanges { isConfirmingDiscard = true } else { dismiss() }
+                    }
+                    .accessibilityIdentifier(AccessibilityID.editorCancel)
+                    .confirmationDialog(
+                        Text("Discard changes?", bundle: .module), isPresented: $isConfirmingDiscard,
+                        titleVisibility: .visible
+                    ) {
+                        Button(LocalizedStringResource("Discard", bundle: .module), role: .destructive) { dismiss() }
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(role: .confirm) {
@@ -67,6 +80,7 @@ struct SessionEditorView: View {
                 TagPickerView(model: tags)
             }
         }
+        .interactiveDismissDisabled(editor.hasChanges)
         .storageAlert(Text("Couldn't save that change", bundle: .module), isPresented: $editor.isShowingError)
     }
 }

@@ -81,6 +81,24 @@ struct SessionEditorModelTests {
         #expect(late.latestEnd == session.endedAt)
     }
 
+    @Test("SES-5: the editor has changes only while the session differs from how it opened")
+    func hasChangesOnlyWhileDifferent() throws {
+        let editor = SessionEditorModel(session: try endedSession(), history: InMemorySessionHistory(), now: clock.now)
+        #expect(!editor.hasChanges)
+
+        editor.note = "Coda"
+        #expect(editor.hasChanges)
+        editor.note = ""
+        editor.setTags(["ballade"])
+        #expect(editor.hasChanges)
+        editor.setTags([])
+        editor.start = clock.now + 60
+        #expect(editor.hasChanges)
+        editor.start = clock.now
+
+        #expect(!editor.hasChanges)
+    }
+
     private func endedSession() throws -> PracticeSession {
         var session = PracticeSession(startedAt: clock.now)
         try session.stop(at: clock.now + 600)

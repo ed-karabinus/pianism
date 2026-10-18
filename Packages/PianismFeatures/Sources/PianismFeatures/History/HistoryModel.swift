@@ -17,7 +17,7 @@ public final class HistoryModel {
     private(set) var loadFailed = false
     /// The tags sessions show, each merged tag as the tag it was merged into (ADR 0004).
     private(set) var tagIndex = TagIndex([])
-    /// The finished session being edited, if any (SES-5).
+    /// The finished session being edited or added, if any (SES-5).
     var editing: SessionEdit?
 
     let calendar = Calendar.autoupdatingCurrent
@@ -62,5 +62,14 @@ public final class HistoryModel {
     func edit(_ session: PracticeSession) {
         guard !waitingIDs.contains(session.id) else { return }
         editing = SessionEdit(session: session, history: history, library: tags, now: clock.now)
+    }
+
+    /// Starts adding a session after the fact: one ending now and 30 minutes long, to adjust (SES-5).
+    func add() {
+        let now = clock.now
+        var session = PracticeSession(startedAt: now.addingTimeInterval(-30 * 60), timeZone: .current)
+        // Can't fail: the session is running, and ends after it started.
+        try? session.stop(at: now)
+        editing = SessionEdit(session: session, isNew: true, history: history, library: tags, now: now)
     }
 }

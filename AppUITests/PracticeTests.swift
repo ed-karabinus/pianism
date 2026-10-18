@@ -184,6 +184,54 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(savedNote.value as? String, "Coda, slowly")
     }
 
+    /// SES-5: a session is added after the fact from History. It starts 30 minutes long, and History
+    /// shows it once it's saved.
+    @MainActor
+    func testAddASessionAfterTheFact() throws {
+        let app = launch(at: start, reset: true)
+        app.buttons["History"].firstMatch.tap()
+        tap(app, "history.add")
+        XCTAssertTrue(app.navigationBars["Add Session"].waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "Add session")
+
+        tap(app, "editor.save")
+        XCTAssertTrue(app.buttons["editor.save"].waitForNonExistence(timeout: 5))
+        let session = element(app, "history.session")
+        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        XCTAssertEqual(session.value as? String, "30 minutes")
+        attachScreenshot(of: app, named: "History, added")
+    }
+
+    /// SES-5: with no changes, Cancel just closes the editor. Once something changes, it can't be swiped
+    /// away, and Cancel asks before discarding the change.
+    @MainActor
+    func testUnsavedChangesAskBeforeClosing() throws {
+        let app = launch(at: start, reset: true)
+        app.buttons["History"].firstMatch.tap()
+        let editor = app.navigationBars["Add Session"]
+        tap(app, "history.add")
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        tap(app, "editor.cancel")
+        XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
+
+        tap(app, "history.add")
+        let note = element(app, "editor.note")
+        XCTAssertTrue(note.waitForExistence(timeout: 5))
+        note.tap()
+        note.typeText("Scales, slowly")
+        // Drags the editor by its title to the bottom of the screen, which closes a sheet that allows it.
+        editor.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1)))
+        XCTAssertFalse(editor.waitForNonExistence(timeout: 3), "The editor was swiped away with a change")
+        tap(app, "editor.cancel")
+        let discard = app.buttons["Discard"]
+        XCTAssertTrue(discard.waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "Discard changes")
+        discard.tap()
+        XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
+    }
+
     /// ADR 0007: when the history can't open, practice goes on. Each finished session waits in the
     /// outbox, Practice says how many are waiting, and History shows them marked "not saved yet" under
     /// a notice. Once the history opens, the waiting sessions move into it.

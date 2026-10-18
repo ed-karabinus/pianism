@@ -9,6 +9,10 @@ struct HistoryView: View {
         NavigationStack {
             content
                 .navigationTitle(Text("History", bundle: .module))
+                .toolbar {
+                    Button(LocalizedStringResource("Add Session", bundle: .module), systemImage: "plus") { model.add() }
+                        .accessibilityIdentifier(AccessibilityID.historyAdd)
+                }
         }
         .onAppear { model.refresh() }
         .sheet(item: $model.editing, onDismiss: model.refresh) { edit in

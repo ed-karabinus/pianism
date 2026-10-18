@@ -3,12 +3,14 @@ import Observation
 import PianismCore
 import os
 
-/// State and commands for editing a finished session (SES-5).
+/// State and commands for editing a finished session, or one being added after the fact (SES-5).
 @MainActor
 @Observable
 final class SessionEditorModel: TagTarget {
     /// The session as edited so far. History changes only when it's saved.
     private(set) var session: PracticeSession
+    /// Whether the session is being added, so saving adds it to history rather than changing it.
+    let isNew: Bool
     /// Whether a newer version wrote the session, so this one can't change it (ADR 0006).
     let isReadOnly: Bool
     /// The latest the session can end: when it was opened, so it can't end in the future, or its own end
@@ -22,14 +24,18 @@ final class SessionEditorModel: TagTarget {
     private let history: any SessionHistory
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
 
-    init(session: PracticeSession, history: any SessionHistory, now: Date) {
+    init(session: PracticeSession, isNew: Bool = false, history: any SessionHistory, now: Date) {
         self.session = session
+        self.isNew = isNew
         latestEnd = max(now, session.endedAt ?? now)
         original = session
         self.history = history
         // If history can't say, the edit is offered, and saving reports what went wrong.
-        isReadOnly = (try? history.canEdit(id: session.id)) == false
+        isReadOnly = !isNew && (try? history.canEdit(id: session.id)) == false
     }
+
+    /// Whether the session differs from how it opened, so closing without saving asks first.
+    var hasChanges: Bool { session != original }
 
     var start: Date {
         get { session.startedAt }
@@ -69,7 +75,11 @@ final class SessionEditorModel: TagTarget {
     /// Saves the edit, and returns whether it was saved, so the editor closes only then.
     func save() -> Bool {
         do {
-            try history.edit(session)
+            if isNew {
+                try history.save(session)
+            } else {
+                try history.edit(session)
+            }
             return true
         } catch {
             logger.error("Couldn't save an edited session: \(error, privacy: .public)")
@@ -79,17 +89,18 @@ final class SessionEditorModel: TagTarget {
     }
 }
 
-/// A finished session being edited, with the picker for its tags.
+/// A finished session being edited or added, with the picker for its tags.
 struct SessionEdit: Identifiable {
     let id: UUID
     let editor: SessionEditorModel
     let tags: TagPickerModel
 
-    /// Edits `session`, saved in `history`, with tags from `library`, at `now`.
+    /// Edits `session`, saved in `history` or added to it if `isNew`, with tags from `library`, at `now`.
     @MainActor
-    init(session: PracticeSession, history: any SessionHistory, library: any TagLibrary, now: Date) {
+    init(session: PracticeSession, isNew: Bool = false, history: any SessionHistory, library: any TagLibrary, now: Date)
+    {
         id = session.id
-        editor = SessionEditorModel(session: session, history: history, now: now)
+        editor = SessionEditorModel(session: session, isNew: isNew, history: history, now: now)
         tags = TagPickerModel(target: editor, library: library)
     }
 }
