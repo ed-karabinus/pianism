@@ -1,9 +1,10 @@
 name: CI
 
-on:
-  pull_request:
-  push:
-    branches: [main]
+# Pull requests only. Ruleset 25018486 requires a branch to be up to date with main before it
+# merges, so a run on main would retest the tree the pull request's last run passed, holding GitHub
+# Free's 5 macOS slots from the next one. If that setting goes, restore `push: branches: [main]`.
+# A merge that bypasses the ruleset lands untested.
+on: pull_request
 
 concurrency:
   group: ci-${{ github.ref }}
