@@ -151,14 +151,7 @@ final class PracticeTests: UITestCase {
         tap(app, "Scales")
         XCTAssertTrue(app.buttons["Scales"].wait(for: \.isSelected, toEqual: true, timeout: 5))
         tap(app, "tags.done")
-        // The end picker's time button opens its wheels: hours, then minutes.
-        app.datePickers["editor.end"].buttons.matching(NSPredicate(format: "label CONTAINS ':'")).firstMatch.tap()
-        app.pickerWheels.element(boundBy: 1).adjust(toPickerWheelValue: "20")
-        // Closes the wheels with a tap on the editor's title, which does nothing if the tap gets through.
-        // Elsewhere a tap can land on the wheels or the Tags row, and the status bar doesn't reach the app.
-        let title = app.navigationBars.staticTexts["Edit Session"].frame
-        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: title.midX, dy: title.midY)).tap()
-        XCTAssertTrue(app.buttons["PopoverDismissRegion"].waitForNonExistence(timeout: 5))
+        setEndMinute(app, to: "20", title: "Edit Session")
         let note = element(app, "editor.note")
         note.tap()
         note.typeText("Coda, slowly")
@@ -232,6 +225,41 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
     }
 
+    /// SES-5: a session that shares practice with another says so, but can still be saved. "Don't Show
+    /// Again" turns the warning off for good, even after a relaunch.
+    @MainActor
+    func testOverlapWarningCanBeTurnedOff() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        app.terminate()
+        app = launch(at: start + 25 * 60)
+        tap(app, "practice.stop")
+        app.buttons["History"].firstMatch.tap()
+        tap(app, "history.add")
+        // The added session ends where the practiced one starts, so it warns only once it ends 20 minutes in.
+        XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
+        XCTAssertFalse(element(app, "editor.overlap").exists, "The added session overlaps before any change")
+        setEndMinute(app, to: "20", title: "Add Session")
+        XCTAssertTrue(element(app, "editor.overlap").waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "Add session, overlapping")
+        tap(app, "editor.overlap-off")
+        XCTAssertTrue(element(app, "editor.overlap").waitForNonExistence(timeout: 5))
+        tap(app, "editor.save")
+        XCTAssertTrue(app.buttons["editor.save"].waitForNonExistence(timeout: 5))
+        XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "history.session").count, 2)
+        app.terminate()
+
+        app = launch(at: start + 30 * 60)
+        app.buttons["History"].firstMatch.tap()
+        tap(app, "history.add")
+        // It now ends where the session added above starts, so ending at :45 shares 15 minutes with it.
+        XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
+        setEndMinute(app, to: "45", title: "Add Session")
+        let practiceTime = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Practice time'"))
+        XCTAssertEqual(practiceTime.firstMatch.value as? String, "45 minutes")
+        XCTAssertFalse(element(app, "editor.overlap").exists)
+    }
+
     /// ADR 0007: when the history can't open, practice goes on. Each finished session waits in the
     /// outbox, Practice says how many are waiting, and History shows them marked "not saved yet" under
     /// a notice. Once the history opens, the waiting sessions move into it.
@@ -294,6 +322,18 @@ final class PracticeTests: UITestCase {
         let button = app.buttons[identifier]
         XCTAssertTrue(button.waitForExistence(timeout: 5), "No \(identifier) button")
         button.tap()
+    }
+
+    /// Sets the editor's end minute with the end picker's wheels: hours, then minutes.
+    @MainActor
+    private func setEndMinute(_ app: XCUIApplication, to minute: String, title: String) {
+        app.datePickers["editor.end"].buttons.matching(NSPredicate(format: "label CONTAINS ':'")).firstMatch.tap()
+        app.pickerWheels.element(boundBy: 1).adjust(toPickerWheelValue: minute)
+        // Closes the wheels with a tap on the editor's title, which does nothing if the tap gets through.
+        // Elsewhere a tap can land on the wheels or the Tags row, and the status bar doesn't reach the app.
+        let frame = app.navigationBars.staticTexts[title].frame
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
+        XCTAssertTrue(app.buttons["PopoverDismissRegion"].waitForNonExistence(timeout: 5))
     }
 
     @MainActor
