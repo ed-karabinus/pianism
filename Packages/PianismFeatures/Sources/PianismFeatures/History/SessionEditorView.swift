@@ -66,7 +66,6 @@ struct SessionEditorView: View {
                         titleVisibility: .visible
                     ) {
                         Button(LocalizedStringResource("Discard", bundle: .module), role: .destructive) { dismiss() }
-                        Button(LocalizedStringResource("Keep Editing", bundle: .module), role: .cancel) {}
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {

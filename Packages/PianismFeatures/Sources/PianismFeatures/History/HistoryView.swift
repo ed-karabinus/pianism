@@ -10,10 +10,8 @@ struct HistoryView: View {
             content
                 .navigationTitle(Text("History", bundle: .module))
                 .toolbar {
-                    Button(action: model.add) {
-                        Label(LocalizedStringResource("Add Session", bundle: .module), systemImage: "plus")
-                    }
-                    .accessibilityIdentifier(AccessibilityID.historyAdd)
+                    Button(LocalizedStringResource("Add Session", bundle: .module), systemImage: "plus") { model.add() }
+                        .accessibilityIdentifier(AccessibilityID.historyAdd)
                 }
         }
         .onAppear { model.refresh() }

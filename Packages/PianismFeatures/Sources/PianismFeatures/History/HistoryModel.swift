@@ -17,7 +17,7 @@ public final class HistoryModel {
     private(set) var loadFailed = false
     /// The tags sessions show, each merged tag as the tag it was merged into (ADR 0004).
     private(set) var tagIndex = TagIndex([])
-    /// The finished session being edited, if any (SES-5).
+    /// The finished session being edited or added, if any (SES-5).
     var editing: SessionEdit?
 
     let calendar = Calendar.autoupdatingCurrent

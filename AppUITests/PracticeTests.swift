@@ -184,8 +184,8 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(savedNote.value as? String, "Coda, slowly")
     }
 
-    /// SES-5: a session is added after the fact from History. It starts as one that ends now and lasts
-    /// 30 minutes, and History shows it once it's saved.
+    /// SES-5: a session is added after the fact from History. It starts 30 minutes long, and History
+    /// shows it once it's saved.
     @MainActor
     func testAddASessionAfterTheFact() throws {
         let app = launch(at: start, reset: true)
@@ -219,7 +219,9 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(note.waitForExistence(timeout: 5))
         note.tap()
         note.typeText("Scales, slowly")
-        editor.swipeDown(velocity: .fast)
+        // Drags the editor by its title to the bottom of the screen, which closes a sheet that allows it.
+        editor.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1)))
         XCTAssertFalse(editor.waitForNonExistence(timeout: 3), "The editor was swiped away with a change")
         tap(app, "editor.cancel")
         let discard = app.buttons["Discard"]
