@@ -35,9 +35,9 @@ struct SessionEditorView: View {
                         Text(
                             "A newer version of Pianism changed this session. Update Pianism to change it.",
                             bundle: .module)
-                    } else if showsOverlapWarning, let other = editor.overlapping {
+                    } else if showsOverlapWarning, let overlap = editor.overlap {
                         Text(
-                            "This overlaps your \(other.times) session, so the day's total counts their shared time twice.",
+                            "This shares \(ElapsedTime.spoken(overlap.shared)) of practice with your \(overlap.session.times) session, so the day's total counts it twice.",
                             bundle: .module
                         )
                         .accessibilityIdentifier(AccessibilityID.editorOverlap)

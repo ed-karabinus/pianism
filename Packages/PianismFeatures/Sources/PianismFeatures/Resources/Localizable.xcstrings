@@ -142,7 +142,7 @@
     "Technique" : {
       "comment" : "A built-in skill"
     },
-    "This overlaps your %@ session, so the day's total counts their shared time twice." : {
+    "This shares %@ of practice with your %@ session, so the day's total counts it twice." : {
 
     },
     "Today" : {

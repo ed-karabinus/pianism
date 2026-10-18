@@ -129,24 +129,29 @@ struct HistoryModelTests {
         #expect(history.sessions().map(\.note) == ["Coda"])
     }
 
-    @Test("SES-5: a session being added or edited is checked for overlaps against History's other sessions")
-    func editorsCheckHistoryForOverlaps() throws {
+    @Test(
+        "SES-5: a session added or edited is warned about sharing a minute or more of practice with another in History, waiting ones included"
+    )
+    func editorsWarnOfOverlaps() throws {
         let history = InMemorySessionHistory()
-        let earlier = try endedSession(startingAfter: -600)
+        let waiting = try endedSession(startingAfter: -600)
         let later = try endedSession(startingAfter: 3_600)
-        history.save(earlier)
+        outbox.add(waiting)
         history.save(later)
         let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
         model.refresh()
 
         model.add()
-        #expect(model.editing?.editor.overlapping == earlier)
+        #expect(model.editing?.editor.overlap?.session == waiting)
+        #expect(model.editing?.editor.overlap?.shared == 600)
         model.edit(later)
         let editor = try #require(model.editing?.editor)
-        #expect(editor.overlapping == nil)
+        #expect(editor.overlap == nil)
+        editor.start = clock.now - 59
+        #expect(editor.overlap == nil)
         editor.start = clock.now - 60
 
-        #expect(editor.overlapping == earlier)
+        #expect(editor.overlap?.session == waiting)
     }
 
     private func endedSession(startingAfter seconds: TimeInterval) throws -> PracticeSession {

@@ -117,11 +117,20 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         notes = text.isEmpty ? nil : text
     }
 
-    /// Whether this finished session shares any time with `other`, between their starts and ends (SES-5).
-    /// Sessions that only touch don't overlap, and a running session overlaps nothing.
-    public func overlaps(_ other: PracticeSession) -> Bool {
-        guard let end = endedAt, let otherEnd = other.endedAt else { return false }
-        return startedAt < otherEnd && other.startedAt < end
+    /// The practice time this finished session shares with `other`, which a day's total counts twice
+    /// (SES-5). Pauses aren't practice, so time in either's pause isn't shared. Zero if either is running.
+    public func sharedPractice(with other: PracticeSession) -> TimeInterval {
+        practiceSpans.flatMap { span in other.practiceSpans.map(span.clamped) }
+            .reduce(0) { $0 + $1.upperBound.timeIntervalSince($1.lowerBound) }
+    }
+
+    /// When a finished session was practising: from its start to the first pause, between pauses, and
+    /// from the last pause to its end. Empty while it's running.
+    private var practiceSpans: [Range<Date>] {
+        guard let end = endedAt else { return [] }
+        let starts = [startedAt] + pauses.map { $0.end ?? end }
+        let ends = pauses.map(\.start) + [end]
+        return zip(starts, ends).compactMap { $0 < $1 ? $0..<$1 : nil }
     }
 
     /// The most recent moment anything happened to this session.

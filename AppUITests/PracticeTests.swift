@@ -232,8 +232,8 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
     }
 
-    /// SES-5: a session that overlaps another says so, but can still be saved. "Don't Show Again" turns
-    /// the warning off for good, even after a relaunch.
+    /// SES-5: a session that shares practice with another says so, but can still be saved. "Don't Show
+    /// Again" turns the warning off for good, even after a relaunch.
     @MainActor
     func testOverlapWarningCanBeTurnedOff() throws {
         var app = launch(at: start, reset: true)
@@ -244,10 +244,12 @@ final class PracticeTests: UITestCase {
         app.buttons["History"].firstMatch.tap()
         tap(app, "history.add")
         XCTAssertTrue(element(app, "editor.overlap").waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["editor.save"].isEnabled)
         attachScreenshot(of: app, named: "Add session, overlapping")
         tap(app, "editor.overlap-off")
         XCTAssertTrue(element(app, "editor.overlap").waitForNonExistence(timeout: 5))
+        tap(app, "editor.save")
+        XCTAssertTrue(app.buttons["editor.save"].waitForNonExistence(timeout: 5))
+        XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "history.session").count, 2)
         app.terminate()
 
         app = launch(at: start + 30 * 60)

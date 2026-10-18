@@ -43,9 +43,12 @@ final class SessionEditorModel: TagTarget {
     /// Whether the session differs from how it opened, so closing without saving asks first.
     var hasChanges: Bool { session != original }
 
-    /// Another session this one shares time with, if any, which the day's total would count twice.
-    var overlapping: PracticeSession? {
-        others.first { $0.id != session.id && $0.overlaps(session) }
+    /// Another session this one shares at least a minute of practice with, if any, and how much, which the
+    /// day's total counts twice. Less is ignored: the time pickers can't show it, so it can't be fixed.
+    var overlap: (session: PracticeSession, shared: TimeInterval)? {
+        others.lazy.filter { $0.id != self.session.id }
+            .map { ($0, $0.sharedPractice(with: self.session)) }
+            .first { $0.shared >= 60 }
     }
 
     var start: Date {

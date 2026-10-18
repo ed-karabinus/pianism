@@ -166,19 +166,28 @@ struct PracticeSessionTests {
         #expect(session == plain)
     }
 
-    @Test("SES-5: finished sessions overlap when they share time, not when they only touch")
-    func finishedSessionsOverlap() throws {
-        func finished(_ from: TimeInterval, _ to: TimeInterval) throws -> PracticeSession {
+    @Test("SES-5: finished sessions share the practice time they overlap, leaving out either's pauses")
+    func sharedPracticeLeavesOutPauses() throws {
+        func finished(_ from: TimeInterval, _ to: TimeInterval, pausedFrom: TimeInterval? = nil) throws
+            -> PracticeSession
+        {
             var session = PracticeSession(startedAt: clock.now + from)
+            if let pausedFrom {
+                try session.pause(at: clock.now + pausedFrom)
+                try session.resume(at: clock.now + pausedFrom + 100)
+            }
             try session.stop(at: clock.now + to)
             return session
         }
-        let session = try finished(0, 600)
+        let session = try finished(0, 600, pausedFrom: 100)
+        let others = try [
+            finished(150, 250), finished(120, 180), finished(600, 900), finished(-100, 1_000), finished(550, 900),
+            finished(-100, 1_000, pausedFrom: 0),
+        ]
 
-        #expect(try [finished(599, 900), finished(-100, 1), finished(100, 200)].allSatisfy(session.overlaps))
-        #expect(try ![finished(600, 900), finished(-100, 0)].contains(where: session.overlaps))
-        #expect(!session.overlaps(PracticeSession(startedAt: clock.now + 100)))
-        #expect(!PracticeSession(startedAt: clock.now + 100).overlaps(session))
+        #expect(others.map(session.sharedPractice) == [50, 0, 0, 500, 50, 400])
+        #expect(others.map { $0.sharedPractice(with: session) } == [50, 0, 0, 500, 50, 400])
+        #expect(session.sharedPractice(with: PracticeSession(startedAt: clock.now)) == 0)
     }
 
     // MARK: Invalid changes are rejected and leave the session untouched
