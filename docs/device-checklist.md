@@ -1,23 +1,21 @@
 # Device checklist
 
-Checks that need real hardware, so CI can't run them (CLAUDE.md, workflow rule 8). The owner runs
-them before each milestone tag and on any new piano or iOS version. Each entry says why it can't be
-automated and which automated test covers part of it.
-
-Recordings live in `~/Developer/pianism-recordings/` until MIDI-1 turns them into test fixtures.
+Checks that need a real piano, so CI can't run them (CLAUDE.md, rule 8). The owner runs them each
+milestone, as the README's Testing table says. Each row gives the last result, from issue #20.
 
 ## Kawai CA59 (issue #20)
 
-| # | Check | Expected | Last run |
-| --- | --- | --- | --- |
-| 1 | Bluetooth MIDI: pair "CA59 Bluetooth", then play notes and use the sustain pedal | Notes arrive with real note-offs; the pedal sends CC64 about every 12 ms while it moves; nothing arrives while idle (no Active Sensing). One Bluetooth host at a time. | 2026-10-15, Mac and iPhone: as expected |
-| 2 | USB MIDI: connect the piano's USB to Host port (rear panel, type B) to the iPhone, with Bluetooth MIDI off | The piano appears as "MIDI KEYBOARD" with no prompt on iPhone (the Mac asks "Allow accessory to connect?"). Same messages as Bluetooth, one per packet. | 2026-10-16: as expected |
-| 3 | USB while Bluetooth MIDI is connected | USB sends nothing until Bluetooth MIDI is off | 2026-10-16: as expected |
-| 4 | Unplug and replug USB at the piano's end, without playing | CoreMIDI reports the source removed, then added, within a millisecond. Nothing is sent until a key is played; notes played while unplugged are never sent. | 2026-10-17: as expected |
-| 5 | Restart the piano while USB is connected | Bluetooth MIDI switches back on, and USB stays connected but silent until it's off again | 2026-10-17: as expected |
-| 6 | Auto power-off: leave the piano idle until it switches itself off | Not yet known | Skipped 2026-10-17: the owner thinks it never switches off |
+| # | Check | Last result |
+| --- | --- | --- |
+| 1 | **Bluetooth MIDI, Mac:** pair "CA59 Bluetooth" in Audio MIDI Setup, then record practice with notes, a pause and the pedal | 2026-10-15: each note-on had a real note-off (`0x8n`). The pedal sent CC64 in-between values about every 12 ms while it moved. Nothing arrived while idle: no Active Sensing or clock. Some packets carried several messages. |
+| 2 | **Bluetooth MIDI, iPhone:** pair from GarageBand (Settings → Advanced → Bluetooth MIDI Devices), then play | 2026-10-15: GarageBand received the notes. The piano connects to one host at a time, so the Mac had to disconnect first. |
+| 3 | **USB, iPhone:** Bluetooth MIDI off and the piano off, cable from USB to Host (type B, on the jack panel) to the iPhone, piano on, then play in GarageBand | 2026-10-16: worked with no adapter and no prompt. The notes played and the pedal sustained. |
+| 4 | **USB, Mac:** the same, recording on the Mac | 2026-10-16: macOS asked "Allow accessory to connect?" first. The piano appeared as "MIDI KEYBOARD", not by its model name. Messages were as over Bluetooth, nothing while idle, one message per packet. |
+| 5 | **Unplug and replug, USB to the Mac,** at the piano's end: play a chord with the pedal while unplugged, plug in and wait 30 s, then unplug and plug in again without playing, then play | 2026-10-17: nothing played while unplugged was sent later. Plugging in sent nothing until a key was played. CoreMIDI reported the source removed on each unplug and added on each replug. Replugs at the laptop's end didn't register for about five minutes. |
+| 6 | **Restart the piano with USB connected** | 2026-10-17: Bluetooth MIDI switched back on, and USB stayed connected but sent nothing. The owner's manual says USB is disabled while Bluetooth MIDI is connected. |
+| 7 | **Auto power-off:** leave the piano idle until it switches itself off, and note the time and anything sent | Not run (2026-10-17): the owner doesn't expect this piano to switch itself off. |
 
-**Why these are manual:** they depend on the piano's firmware and on iOS's MIDI stack, which no
-simulator or CI runner provides. **What's automated instead:** once MIDI-1 lands, the recordings
-from these checks replay through the MIDI adapter as fixtures, so the behaviour above is tested on
-every PR. A change in behaviour on a new firmware or iOS version still needs this checklist.
+**Why these are manual:** they depend on the piano and on Apple's MIDI and Bluetooth stacks, which
+no simulator or CI runner has. The recordings from rows 1, 4 and 5 are kept on the owner's Mac.
+Once MIDI-1 (#43) lands, they become fixtures for its detector tests, covering the messages.
+Pairing, prompts, device names, the Bluetooth and USB switch, and power-off stay manual.

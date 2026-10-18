@@ -10,7 +10,7 @@ Store yet.
 
 | Practice | Tags | History | Edit Session |
 | --- | --- | --- | --- |
-| <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-68/iphone-practicing-tagged.png?raw=true" width="180" alt="Practice, a session running with tags"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-68/iphone-tag-picker.png?raw=true" width="180" alt="The tag picker"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-68/iphone-history-tagged.png?raw=true" width="180" alt="History, sessions grouped by day"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-76/iphone-edit-session.png?raw=true" width="180" alt="Editing a finished session"> |
+| <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-68/iphone-practicing-tagged.png?raw=true" width="180" alt="Practice, a session running with tags"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-68/iphone-tag-picker.png?raw=true" width="180" alt="The tag picker"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-77/iphone-history-added.png?raw=true" width="180" alt="History, with a session added after the fact"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-76/iphone-edit-session.png?raw=true" width="180" alt="Editing a finished session"> |
 
 The screenshots come from the end-to-end tests, on the iPhone 17 simulator.
 
