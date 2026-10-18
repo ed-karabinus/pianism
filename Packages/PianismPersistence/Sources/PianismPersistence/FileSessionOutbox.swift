@@ -35,7 +35,9 @@ public struct FileSessionOutbox: SessionOutbox {
     }
 
     public func remove(id: UUID) throws {
-        try FileManager.default.removeItem(at: file(for: id))
+        do {
+            try FileManager.default.removeItem(at: file(for: id))
+        } catch CocoaError.fileNoSuchFile {}
     }
 
     /// Moves a file whose contents aren't a session, as after an update changed the format, to

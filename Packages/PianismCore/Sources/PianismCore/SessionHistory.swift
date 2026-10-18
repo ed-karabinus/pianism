@@ -22,4 +22,9 @@ public protocol SessionHistory: Sendable {
     /// Replaces the saved session with `session`'s ID by `session`, as edited (SES-5). Changes nothing
     /// if it was never saved or was deleted. Throws ``RecordFromNewerVersion`` if a newer version wrote it.
     func edit(_ session: PracticeSession) throws
+
+    /// Deletes the saved session with `id` for good, so it no longer reads and saving it again changes nothing
+    /// (SES-5, ADR 0006). Changes nothing if it was never saved or was already deleted. Throws
+    /// ``RecordFromNewerVersion`` if a newer version wrote it.
+    func delete(id: UUID) throws
 }

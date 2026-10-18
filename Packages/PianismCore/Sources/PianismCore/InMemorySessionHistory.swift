@@ -4,6 +4,7 @@ import Synchronization
 /// A ``SessionHistory`` kept in memory, for previews and tests.
 public final class InMemorySessionHistory: SessionHistory {
     private let saved = Mutex<[PracticeSession]>([])
+    private let deletedIDs = Mutex<Set<UUID>>([])
     private let readOnlyIDs: Set<UUID>
 
     /// An empty history, in which sessions saved with `readOnlyIDs` act as if a newer version wrote them.
@@ -17,7 +18,7 @@ public final class InMemorySessionHistory: SessionHistory {
 
     public func save(_ session: PracticeSession) {
         saved.withLock { sessions in
-            if !sessions.contains(where: { $0.id == session.id }) {
+            if !sessions.contains(where: { $0.id == session.id }), !deletedIDs.withLock({ $0.contains(session.id) }) {
                 sessions.append(session)
             }
         }
@@ -33,6 +34,15 @@ public final class InMemorySessionHistory: SessionHistory {
             if let index = sessions.firstIndex(where: { $0.id == session.id }) {
                 sessions[index] = session
             }
+        }
+    }
+
+    public func delete(id: UUID) throws {
+        try saved.withLock { sessions in
+            guard sessions.contains(where: { $0.id == id }) else { return }
+            guard !readOnlyIDs.contains(id) else { throw RecordFromNewerVersion() }
+            sessions.removeAll { $0.id == id }
+            deletedIDs.withLock { _ = $0.insert(id) }
         }
     }
 }

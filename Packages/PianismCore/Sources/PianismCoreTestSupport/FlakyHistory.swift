@@ -38,6 +38,11 @@ public final class FlakyHistory: SessionHistory {
         try saved.edit(session)
     }
 
+    public func delete(id: UUID) throws {
+        try failIfUnreachable()
+        try saved.delete(id: id)
+    }
+
     private func failIfUnreachable() throws {
         if isFailing.withLock({ $0 }) { throw Failure() }
     }

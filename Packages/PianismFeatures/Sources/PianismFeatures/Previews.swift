@@ -103,6 +103,7 @@ private struct PreviewUnavailableHistory: SessionHistory {
     func save(_: PracticeSession) throws { throw Unavailable() }
     func canEdit(id _: UUID) throws -> Bool { throw Unavailable() }
     func edit(_: PracticeSession) throws { throw Unavailable() }
+    func delete(id _: UUID) throws { throw Unavailable() }
 }
 
 private struct PreviewClock: WallClock {

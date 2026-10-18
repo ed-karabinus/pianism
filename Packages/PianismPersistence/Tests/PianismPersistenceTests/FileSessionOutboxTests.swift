@@ -39,6 +39,17 @@ final class FileSessionOutboxTests {
         #expect(try outbox.sessions() == [session])
     }
 
+    @Test("SES-5: removing a session that isn't waiting is harmless, so deleting a saved one can always try")
+    func removingAbsentIsHarmless() throws {
+        let session = try endedSession(startingAfter: 0)
+        try outbox.remove(id: session.id)
+        try outbox.add(session)
+
+        try outbox.remove(id: UUID())
+
+        #expect(try outbox.sessions() == [session])
+    }
+
     @Test("No folder means nothing is waiting")
     func noFolderNothingWaiting() throws {
         #expect(try outbox.sessions().isEmpty)

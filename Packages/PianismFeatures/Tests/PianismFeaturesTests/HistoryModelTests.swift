@@ -174,9 +174,198 @@ struct HistoryModelTests {
         #expect(editor.overlap?.session == waiting)
     }
 
+    @Test("SES-5: a deleted session hides from its day at once, but storage changes only when the deletion commits")
+    func deleteHidesThenCommits() throws {
+        let history = InMemorySessionHistory()
+        let kept = try endedSession(startingAfter: 0)
+        let deleted = try endedSession(startingAfter: 3_600)
+        history.save(kept)
+        history.save(deleted)
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        model.refresh()
+
+        model.delete(deleted)
+        model.refresh()
+
+        #expect(model.pendingDeletion == deleted)
+        #expect(model.days.map(\.total) == [600])
+        #expect(Set(history.sessions()) == [kept, deleted])
+        model.commitDelete()
+        #expect(model.pendingDeletion == nil)
+        #expect(history.sessions() == [kept])
+        #expect(model.days.flatMap(\.sessions) == [kept])
+        #expect(!model.isShowingDeleteError)
+    }
+
+    @Test("SES-5: undoing a deletion shows the session again and leaves storage alone")
+    func undoDeleteRestores() throws {
+        let history = InMemorySessionHistory()
+        let session = try endedSession(startingAfter: 0)
+        history.save(session)
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        model.refresh()
+
+        model.delete(session)
+        model.undoDelete()
+        model.commitDelete()
+
+        #expect(model.pendingDeletion == nil)
+        #expect(model.days.flatMap(\.sessions) == [session])
+        #expect(history.sessions() == [session])
+    }
+
+    @Test("SES-5: deleting another session commits the earlier deletion, so only the latest can be undone")
+    func secondDeleteCommitsFirst() throws {
+        let history = InMemorySessionHistory()
+        let first = try endedSession(startingAfter: 0)
+        let second = try endedSession(startingAfter: 3_600)
+        history.save(first)
+        history.save(second)
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        model.refresh()
+
+        model.delete(first)
+        model.delete(second)
+
+        #expect(history.sessions() == [second])
+        #expect(model.pendingDeletion == second)
+        #expect(model.days.isEmpty)
+    }
+
+    @Test("SES-5: deleting the session being edited closes the editor")
+    func deleteClosesEditor() throws {
+        let history = InMemorySessionHistory()
+        let session = try endedSession(startingAfter: 0)
+        history.save(session)
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        model.refresh()
+        model.edit(session)
+
+        model.delete(session)
+
+        #expect(model.editing == nil)
+    }
+
+    @Test("SES-5, ADR 0006: a session a newer version wrote can't be deleted")
+    func readOnlyCantBeDeleted() throws {
+        let session = try endedSession(startingAfter: 0)
+        let history = InMemorySessionHistory(readOnlyIDs: [session.id])
+        history.save(session)
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        model.refresh()
+
+        model.delete(session)
+
+        #expect(!model.canDelete(session))
+        #expect(model.pendingDeletion == nil)
+        #expect(model.days.flatMap(\.sessions) == [session])
+    }
+
+    @Test(
+        "SES-5, ADR 0007: deleting removes a saved session's leftover copy from the outbox, so it doesn't show again as waiting"
+    )
+    func deleteRemovesLeftoverCopy() throws {
+        let history = InMemorySessionHistory()
+        let leftover = try endedSession(startingAfter: 0)
+        history.save(leftover)
+        outbox.add(leftover)
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        model.refresh()
+
+        model.delete(leftover)
+        model.commitDelete()
+        model.refresh()
+
+        #expect(outbox.sessions().isEmpty && history.sessions().isEmpty)
+        #expect(model.days.isEmpty && model.waitingIDs.isEmpty)
+        #expect(!model.isShowingDeleteError)
+    }
+
+    @Test(
+        "SES-5, ADR 0007: a waiting session deletes, even if an archive saved it to history before the deletion commits"
+    )
+    func waitingDeletesAfterArchive() throws {
+        let history = InMemorySessionHistory()
+        let waiting = try endedSession(startingAfter: 0)
+        outbox.add(waiting)
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        model.refresh()
+
+        #expect(model.canDelete(waiting))
+        model.delete(waiting)
+        try SessionRecorder(store: InMemoryRunningSessionStore(), clock: clock).archive(to: history, or: outbox)
+        #expect(history.sessions() == [waiting])
+        model.commitDelete()
+        model.refresh()
+
+        #expect(outbox.sessions().isEmpty && history.sessions().isEmpty)
+        #expect(model.days.isEmpty)
+        #expect(!model.isShowingDeleteError)
+    }
+
+    @Test("SES-5, ADR 0007: a waiting session deletes even while history is down, which is why it's waiting")
+    func waitingDeletesWhileHistoryDown() throws {
+        let waiting = try endedSession(startingAfter: 0)
+        outbox.add(waiting)
+        let model = HistoryModel(history: FlakyHistory(), tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        model.refresh()
+
+        model.delete(waiting)
+        model.commitDelete()
+
+        #expect(outbox.sessions().isEmpty)
+        #expect(model.days.isEmpty)
+        #expect(!model.isShowingDeleteError)
+    }
+
+    @Test("SES-5: if the outbox can't let a session go, nothing is deleted, and it shows again with an error")
+    func outboxFailureKeepsSession() throws {
+        let history = InMemorySessionHistory()
+        let session = try endedSession(startingAfter: 0)
+        history.save(session)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: UnavailableOutbox(), clock: clock)
+        model.refresh()
+
+        model.delete(session)
+        model.commitDelete()
+
+        #expect(model.isShowingDeleteError)
+        #expect(history.sessions() == [session])
+        #expect(model.days.flatMap(\.sessions) == [session])
+    }
+
+    @Test("SES-5: if history can't delete a saved session, it shows again, saved, with an error")
+    func historyFailureKeepsSession() throws {
+        let history = UndeletableHistory()
+        let session = try endedSession(startingAfter: 0)
+        history.saved.save(session)
+        outbox.add(session)
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        model.refresh()
+
+        model.delete(session)
+        model.commitDelete()
+
+        #expect(model.isShowingDeleteError)
+        #expect(model.days.flatMap(\.sessions) == [session])
+        #expect(model.waitingIDs.isEmpty)
+    }
+
     private func endedSession(startingAfter seconds: TimeInterval) throws -> PracticeSession {
         var session = PracticeSession(startedAt: clock.now + seconds)
         try session.stop(at: clock.now + seconds + 600)
         return session
     }
+}
+
+/// A history that works except that it can't delete, as when its store fails to save.
+private struct UndeletableHistory: SessionHistory {
+    let saved = InMemorySessionHistory()
+
+    func sessions() -> [PracticeSession] { saved.sessions() }
+    func save(_ session: PracticeSession) { saved.save(session) }
+    func canEdit(id: UUID) -> Bool { saved.canEdit(id: id) }
+    func edit(_ session: PracticeSession) throws { try saved.edit(session) }
+    func delete(id _: UUID) throws { throw FlakyHistory.Failure() }
 }

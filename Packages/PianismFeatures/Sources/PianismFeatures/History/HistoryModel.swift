@@ -19,6 +19,10 @@ public final class HistoryModel {
     private(set) var tagIndex = TagIndex([])
     /// The finished session being edited or added, if any (SES-5).
     var editing: SessionEdit?
+    /// The session deleted but still undoable, hidden until ``commitDelete()`` writes it to storage (SES-5).
+    private(set) var pendingDeletion: PracticeSession?
+    /// Whether to show that a deletion couldn't be saved.
+    var isShowingDeleteError = false
 
     let calendar = Calendar.autoupdatingCurrent
     private let clock: any WallClock
@@ -55,7 +59,51 @@ public final class HistoryModel {
         let savedIDs = Set(saved.map(\.id))
         let unsaved = waiting.filter { !savedIDs.contains($0.id) }
         waitingIDs = Set(unsaved.map(\.id))
-        days = PracticeDay.group(saved + unsaved, in: calendar)
+        days = PracticeDay.group((saved + unsaved).filter { $0.id != pendingDeletion?.id }, in: calendar)
+    }
+
+    /// Whether `session` can be deleted: one still waiting can, and a saved one can when it can be edited.
+    func canDelete(_ session: PracticeSession) -> Bool {
+        // As in the editor, if history can't say, deleting is offered, and committing reports what went wrong.
+        waitingIDs.contains(session.id) || (try? history.canEdit(id: session.id)) != false
+    }
+
+    /// Hides `session` and makes it the deletion that can still be undone, after committing any earlier one.
+    /// Storage changes only on ``commitDelete()``, so a session deleted just before the app is killed is kept.
+    func delete(_ session: PracticeSession) {
+        guard canDelete(session) else { return }
+        commitDelete()
+        if editing?.id == session.id { editing = nil }
+        pendingDeletion = session
+        refresh()
+    }
+
+    /// Shows the pending deletion again.
+    func undoDelete() {
+        pendingDeletion = nil
+        refresh()
+    }
+
+    /// Deletes the pending deletion from storage. If that fails, it shows again with an error.
+    func commitDelete() {
+        guard let id = pendingDeletion?.id else { return }
+        pendingDeletion = nil
+        do {
+            // The outbox first, so a copy can't stay there to show again as waiting, or to be saved by a
+            // later archive; if this fails, nothing is deleted.
+            try outbox.remove(id: id)
+            do {
+                // History too, in case it saved a waiting session since.
+                try history.delete(id: id)
+            } catch  where waitingIDs.contains(id) {
+                // History being down is why it was waiting; out of the outbox, it's gone.
+                logger.error("Couldn't delete a waiting session from history: \(error, privacy: .public)")
+            }
+        } catch {
+            logger.error("Couldn't delete a session: \(error, privacy: .public)")
+            isShowingDeleteError = true
+        }
+        refresh()
     }
 
     /// Starts editing `session`, unless it's still waiting to be saved (ADR 0007).

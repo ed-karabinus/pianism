@@ -46,4 +46,27 @@ struct InMemorySessionHistoryTests {
 
         #expect(history.sessions() == [edited, newer])
     }
+
+    @Test(
+        "SES-5, ADR 0006: a deleted session no longer reads, can't be edited or saved again; a newer version's can't be deleted"
+    )
+    func deleteIsForGood() throws {
+        var mine = PracticeSession(startedAt: clock.now)
+        try mine.stop(at: clock.now + 600)
+        var newer = PracticeSession(startedAt: clock.now + 900)
+        try newer.stop(at: clock.now + 1_200)
+        let history = InMemorySessionHistory(readOnlyIDs: [newer.id])
+        history.save(mine)
+        history.save(newer)
+
+        try history.delete(id: mine.id)
+        try history.delete(id: mine.id)
+        try history.delete(id: UUID())
+        #expect(throws: RecordFromNewerVersion.self) { try history.delete(id: newer.id) }
+        history.save(mine)
+        try history.edit(mine)
+
+        #expect(history.sessions() == [newer])
+        #expect(!history.canEdit(id: mine.id))
+    }
 }
