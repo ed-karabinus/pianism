@@ -36,15 +36,18 @@ struct SessionEditorView: View {
                             "A newer version of Pianism changed this session. Update Pianism to change it.",
                             bundle: .module)
                     } else if showsOverlapWarning, let overlap = editor.overlap {
-                        Text(
-                            "This shares \(ElapsedTime.spoken(overlap.shared)) of practice with your \(overlap.session.times) session, so the day's total counts it twice.",
-                            bundle: .module
-                        )
-                        .accessibilityIdentifier(AccessibilityID.editorOverlap)
-                        Button(LocalizedStringResource("Don't Show Again", bundle: .module)) {
-                            showsOverlapWarning = false
+                        // A footer shows only its first view, so the button needs a stack to appear.
+                        VStack(alignment: .leading) {
+                            Text(
+                                "This shares \(ElapsedTime.spoken(overlap.shared)) of practice with your \(overlap.session.times) session, so the day's total counts it twice.",
+                                bundle: .module
+                            )
+                            .accessibilityIdentifier(AccessibilityID.editorOverlap)
+                            Button(LocalizedStringResource("Don't Show Again", bundle: .module)) {
+                                showsOverlapWarning = false
+                            }
+                            .accessibilityIdentifier(AccessibilityID.editorOverlapOff)
                         }
-                        .accessibilityIdentifier(AccessibilityID.editorOverlapOff)
                     }
                 }
                 Button {
