@@ -155,6 +155,8 @@ final class PracticeTests: UITestCase {
         app.datePickers["editor.end"].buttons.matching(NSPredicate(format: "label CONTAINS ':'")).firstMatch.tap()
         app.pickerWheels.element(boundBy: 1).adjust(toPickerWheelValue: "20")
         app.buttons["PopoverDismissRegion"].tap()
+        // Until the wheels' popover has gone, it takes the tap meant for the note.
+        XCTAssertTrue(app.buttons["PopoverDismissRegion"].waitForNonExistence(timeout: 5))
         let note = element(app, "editor.note")
         note.tap()
         note.typeText("Coda, slowly")
