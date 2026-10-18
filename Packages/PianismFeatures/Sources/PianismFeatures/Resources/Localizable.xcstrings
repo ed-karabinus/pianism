@@ -10,6 +10,9 @@
     "Add piece “%@”" : {
 
     },
+    "Add Session" : {
+
+    },
     "Add skill “%@”" : {
 
     },
@@ -37,6 +40,12 @@
     "Couldn't save that change" : {
 
     },
+    "Discard" : {
+
+    },
+    "Discard changes?" : {
+
+    },
     "Edit Session" : {
 
     },
@@ -51,6 +60,9 @@
     },
     "Improvisation" : {
       "comment" : "A built-in skill"
+    },
+    "Keep Editing" : {
+
     },
     "Last session: %@" : {
 
