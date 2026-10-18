@@ -435,8 +435,11 @@ final class PracticeTests: UITestCase {
         let sessions = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertTrue(sessions.firstMatch.waitForExistence(timeout: 5), "No session to delete")
         let count = sessions.count
-        // Fast, so a slow simulator can't read it as a tap, which would open the editor.
-        sessions.firstMatch.swipeLeft(velocity: .fast)
+        // A press, then a drag halfway across, which shows Delete without a full swipe. A busy simulator
+        // can read swipeLeft as a tap, which opens the editor instead.
+        let row = sessions.firstMatch
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
+            .press(forDuration: 0.1, thenDragTo: row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
         tap(app, "history.delete")
         confirmDelete(app)
         XCTAssertTrue(sessions.element(boundBy: count - 1).waitForNonExistence(timeout: 5))
