@@ -154,8 +154,10 @@ final class PracticeTests: UITestCase {
         // The end picker's time button opens its wheels: hours, then minutes.
         app.datePickers["editor.end"].buttons.matching(NSPredicate(format: "label CONTAINS ':'")).firstMatch.tap()
         app.pickerWheels.element(boundBy: 1).adjust(toPickerWheelValue: "20")
-        // Closes the wheels by tapping above the form: a tap in the middle can reach the Tags row.
-        app.buttons["PopoverDismissRegion"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05)).tap()
+        // Closes the wheels with a tap on the editor's title, which does nothing if the tap gets through.
+        // Elsewhere a tap can land on the wheels or the Tags row, and the status bar doesn't reach the app.
+        let title = app.navigationBars.staticTexts["Edit Session"].frame
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: title.midX, dy: title.midY)).tap()
         XCTAssertTrue(app.buttons["PopoverDismissRegion"].waitForNonExistence(timeout: 5))
         let note = element(app, "editor.note")
         note.tap()
