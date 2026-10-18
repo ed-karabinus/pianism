@@ -21,6 +21,7 @@ struct SessionEditorView: View {
                         Text("End", bundle: .module)
                     }
                     .disabled(editor.isReadOnly)
+                    .accessibilityIdentifier(AccessibilityID.editorEnd)
                     // A finished session's practice time is fixed, so the date passed here is ignored.
                     TimedRow(
                         title: Text("Practice time", bundle: .module),

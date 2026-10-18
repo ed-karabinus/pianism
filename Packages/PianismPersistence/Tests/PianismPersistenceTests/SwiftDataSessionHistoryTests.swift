@@ -227,7 +227,9 @@ final class SwiftDataSessionHistoryTests {
         #expect(records.map(\.modifiedAt) == [clock.now])
     }
 
-    @Test("ADR 0006: an edit keeps what this version doesn't show, the source and an unknown time zone, and the note")
+    @Test(
+        "ADR 0006: an edit keeps the note it didn't change, and what this version doesn't show: the source and an unknown time zone"
+    )
     func editKeepsWhatItDoesntShow() throws {
         let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         try insertRecord(in: history, id: UUID(), endingAfter: 600, modifiedAfter: 0)

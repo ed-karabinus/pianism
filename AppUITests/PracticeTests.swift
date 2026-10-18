@@ -131,9 +131,9 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "History, tagged and untagged")
     }
 
-    /// SES-5, TAG-2: a finished session is tagged and given a note from History, which shows the tags
-    /// once the edit is saved. Both are stored, so they're still there after the app is killed and
-    /// relaunched.
+    /// SES-5, TAG-2: a finished session is tagged, ended 5 minutes earlier and given a note from History,
+    /// which shows the tags and the shorter practice time once the edit is saved. It's all stored, so
+    /// it's still there after the app is killed and relaunched.
     @MainActor
     func testEditAFinishedSession() throws {
         var app = launch(at: start, reset: true)
@@ -151,6 +151,10 @@ final class PracticeTests: UITestCase {
         tap(app, "Scales")
         XCTAssertTrue(app.buttons["Scales"].wait(for: \.isSelected, toEqual: true, timeout: 5))
         tap(app, "tags.done")
+        // The end picker's time button opens its wheels: hours, then minutes.
+        app.datePickers["editor.end"].buttons.matching(NSPredicate(format: "label CONTAINS ':'")).firstMatch.tap()
+        app.pickerWheels.element(boundBy: 1).adjust(toPickerWheelValue: "20")
+        app.buttons["PopoverDismissRegion"].tap()
         let note = element(app, "editor.note")
         note.tap()
         note.typeText("Coda, slowly")
@@ -160,6 +164,7 @@ final class PracticeTests: UITestCase {
         let tagged = app.descendants(matching: .any).matching(identifier: "history.session")
             .matching(NSPredicate(format: "label ENDSWITH 'Scales'"))
         XCTAssertTrue(tagged.firstMatch.waitForExistence(timeout: 5), session.label)
+        XCTAssertEqual(tagged.firstMatch.value as? String, "20 minutes")
         attachScreenshot(of: app, named: "History, edited")
         app.terminate()
 
@@ -168,6 +173,7 @@ final class PracticeTests: UITestCase {
         let relaunched = element(app, "history.session")
         XCTAssertTrue(relaunched.waitForExistence(timeout: 5))
         XCTAssertTrue(relaunched.label.hasSuffix("Scales"), relaunched.label)
+        XCTAssertEqual(relaunched.value as? String, "20 minutes")
         relaunched.tap()
         let savedNote = element(app, "editor.note")
         XCTAssertTrue(savedNote.waitForExistence(timeout: 5))

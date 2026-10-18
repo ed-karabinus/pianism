@@ -11,7 +11,8 @@ final class SessionEditorModel: TagTarget {
     private(set) var session: PracticeSession
     /// Whether a newer version wrote the session, so this one can't change it (ADR 0006).
     let isReadOnly: Bool
-    /// The latest the session can end: when it was opened, so it can't end in the future.
+    /// The latest the session can end: when it was opened, so it can't end in the future, or its own end
+    /// if a clock that ran ahead put that later.
     let latestEnd: Date
     /// Whether to show that the edit couldn't be saved.
     var isShowingError = false
@@ -56,6 +57,7 @@ final class SessionEditorModel: TagTarget {
     /// Moves the start or end of the session as it was opened, so a pause one change drops comes back
     /// when a later change covers it again, as when scrolling a time past it and back.
     private func retime(start: Date, end: Date) {
+        // Each other field the editor changes is carried forward here, or moving a time would undo it.
         var retimed = original
         // The pickers keep the end between the start and `latestEnd`; a change that isn't is ignored.
         guard end <= latestEnd, (try? retimed.editTimes(start: start, end: end)) != nil else { return }
