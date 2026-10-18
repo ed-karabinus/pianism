@@ -25,9 +25,9 @@ struct PianismApp: App {
         // sessions into history, so this stays out of the App Group.
         let outboxURL = URL.applicationSupportDirectory.appending(path: "Outbox")
         #if DEBUG
-            // End-to-end tests fix the time with PIANISM_NOW (seconds since 1970), start with no
-            // running session, history or outbox with PIANISM_RESET=1, and make the history fail to
-            // open with PIANISM_BREAK_HISTORY=1. Release builds ignore all three.
+            // End-to-end tests fix the time with PIANISM_NOW (seconds since 1970), start with no running
+            // session, history, outbox or settings with PIANISM_RESET=1, and make the history fail to open
+            // with PIANISM_BREAK_HISTORY=1. Release builds ignore all three.
             let environment = ProcessInfo.processInfo.environment
             if let seconds = environment["PIANISM_NOW"].flatMap(TimeInterval.init) {
                 clock = FixedClock(now: Date(timeIntervalSince1970: seconds))
@@ -36,6 +36,7 @@ struct PianismApp: App {
                 try? store.update { $0 = nil }
                 try? FileManager.default.removeItem(at: historyURL.deletingLastPathComponent())
                 try? FileManager.default.removeItem(at: outboxURL)
+                UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier ?? "")
             }
             if environment["PIANISM_BREAK_HISTORY"] == "1" {
                 historyURL = URL(filePath: "/dev/null/History.store")

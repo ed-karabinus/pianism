@@ -61,15 +61,26 @@ public final class HistoryModel {
     /// Starts editing `session`, unless it's still waiting to be saved (ADR 0007).
     func edit(_ session: PracticeSession) {
         guard !waitingIDs.contains(session.id) else { return }
-        editing = SessionEdit(session: session, history: history, library: tags, now: clock.now)
+        editing = SessionEdit(
+            session: session, others: days.flatMap(\.sessions), history: history, library: tags, now: clock.now)
     }
 
-    /// Starts adding a session after the fact: one ending now and 30 minutes long, to adjust (SES-5).
+    /// Starts adding a session after the fact, 30 minutes long, to adjust (SES-5). It ends now or, if that
+    /// would overlap sessions, at the start of each one it meets in turn until it overlaps none, so the
+    /// overlap warning doesn't show before anything has been changed.
     func add() {
         let now = clock.now
-        var session = PracticeSession(startedAt: now.addingTimeInterval(-30 * 60), timeZone: .current)
+        let length: TimeInterval = 30 * 60
+        let others = days.flatMap(\.sessions)
+        var end = now
+        // Newest first, as days list them, so each overlapping session moves the end back past it in turn.
+        for other in others where other.startedAt < end && (other.endedAt ?? end) > end - length {
+            end = other.startedAt
+        }
+        var session = PracticeSession(startedAt: end - length, timeZone: .current)
         // Can't fail: the session is running, and ends after it started.
-        try? session.stop(at: now)
-        editing = SessionEdit(session: session, isNew: true, history: history, library: tags, now: now)
+        try? session.stop(at: end)
+        editing = SessionEdit(
+            session: session, isNew: true, others: others, history: history, library: tags, now: now)
     }
 }

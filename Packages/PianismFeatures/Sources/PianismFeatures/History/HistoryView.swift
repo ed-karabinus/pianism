@@ -50,10 +50,10 @@ struct HistoryView: View {
                 ForEach(model.days) { day in
                     Section {
                         ForEach(day.sessions) { session in
-                            let times = (session.startedAt..<(session.endedAt ?? session.startedAt))
-                                .formatted(.interval.hour().minute())
                             let isWaiting = model.waitingIDs.contains(session.id)
-                            let title = isWaiting ? Text("\(times), not saved yet", bundle: .module) : Text(times)
+                            let title =
+                                isWaiting
+                                ? Text("\(session.times), not saved yet", bundle: .module) : Text(session.times)
                             // A finished session's practice time is fixed, so the date passed here is ignored.
                             let row = TimedRow(
                                 title: title, detail: Text(tags: model.tagIndex.tags(for: session.tagIDs)),
@@ -95,6 +95,11 @@ struct HistoryView: View {
         }
         return Text(day.start.formatted(.dateTime.weekday(.wide).month(.wide).day()))
     }
+}
+
+extension PracticeSession {
+    /// When the session ran, such as "3:30 – 4:00 PM", as History lists it.
+    var times: String { (startedAt..<(endedAt ?? startedAt)).formatted(.interval.hour().minute()) }
 }
 
 /// A title, and any detail under it, with a practice time after them, read by VoiceOver as one element:

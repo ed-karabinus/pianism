@@ -129,6 +129,51 @@ struct HistoryModelTests {
         #expect(history.sessions().map(\.note) == ["Coda"])
     }
 
+    @Test("SES-5: an added session ends now, or, to keep clear of sessions in its 30 minutes, where they started")
+    func addedSessionKeepsClearOfOthers() throws {
+        let history = InMemorySessionHistory()
+        // Ten minutes each: one ending now, one the half hour before it runs into, and one only touching the
+        // half hour before that.
+        for seconds in [-600.0, -2_700, -5_100] {
+            history.save(try endedSession(startingAfter: seconds))
+        }
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        model.refresh()
+
+        model.add()
+        let editor = try #require(model.editing?.editor)
+
+        #expect([editor.start, editor.end] == [clock.now - 4_500, clock.now - 2_700])
+    }
+
+    @Test(
+        "SES-5: a session added or edited is warned about sharing a minute or more of practice with another in History, waiting ones included"
+    )
+    func editorsWarnOfOverlaps() throws {
+        let history = InMemorySessionHistory()
+        let waiting = try endedSession(startingAfter: -600)
+        let later = try endedSession(startingAfter: 3_600)
+        outbox.add(waiting)
+        history.save(later)
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        model.refresh()
+
+        model.add()
+        let added = try #require(model.editing?.editor)
+        #expect(added.overlap == nil)
+        added.end = clock.now
+        #expect(added.overlap?.session == waiting)
+        #expect(added.overlap?.shared == 600)
+        model.edit(later)
+        let editor = try #require(model.editing?.editor)
+        #expect(editor.overlap == nil)
+        editor.start = clock.now - 59
+        #expect(editor.overlap == nil)
+        editor.start = clock.now - 60
+
+        #expect(editor.overlap?.session == waiting)
+    }
+
     private func endedSession(startingAfter seconds: TimeInterval) throws -> PracticeSession {
         var session = PracticeSession(startedAt: clock.now + seconds)
         try session.stop(at: clock.now + seconds + 600)
