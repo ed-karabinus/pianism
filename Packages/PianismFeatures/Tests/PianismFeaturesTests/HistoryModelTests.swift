@@ -107,7 +107,7 @@ struct HistoryModelTests {
         #expect(model.now == clock.now)
     }
 
-    @Test("SES-5: a saved session opens for editing; one still waiting to be saved doesn't (ADR 0007)")
+    @Test("SES-5: a saved session opens for editing, and saving replaces it; one still waiting doesn't open (ADR 0007)")
     func savedSessionsOpenForEditing() throws {
         let history = InMemorySessionHistory()
         let saved = try endedSession(startingAfter: 0)
@@ -122,7 +122,11 @@ struct HistoryModelTests {
         model.edit(saved)
 
         #expect(model.editing?.id == saved.id)
-        #expect(model.editing?.editor.session == saved)
+        let editor = try #require(model.editing?.editor)
+        #expect(editor.session == saved)
+        editor.note = "Coda"
+        #expect(editor.save())
+        #expect(history.sessions().map(\.note) == ["Coda"])
     }
 
     private func endedSession(startingAfter seconds: TimeInterval) throws -> PracticeSession {
