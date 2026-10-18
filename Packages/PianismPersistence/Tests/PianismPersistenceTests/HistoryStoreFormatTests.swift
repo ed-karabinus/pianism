@@ -77,6 +77,7 @@ final class HistoryStoreFormatTests {
         try session.pause(at: start + 900.125)
         try session.resume(at: start + 960.875)
         try session.stop(at: start + 1_800.625)
+        try session.editNote("Left hand alone, slowly")
         #expect(try SwiftDataSessionHistory(store: store, clock: clock).sessions() == [session])
         #expect(
             Set(try SwiftDataTagLibrary(store: store, clock: clock).tags()) == [

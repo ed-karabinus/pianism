@@ -100,6 +100,7 @@ extension SessionRecord {
         // A zone this OS doesn't know reads as none; an edit must keep it (ADR 0006).
         timeZoneID = session.timeZone?.identifier ?? timeZoneID
         tagIDs = session.tagIDs
+        note = session.note
         let stored = session.pauses.map { StoredPauses.Pause(start: $0.start, end: $0.end ?? ended) }
         pauses = stored.isEmpty ? Data() : try JSONEncoder().encode(StoredPauses(pauses: stored))
     }
@@ -116,6 +117,7 @@ extension SessionRecord {
             }
         }
         try session.stop(at: endedAt)
+        try session.editNote(note)
         return session
     }
 }

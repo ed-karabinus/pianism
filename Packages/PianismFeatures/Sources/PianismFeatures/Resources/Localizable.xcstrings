@@ -40,6 +40,9 @@
     "Edit Session" : {
 
     },
+    "End" : {
+
+    },
     "Find or add a piece or skill" : {
 
     },
@@ -59,6 +62,9 @@
 
     },
     "%@, not saved yet" : {
+
+    },
+    "Note" : {
 
     },
     "Pause" : {

@@ -131,10 +131,11 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "History, tagged and untagged")
     }
 
-    /// SES-5, TAG-2: a finished session is tagged from History, which shows the tags once the edit is
-    /// saved. They're stored, so they're still there after the app is killed and relaunched.
+    /// SES-5, TAG-2: a finished session is tagged and given a note from History, which shows the tags
+    /// once the edit is saved. Both are stored, so they're still there after the app is killed and
+    /// relaunched.
     @MainActor
-    func testTagAFinishedSession() throws {
+    func testEditAFinishedSession() throws {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
         app.terminate()
@@ -150,6 +151,9 @@ final class PracticeTests: UITestCase {
         tap(app, "Scales")
         XCTAssertTrue(app.buttons["Scales"].wait(for: \.isSelected, toEqual: true, timeout: 5))
         tap(app, "tags.done")
+        let note = element(app, "editor.note")
+        note.tap()
+        note.typeText("Coda, slowly")
         attachScreenshot(of: app, named: "Edit session")
         tap(app, "editor.save")
         XCTAssertTrue(app.buttons["editor.save"].waitForNonExistence(timeout: 5))
@@ -164,6 +168,10 @@ final class PracticeTests: UITestCase {
         let relaunched = element(app, "history.session")
         XCTAssertTrue(relaunched.waitForExistence(timeout: 5))
         XCTAssertTrue(relaunched.label.hasSuffix("Scales"), relaunched.label)
+        relaunched.tap()
+        let savedNote = element(app, "editor.note")
+        XCTAssertTrue(savedNote.waitForExistence(timeout: 5))
+        XCTAssertEqual(savedNote.value as? String, "Coda, slowly")
     }
 
     /// ADR 0007: when the history can't open, practice goes on. Each finished session waits in the

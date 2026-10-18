@@ -85,9 +85,12 @@ extension SessionEdit {
         var session = PracticeSession(startedAt: previewNow)
         try? session.stop(at: previewNow.addingTimeInterval(25 * 60 + 3))
         try? session.editTags(["ballade", BuiltInSkill.scales.rawValue])
+        try? session.editNote("Coda hands separately, slowly. Left hand still rushes the run.")
         let history = InMemorySessionHistory(readOnlyIDs: readOnly ? [session.id] : [])
         history.save(session)
-        return SessionEdit(session: session, history: history, library: InMemoryTagLibrary(previewTags))
+        return SessionEdit(
+            session: session, history: history, library: InMemoryTagLibrary(previewTags),
+            now: previewNow.addingTimeInterval(60 * 60))
     }
 }
 
