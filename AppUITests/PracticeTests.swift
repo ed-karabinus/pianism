@@ -154,8 +154,8 @@ final class PracticeTests: UITestCase {
         // The end picker's time button opens its wheels: hours, then minutes.
         app.datePickers["editor.end"].buttons.matching(NSPredicate(format: "label CONTAINS ':'")).firstMatch.tap()
         app.pickerWheels.element(boundBy: 1).adjust(toPickerWheelValue: "20")
-        app.buttons["PopoverDismissRegion"].tap()
-        // Until the wheels' popover has gone, it takes the tap meant for the note.
+        // Closes the wheels by tapping above the form: a tap in the middle can reach the Tags row.
+        app.buttons["PopoverDismissRegion"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05)).tap()
         XCTAssertTrue(app.buttons["PopoverDismissRegion"].waitForNonExistence(timeout: 5))
         let note = element(app, "editor.note")
         note.tap()
