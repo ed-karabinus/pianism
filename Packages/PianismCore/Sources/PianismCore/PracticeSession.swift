@@ -81,9 +81,15 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         endedAt = date
     }
 
-    /// Replaces the session's tags (TAG-2). A finished session's tags change through editing (SES-5).
+    /// Replaces the session's tags (TAG-2). A finished session's tags change through ``editTags(_:)``.
     public mutating func setTags(_ ids: [Tag.ID]) throws(SessionError) {
         guard state != .ended else { throw .alreadyEnded }
+        tags = ids.isEmpty ? nil : ids
+    }
+
+    /// Replaces a finished session's tags, when the user edits it (SES-5).
+    public mutating func editTags(_ ids: [Tag.ID]) throws(SessionError) {
+        guard state == .ended else { throw .notEnded }
         tags = ids.isEmpty ? nil : ids
     }
 
@@ -105,8 +111,10 @@ public enum SessionError: Error, Sendable, Hashable {
     case alreadyPaused
     /// `resume` on a session that isn't paused.
     case notPaused
-    /// Any change to a session that has ended. Editing finished sessions is SES-5's job.
+    /// A change, other than an edit, to a session that has ended.
     case alreadyEnded
+    /// An edit to a session that hasn't ended. Running sessions change only as they happen.
+    case notEnded
     /// A change dated before something that already happened to the session.
     case timeWentBackwards
 }

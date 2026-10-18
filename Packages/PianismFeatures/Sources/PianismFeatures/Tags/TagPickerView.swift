@@ -1,7 +1,7 @@
 import PianismCore
 import SwiftUI
 
-/// Tags the running session with pieces and skills, and adds, renames and archives them (TAG-1, TAG-2).
+/// Tags a session with pieces and skills, and adds, renames and archives them (TAG-1, TAG-2).
 struct TagPickerView: View {
     @Bindable var model: TagPickerModel
 

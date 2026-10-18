@@ -9,7 +9,7 @@ import os
 /// screen always shows what is stored, even if the app was killed or another process changed it.
 @MainActor
 @Observable
-public final class PracticeModel {
+public final class PracticeModel: TagTarget {
     /// The running or paused session, or `nil` when ready to start. Also an ended session that neither
     /// history nor the outbox could take, which shows as ready to start.
     private(set) var session: PracticeSession?
@@ -55,6 +55,8 @@ public final class PracticeModel {
     func stop() {
         perform { try recorder.stop() }
     }
+
+    var tagIDs: [Tag.ID] { session?.tagIDs ?? [] }
 
     /// Replaces the running session's tags (TAG-2).
     func setTags(_ ids: [Tag.ID]) {

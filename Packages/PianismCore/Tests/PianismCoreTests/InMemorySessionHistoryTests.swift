@@ -22,4 +22,28 @@ struct InMemorySessionHistoryTests {
         history.add(second)
         #expect(history.sessions() == [second])
     }
+
+    @Test("SES-5, ADR 0006: an edit replaces the saved session, but not one a newer version wrote or one never saved")
+    func editReplacesUnlessReadOnly() throws {
+        var mine = PracticeSession(startedAt: clock.now)
+        try mine.stop(at: clock.now + 600)
+        var newer = PracticeSession(startedAt: clock.now + 900)
+        try newer.stop(at: clock.now + 1_200)
+        let history = InMemorySessionHistory(readOnlyIDs: [newer.id])
+        history.save(mine)
+        history.save(newer)
+        #expect(history.canEdit(id: mine.id) && !history.canEdit(id: newer.id) && !history.canEdit(id: UUID()))
+
+        var edited = mine
+        try edited.editTags(["skill.scales"])
+        try history.edit(edited)
+        var newerEdited = newer
+        try newerEdited.editTags(["skill.scales"])
+        #expect(throws: RecordFromNewerVersion.self) { try history.edit(newerEdited) }
+        var neverSaved = PracticeSession(startedAt: clock.now + 1_500)
+        try neverSaved.stop(at: clock.now + 1_800)
+        try history.edit(neverSaved)
+
+        #expect(history.sessions() == [edited, newer])
+    }
 }
