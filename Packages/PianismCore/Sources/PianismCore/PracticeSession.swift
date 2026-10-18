@@ -130,7 +130,8 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         guard let end = endedAt else { return [] }
         let starts = [startedAt] + pauses.map { $0.end ?? end }
         let ends = pauses.map(\.start) + [end]
-        return zip(starts, ends).compactMap { $0 < $1 ? $0..<$1 : nil }
+        // The check only stops a malformed pause from trapping in `..<`.
+        return zip(starts, ends).compactMap { $0 < $1 ? $0..<$1 : nil }  // mutate:ignore - empty spans share nothing
     }
 
     /// The most recent moment anything happened to this session.
