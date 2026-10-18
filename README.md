@@ -3,7 +3,15 @@
 **A piano practice log that fills itself in.** Connect a digital piano and practice sessions start
 and stop as you play. Built for distractible brains: one tap, no guilt, time always visible.
 
-Status: **M0 Foundation** — project skeleton, CI and conventions. Not yet usable.
+Status: **M1, the core loop**, in progress. You can time a session (pause and resume, and it survives
+the app being killed), tag it with pieces and skills, see History by day, and fix a finished session's
+times, tags and note. MIDI auto-start comes in M2. Not on the App Store yet.
+
+| Practice | Tags | History | Edit Session |
+| --- | --- | --- | --- |
+| <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-68/iphone-practicing-tagged.png?raw=true" width="180" alt="Practice, a session running with tags"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-68/iphone-tag-picker.png?raw=true" width="180" alt="The tag picker"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-68/iphone-history-tagged.png?raw=true" width="180" alt="History, sessions grouped by day"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-76/iphone-edit-session.png?raw=true" width="180" alt="Editing a finished session"> |
+
+The screenshots come from the end-to-end tests, on the iPhone 17 simulator.
 
 ## Architecture
 
@@ -46,4 +54,4 @@ Open `Pianism.xcodeproj` in Xcode to run the app. To run on a device, create
 | Integration (adapters against real files on macOS; later SwiftData, StoreKit) | Every PR |
 | End-to-end (XCUITest in the simulator) | Every PR |
 | Exploratory QA by an agent driving the simulator | Each milestone |
-| Device checks with a real piano | Each milestone, by the owner |
+| Device checks with a real piano ([checklist](docs/device-checklist.md)) | Each milestone, by the owner |
