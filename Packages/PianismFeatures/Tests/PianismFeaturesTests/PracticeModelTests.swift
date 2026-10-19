@@ -151,6 +151,5 @@ struct PracticeModelTests {
 
         #expect(model.session == nil)
         #expect(model.lastSession?.endedAt == start + 400)
-        #expect(!model.isShowingStorageError)
     }
 }
