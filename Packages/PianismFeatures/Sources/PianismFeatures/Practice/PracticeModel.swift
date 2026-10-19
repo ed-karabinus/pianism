@@ -20,7 +20,7 @@ public final class PracticeModel: TagTarget {
     /// Whether to show that a change couldn't be stored.
     var isShowingStorageError = false
     /// Whether the running session has practiced past the nudge, so Practice asks "Still practicing?" (SES-3).
-    private(set) var isPastNudge = false
+    private(set) var isPastNudge = false  // mutate:ignore - init's refresh() sets it
     /// The session that ended itself at the cap, until the banner explaining it is acted on (SES-4).
     private var cappedID: UUID?
 
