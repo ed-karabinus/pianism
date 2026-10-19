@@ -270,6 +270,25 @@ struct SessionRecorderTests {
         #expect(history.sessions().count == 1)
     }
 
+    // MARK: SES-3: stopped earlier
+
+    @Test("SES-3: a session stops at an earlier time the user picks, pauses left out, and is stored")
+    func stopAtAnEarlierTime() throws {
+        let start = clock.now
+        try recorder.start()
+        clock.advance(by: 100)
+        try recorder.pause()
+        clock.advance(by: 50)
+        try recorder.resume()
+        clock.advance(by: 7_000)
+
+        let stopped = try recorder.stop(at: start + 1_000)
+
+        #expect(stopped.endedAt == start + 1_000)
+        #expect(stopped.elapsed(at: clock.now) == 950)
+        #expect(store.current() == stopped)
+    }
+
     // MARK: SES-4: automatic cap
 
     @Test("SES-4: a session left running ends when its practice reached the cap, pauses left out, and is stored")

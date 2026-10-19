@@ -105,6 +105,102 @@ final class PracticeTests: UITestCase {
             "Pianism stopped your session at 3 seconds of practice, in case the timer was left running.")
     }
 
+    /// SES-3: once a running session passes 90 minutes of practice, Practice asks "Still practicing?".
+    /// "Still Practicing", which stays as the way back after "I Stopped Earlier", puts it away for that session,
+    /// even after a relaunch.
+    @MainActor
+    func testStillPracticingAsksOncePerSession() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        XCTAssertFalse(app.staticTexts["practice.still-practicing"].exists, "It asked too soon")
+        app.terminate()
+
+        app = launch(at: start + 95 * 60)
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 5), "It didn't ask")
+        attachScreenshot(of: app, named: "Still practicing?")
+        tap(app, "practice.stopped-earlier")
+        XCTAssertTrue(app.datePickers["practice.stopped-at"].waitForExistence(timeout: 5), "No end to pick")
+        tap(app, "practice.still-practicing-yes")
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForNonExistence(timeout: 5))
+        XCTAssertEqual(text(app, "practice.status"), "Practicing")
+        app.terminate()
+
+        app = launch(at: start + 100 * 60)
+        XCTAssertEqual(text(app, "practice.status"), "Practicing")
+        XCTAssertFalse(app.staticTexts["practice.still-practicing"].exists, "It asked again")
+    }
+
+    /// SES-3: a Pause after 90 minutes answers "Still practicing?", so it doesn't come back on Resume.
+    @MainActor
+    func testPauseAnswersStillPracticing() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        app.terminate()
+
+        app = launch(at: start + 95 * 60)
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 5), "It didn't ask")
+        tap(app, "practice.pause")
+        tap(app, "practice.resume")
+        XCTAssertEqual(text(app, "practice.status"), "Practicing")
+        XCTAssertFalse(app.staticTexts["practice.still-practicing"].exists, "It asked again")
+    }
+
+    /// SES-3: "I Stopped Earlier" shows wheels at the current time, which go back to when practice really
+    /// stopped, and the session ends then.
+    @MainActor
+    func testStoppedEarlier() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        app.terminate()
+
+        app = launch(at: start + 2 * 60 * 60 + 40 * 60)
+        tap(app, "practice.stopped-earlier")
+        let picker = app.datePickers["practice.stopped-at"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 5), "No end to pick")
+        // Date, hour, minute, AM or PM: from 2 h 40 min in, back to 2 h 10 min. This assumes the wheel order of
+        // English and a time zone a whole number of hours from UTC, as on CI and the Mac. adjust can stop a row
+        // short, so it tries again until the wheel shows the minute.
+        let minutes = picker.pickerWheels.element(boundBy: 2)
+        for _ in 1...3 where (minutes.value as? String)?.hasPrefix("10") != true {
+            minutes.adjust(toPickerWheelValue: "10")
+        }
+        XCTAssertEqual((minutes.value as? String)?.hasPrefix("10"), true, "The wheel shows \(minutes.value ?? "")")
+        attachScreenshot(of: app, named: "I stopped earlier")
+        tap(app, "practice.stop-at")
+        XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
+        XCTAssertEqual(text(app, "practice.last-session"), "Last session: 2:10:00")
+    }
+
+    /// SES-3: at the largest text size, with the wheels open, Practice scrolls so every control can still be
+    /// reached. Without the scrolling, Pause sat below the screen's edge.
+    @MainActor
+    func testStoppedEarlierAtTheLargestTextSize() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        app.terminate()
+
+        app = launch(at: start + 95 * 60, largestText: true)
+        tap(app, "practice.stopped-earlier")
+        XCTAssertTrue(app.datePickers["practice.stopped-at"].waitForExistence(timeout: 5), "No end to pick")
+        attachScreenshot(of: app, named: "I stopped earlier, largest text")
+        XCTAssertTrue(app.buttons["practice.stop-at"].exists)
+        XCTAssertTrue(app.buttons["practice.still-practicing-yes"].exists)
+        tap(app, "practice.pause")
+        XCTAssertEqual(text(app, "practice.status"), "Paused")
+    }
+
+    /// SES-3, SES-4: with the app open, Practice asks "Still practicing?" at the nudge, then ends the session at
+    /// the cap, shortened to 3 and 45 seconds on the real clock. The gap is wide, so a slow simulator can't miss
+    /// the question before the cap ends it.
+    @MainActor
+    func testStillPracticingThenCapWhileOpen() throws {
+        let app = launch(at: nil, reset: true, nudgeSeconds: 3, capSeconds: 45)
+        tap(app, "practice.start")
+
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 30), "It didn't ask")
+        XCTAssertTrue(app.staticTexts["practice.capped"].waitForExistence(timeout: 90), "It didn't stop at the cap")
+    }
+
     /// HIS-1: a finished session appears under Today with its time, and the day shows its total.
     /// History is visited before and after Stop in one launch, so it must refresh when shown again.
     /// It's stored, so it's still there after the app is killed and relaunched.
@@ -430,14 +526,20 @@ final class PracticeTests: UITestCase {
     @MainActor
     private func launch(
         at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, undoSeconds: Int? = nil,
-        capSeconds: Int? = nil
+        nudgeSeconds: Int? = nil, capSeconds: Int? = nil, largestText: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
+        if largestText {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        }
         if let now {
             app.launchEnvironment["PIANISM_NOW"] = String(now)
         }
         if let undoSeconds {
             app.launchEnvironment["PIANISM_UNDO_SECONDS"] = String(undoSeconds)
+        }
+        if let nudgeSeconds {
+            app.launchEnvironment["PIANISM_NUDGE_SECONDS"] = String(nudgeSeconds)
         }
         if let capSeconds {
             app.launchEnvironment["PIANISM_CAP_SECONDS"] = String(capSeconds)

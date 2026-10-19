@@ -63,6 +63,13 @@ public struct SessionRecorder: Sendable {
         try change { session, now in try session.stop(at: now) }
     }
 
+    /// Ends the session at `date`, earlier than now, when the user says it ended before they tapped (SES-3).
+    /// Throws ``SessionError/timeWentBackwards`` if `date` is before the session's last change.
+    @discardableResult
+    public func stop(at date: Date) throws -> PracticeSession {
+        try change { session, _ in try session.stop(at: date) }
+    }
+
     /// Ends the running session at the moment its practice time reached `cap`, if it has by now, in case it
     /// was left running (SES-4). A paused session is left alone. Returns the ended session, or `nil`.
     public func end(atCap cap: TimeInterval) throws -> PracticeSession? {
