@@ -116,6 +116,9 @@ struct PracticeView: View {
                 #if os(iOS)
                     .datePickerStyle(.wheel)
                 #endif
+                // VoiceOver still reads the label. iPad showed it beside the wheels, where it broke mid-word at
+                // the largest text sizes.
+                .labelsHidden()
                 .accessibilityIdentifier(AccessibilityID.practiceStoppedAt)
             }
             ViewThatFits {
