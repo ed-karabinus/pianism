@@ -67,9 +67,11 @@ public final class PracticeModel: TagTarget {
         perform { try recorder.stop() }
     }
 
-    /// Ends the session at `date`, when it ended before now (SES-3).
+    /// Ends the session at `date`, when it ended before now (SES-3). The wheels pick whole minutes, so the end
+    /// drops the seconds, though never back past the last resume, where the wheels stop too.
     func stop(at date: Date) {
-        perform { try recorder.stop(at: date) }
+        let minute = Calendar.autoupdatingCurrent.dateInterval(of: .minute, for: date)?.start ?? date
+        perform { try recorder.stop(at: max(minute, session?.latestEvent ?? minute)) }
     }
 
     /// When the running session reaches the nudge or the cap next, so Practice refreshes then (SES-3, SES-4).

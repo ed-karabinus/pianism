@@ -14,7 +14,7 @@ struct HistoryView: View {
             content
                 .navigationTitle(Text("History", bundle: .module))
                 .toolbar {
-                    Button(LocalizedStringResource("Add Session", bundle: .module), systemImage: "plus") { model.add() }
+                    Button(LocalizedStringResource("Add session", bundle: .module), systemImage: "plus") { model.add() }
                         .accessibilityIdentifier(AccessibilityID.historyAdd)
                 }
                 .safeAreaInset(edge: .bottom) {
@@ -36,7 +36,7 @@ struct HistoryView: View {
             },
             titleVisibility: .visible, presenting: confirmingDeletion
         ) { session in
-            Button(LocalizedStringResource("Delete Session", bundle: .module), role: .destructive) {
+            Button(LocalizedStringResource("Delete session", bundle: .module), role: .destructive) {
                 model.delete(session)
             }
             .accessibilityIdentifier(AccessibilityID.deleteConfirm)

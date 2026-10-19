@@ -78,7 +78,7 @@ final class PracticeTests: UITestCase {
             "Pianism stopped your session at 4 hours of practice, in case the timer was left running.")
         attachScreenshot(of: app, named: "Stopped at the cap")
         tap(app, "practice.capped-edit")
-        XCTAssertTrue(app.navigationBars["Edit Session"].waitForExistence(timeout: 5), "The editor didn't open")
+        XCTAssertTrue(app.navigationBars["Edit session"].waitForExistence(timeout: 5), "The editor didn't open")
         attachScreenshot(of: app, named: "Editing the session the cap stopped")
         tap(app, "editor.cancel")
         XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
@@ -106,7 +106,7 @@ final class PracticeTests: UITestCase {
     }
 
     /// SES-3: once a running session passes 90 minutes of practice, Practice asks "Still practicing?".
-    /// "Still Practicing", which stays as the way back after "I Stopped Earlier", puts it away for that session,
+    /// "Still practicing", which stays as the way back after "I stopped earlier", puts it away for that session,
     /// even after a relaunch.
     @MainActor
     func testStillPracticingAsksOncePerSession() throws {
@@ -145,15 +145,16 @@ final class PracticeTests: UITestCase {
         XCTAssertFalse(app.staticTexts["practice.still-practicing"].exists, "It asked again")
     }
 
-    /// SES-3: "I Stopped Earlier" shows wheels at the current time, which go back to when practice really
-    /// stopped, and the session ends then.
+    /// SES-3: "I stopped earlier" shows wheels at the current time, which go back to when practice really
+    /// stopped, and the session ends at the start of that minute.
     @MainActor
     func testStoppedEarlier() throws {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
         app.terminate()
 
-        app = launch(at: start + 2 * 60 * 60 + 40 * 60)
+        // 17 s into the minute, which the end leaves out.
+        app = launch(at: start + 2 * 60 * 60 + 40 * 60 + 17)
         tap(app, "practice.stopped-earlier")
         let picker = app.datePickers["practice.stopped-at"]
         XCTAssertTrue(picker.waitForExistence(timeout: 5), "No end to pick")
@@ -290,7 +291,7 @@ final class PracticeTests: UITestCase {
         tap(app, "Scales")
         XCTAssertTrue(app.buttons["Scales"].wait(for: \.isSelected, toEqual: true, timeout: 5))
         tap(app, "tags.done")
-        setEndMinute(app, to: "20", title: "Edit Session")
+        setEndMinute(app, to: "20", title: "Edit session")
         let note = element(app, "editor.note")
         note.tap()
         note.typeText("Coda, slowly")
@@ -323,7 +324,7 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true)
         openHistory(app)
         tap(app, "history.add")
-        XCTAssertTrue(app.navigationBars["Add Session"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Add session"].waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "Add session")
 
         tap(app, "editor.save")
@@ -340,7 +341,7 @@ final class PracticeTests: UITestCase {
     func testUnsavedChangesAskBeforeClosing() throws {
         let app = launch(at: start, reset: true)
         openHistory(app)
-        let editor = app.navigationBars["Add Session"]
+        let editor = app.navigationBars["Add session"]
         tap(app, "history.add")
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
         tap(app, "editor.cancel")
@@ -378,7 +379,7 @@ final class PracticeTests: UITestCase {
         // The added session ends where the practiced one starts, so it warns only once it ends 20 minutes in.
         XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
         XCTAssertFalse(element(app, "editor.overlap").exists, "The added session overlaps before any change")
-        setEndMinute(app, to: "20", title: "Add Session")
+        setEndMinute(app, to: "20", title: "Add session")
         XCTAssertTrue(element(app, "editor.overlap").waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "Add session, overlapping")
         tap(app, "editor.overlap-off")
@@ -393,7 +394,7 @@ final class PracticeTests: UITestCase {
         tap(app, "history.add")
         // It now ends where the session added above starts, so ending at :45 shares 15 minutes with it.
         XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
-        setEndMinute(app, to: "45", title: "Add Session")
+        setEndMinute(app, to: "45", title: "Add session")
         let practiceTime = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Practice time'"))
         XCTAssertEqual(practiceTime.firstMatch.value as? String, "45 minutes")
         XCTAssertFalse(element(app, "editor.overlap").exists)
@@ -573,7 +574,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(history.waitForExistence(timeout: 5), "History didn't open")
     }
 
-    /// Taps Delete Session in the confirmation, which iOS nests in a button with the same frame and identifier.
+    /// Taps Delete session in the confirmation, which iOS nests in a button with the same frame and identifier.
     @MainActor
     private func confirmDelete(_ app: XCUIApplication) {
         let confirm = app.buttons["delete.confirm"].firstMatch

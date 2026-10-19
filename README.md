@@ -8,7 +8,7 @@ the app being killed), tag it with pieces and skills, see History by day, add a 
 time, and fix a finished session's times, tags and note. MIDI auto-start comes in M2. Not on the App
 Store yet.
 
-| Practice | Tags | History | Edit Session |
+| Practice | Tags | History | Edit session |
 | --- | --- | --- | --- |
 | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-68/iphone-practicing-tagged.png?raw=true" width="180" alt="Practice, a session running with tags"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-68/iphone-tag-picker.png?raw=true" width="180" alt="The tag picker"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-77/iphone-history-added.png?raw=true" width="180" alt="History, with a session added after the fact"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-76/iphone-edit-session.png?raw=true" width="180" alt="Editing a finished session"> |
 

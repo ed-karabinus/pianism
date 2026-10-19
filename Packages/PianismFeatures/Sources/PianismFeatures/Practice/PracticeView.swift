@@ -9,7 +9,7 @@ struct PracticeView: View {
     let edit: (UUID) -> Void
 
     @State private var isPickingTags = false
-    /// The session as it was when "I Stopped Earlier" was tapped, while its end is picked, and the end picked so
+    /// The session as it was when "I stopped earlier" was tapped, while its end is picked, and the end picked so
     /// far (SES-3). Keyed by the whole session, so a pause, a resume or a session stopped another way goes back
     /// to the question rather than keeping an end from before. The date isn't optional: a binding unwrapping one
     /// traps if the picker reads it after it's cleared.
@@ -111,7 +111,7 @@ struct PracticeView: View {
                 DatePicker(selection: $stoppedAt, in: session.latestEvent...max(session.latestEvent, model.clock.now)) {
                     Text("Stopped at", bundle: .module)
                 }
-                // Wheels, shown at once, as the end is what "I Stopped Earlier" was tapped to set. macOS, where
+                // Wheels, shown at once, as the end is what "I stopped earlier" was tapped to set. macOS, where
                 // the package's tests run, has none.
                 #if os(iOS)
                     .datePickerStyle(.wheel)
@@ -131,22 +131,21 @@ struct PracticeView: View {
         .bannerStyle()
     }
 
-    /// "Still Practicing" stays while the end is picked, as the way back from a mistaken "I Stopped Earlier".
+    /// "Still practicing" stays while the end is picked, as the way back from a mistaken "I stopped earlier".
     @ViewBuilder private func stillPracticingAnswers(_ session: PracticeSession) -> some View {
         if pickingEndOf == session {
-            Button(LocalizedStringResource("Stop at This Time", bundle: .module)) {
-                // The wheels show the picked end clamped to the range, so stop there too.
-                model.stop(at: max(stoppedAt, session.latestEvent))
+            Button(LocalizedStringResource("Stop at this time", bundle: .module)) {
+                model.stop(at: stoppedAt)
             }
             .buttonStyle(.borderedProminent)
             .accessibilityIdentifier(AccessibilityID.practiceStopAt)
         }
-        Button(LocalizedStringResource("Still Practicing", bundle: .module)) {
+        Button(LocalizedStringResource("Still practicing", bundle: .module)) {
             answeredSessionID = session.id.uuidString
         }
         .accessibilityIdentifier(AccessibilityID.practiceStillPracticingYes)
         if pickingEndOf != session {
-            Button(LocalizedStringResource("I Stopped Earlier", bundle: .module)) {
+            Button(LocalizedStringResource("I stopped earlier", bundle: .module)) {
                 stoppedAt = model.clock.now
                 pickingEndOf = session
             }
@@ -177,7 +176,7 @@ struct PracticeView: View {
                 edit(id)
             }
             .buttonStyle(.bordered)
-            .accessibilityLabel(Text("Edit Session", bundle: .module))
+            .accessibilityLabel(Text("Edit session", bundle: .module))
             .accessibilityIdentifier(AccessibilityID.practiceCappedEdit)
         }
         .bannerStyle()

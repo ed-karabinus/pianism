@@ -119,7 +119,7 @@ struct PracticeModelTests {
         #expect(model.nextRefresh == nil)
     }
 
-    @Test("SES-3: \"I stopped earlier\" ends the session at the picked time, and it becomes the last session")
+    @Test("SES-3: \"I stopped earlier\" ends the session at the picked minute, and it becomes the last session")
     func stopAtThePickedTime() {
         let start = clock.now
         let model = PracticeModel(
@@ -128,9 +128,29 @@ struct PracticeModelTests {
         model.start()
         clock.advance(by: 2_000)
 
-        model.stop(at: start + 700)
+        model.stop(at: start + 717)  // 11:57 in, picked as 11 minutes
 
         #expect(model.session == nil)
-        #expect(model.lastSession?.endedAt == start + 700)
+        #expect(model.lastSession?.endedAt == start + 660)
+    }
+
+    @Test("SES-3: a picked minute that began before the last resume ends the session at the resume")
+    func stopAtThePickedTimeKeepsTheResume() {
+        let start = clock.now
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudge: 600, cap: 3_600)
+        model.start()
+        clock.advance(by: 100)
+        model.pause()
+        clock.advance(by: 300)
+        model.resume()  // 6:40 in
+        clock.advance(by: 2_000)
+
+        model.stop(at: start + 410)  // 6:50 in, in the minute that began at 6:00, before the resume
+
+        #expect(model.session == nil)
+        #expect(model.lastSession?.endedAt == start + 400)
+        #expect(!model.isShowingStorageError)
     }
 }
