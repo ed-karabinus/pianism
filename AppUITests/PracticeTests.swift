@@ -335,6 +335,28 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "History, added")
     }
 
+    /// SES-5: opening a session, and its end's wheels, changes nothing, so Cancel just closes the editor and the
+    /// session keeps its length. Its start and end fall at different seconds, which a time picked on the wheels
+    /// would change.
+    @MainActor
+    func testOpeningASessionChangesNothing() throws {
+        var app = launch(at: start + 17, reset: true)
+        tap(app, "practice.start")
+        app.terminate()
+        app = launch(at: start + 25 * 60 + 45)
+        tap(app, "practice.stop")
+        openHistory(app)
+        let session = element(app, "history.session")
+        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        session.tap()
+        XCTAssertTrue(app.navigationBars["Edit session"].waitForExistence(timeout: 5), "The editor didn't open")
+        setEndMinute(app, to: nil, title: "Edit session")
+        tap(app, "editor.cancel")
+
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5), "Cancel asked to discard a change")
+        XCTAssertEqual(session.value as? String, "25 minutes, 28 seconds")
+    }
+
     /// SES-5: with no changes, Cancel just closes the editor. Once something changes, it can't be swiped
     /// away, and Cancel asks before discarding the change.
     @MainActor
@@ -598,11 +620,14 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(sessions.element(boundBy: count - 1).waitForNonExistence(timeout: 5))
     }
 
-    /// Sets the editor's end minute with the end picker's wheels: hours, then minutes.
+    /// Sets the editor's end minute with the end picker's wheels: hours, then minutes. With no minute, it opens
+    /// the wheels and closes them without turning them.
     @MainActor
-    private func setEndMinute(_ app: XCUIApplication, to minute: String, title: String) {
+    private func setEndMinute(_ app: XCUIApplication, to minute: String?, title: String) {
         app.datePickers["editor.end"].buttons.matching(NSPredicate(format: "label CONTAINS ':'")).firstMatch.tap()
-        app.pickerWheels.element(boundBy: 1).adjust(toPickerWheelValue: minute)
+        let minutes = app.pickerWheels.element(boundBy: 1)
+        XCTAssertTrue(minutes.waitForExistence(timeout: 5), "The wheels didn't open")
+        if let minute { minutes.adjust(toPickerWheelValue: minute) }
         // Closes the wheels with a tap on the editor's title, which does nothing if the tap gets through.
         // Elsewhere a tap can land on the wheels or the Tags row, and the status bar doesn't reach the app.
         let frame = app.navigationBars.staticTexts[title].frame
