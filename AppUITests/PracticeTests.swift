@@ -72,12 +72,12 @@ final class PracticeTests: UITestCase {
         app.terminate()
 
         app = launch(at: start + 25 * 60 + 3)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "History, empty")
         app.buttons["Practice"].firstMatch.tap()
         tap(app, "practice.stop")
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         let day = element(app, "history.day")
         XCTAssertTrue(day.waitForExistence(timeout: 5))
         XCTAssertEqual(day.label, "Today")
@@ -87,7 +87,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
 
         app = launch(at: start + 60 * 60)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         let relaunched = element(app, "history.day")
         XCTAssertTrue(relaunched.waitForExistence(timeout: 5))
         XCTAssertEqual(relaunched.value as? String, "25 minutes, 3 seconds")
@@ -122,7 +122,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         tap(app, "practice.start")
         tap(app, "practice.stop")
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         XCTAssertTrue(element(app, "history.day").waitForExistence(timeout: 5))
         let sessions = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertEqual(sessions.count, 2)
@@ -141,7 +141,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
         app = launch(at: start + 25 * 60)
         tap(app, "practice.stop")
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         let session = element(app, "history.session")
         XCTAssertTrue(session.waitForExistence(timeout: 5))
         XCTAssertTrue(session.label.hasSuffix("Untagged"), session.label)
@@ -166,7 +166,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
 
         app = launch(at: start + 60 * 60)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         let relaunched = element(app, "history.session")
         XCTAssertTrue(relaunched.waitForExistence(timeout: 5))
         XCTAssertTrue(relaunched.label.hasSuffix("Scales"), relaunched.label)
@@ -182,7 +182,7 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testAddASessionAfterTheFact() throws {
         let app = launch(at: start, reset: true)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         tap(app, "history.add")
         XCTAssertTrue(app.navigationBars["Add Session"].waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "Add session")
@@ -200,7 +200,7 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testUnsavedChangesAskBeforeClosing() throws {
         let app = launch(at: start, reset: true)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         let editor = app.navigationBars["Add Session"]
         tap(app, "history.add")
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
@@ -234,7 +234,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
         app = launch(at: start + 25 * 60)
         tap(app, "practice.stop")
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         tap(app, "history.add")
         // The added session ends where the practiced one starts, so it warns only once it ends 20 minutes in.
         XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
@@ -250,7 +250,7 @@ final class PracticeTests: UITestCase {
         app.terminate()
 
         app = launch(at: start + 30 * 60)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         tap(app, "history.add")
         // It now ends where the session added above starts, so ending at :45 shares 15 minutes with it.
         XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
@@ -260,6 +260,87 @@ final class PracticeTests: UITestCase {
         XCTAssertFalse(element(app, "editor.overlap").exists)
     }
 
+    /// SES-5: a session is deleted with a swipe or from the editor, each confirmed first. Undo brings it
+    /// back; once its 5 seconds are up, the deletion holds, across a relaunch too.
+    @MainActor
+    func testDeleteASessionWithUndo() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        app.terminate()
+        // A long Undo, so a slow simulator's checks and screenshots can't outlast it.
+        app = launch(at: start + 25 * 60, undoSeconds: 60)
+        tap(app, "practice.stop")
+        openHistory(app)
+        deleteBySwipe(app)
+        XCTAssertTrue(app.staticTexts["Session deleted"].exists)
+        attachScreenshot(of: app, named: "Undo")
+        tap(app, "history.undo")
+        let session = element(app, "history.session")
+        XCTAssertTrue(session.waitForExistence(timeout: 5))
+
+        session.tap()
+        tap(app, "editor.delete")
+        XCTAssertTrue(app.staticTexts["Delete this session?"].waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "Delete this session")
+        confirmDelete(app)
+        XCTAssertTrue(session.waitForNonExistence(timeout: 5))
+        tap(app, "history.undo")
+        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        app.terminate()
+
+        // The real 5 seconds.
+        app = launch(at: start + 30 * 60)
+        openHistory(app)
+        deleteBySwipe(app)
+        XCTAssertTrue(app.buttons["history.undo"].waitForNonExistence(timeout: 15), "Undo outlasted its 5 seconds")
+        app.terminate()
+
+        app = launch(at: start + 31 * 60)
+        openHistory(app)
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
+    }
+
+    /// SES-5: a deletion is saved only when its undo ends, so a session deleted just before Pianism is killed
+    /// is still there. Leaving History, or the app, ends the undo at once.
+    @MainActor
+    func testDeletionWaitsForUndoToEnd() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        app.terminate()
+        app = launch(at: start + 25 * 60)
+        tap(app, "practice.stop")
+        tap(app, "practice.start")
+        app.terminate()
+        // A long Undo, so only a kill, leaving History or leaving the app can end it.
+        app = launch(at: start + 50 * 60, undoSeconds: 60)
+        tap(app, "practice.stop")
+        openHistory(app)
+        deleteBySwipe(app)
+        app.terminate()
+
+        app = launch(at: start + 51 * 60, undoSeconds: 60)
+        openHistory(app)
+        var sessions = app.descendants(matching: .any).matching(identifier: "history.session")
+        XCTAssertTrue(sessions.element(boundBy: 1).waitForExistence(timeout: 5), "A kill didn't keep the session")
+        deleteBySwipe(app)
+        app.buttons["Practice"].firstMatch.tap()
+        app.terminate()
+
+        app = launch(at: start + 52 * 60, undoSeconds: 60)
+        openHistory(app)
+        sessions = app.descendants(matching: .any).matching(identifier: "history.session")
+        XCTAssertTrue(sessions.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(sessions.count, 1, "Leaving History didn't save the deletion")
+        deleteBySwipe(app)
+        XCUIDevice.shared.press(.home)
+        XCTAssertTrue(app.wait(for: .runningBackground, timeout: 5))
+        app.terminate()
+
+        app = launch(at: start + 53 * 60)
+        openHistory(app)
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "Leaving the app didn't save it")
+    }
+
     /// ADR 0007: when the history can't open, practice goes on. Each finished session waits in the
     /// outbox, Practice says how many are waiting, and History shows them marked "not saved yet" under
     /// a notice. Once the history opens, the waiting sessions move into it.
@@ -267,7 +348,7 @@ final class PracticeTests: UITestCase {
     func testWhenHistoryCantOpen() throws {
         var app = launch(at: start, reset: true, breakHistory: true)
         // Nothing saved and nothing waiting: the whole screen says History couldn't load.
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
         XCTAssertFalse(element(app, "history.session").exists)
         app.buttons["Practice"].firstMatch.tap()
@@ -279,7 +360,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.buttons["practice.start"].waitForExistence(timeout: 5))
         XCTAssertEqual(text(app, "practice.waiting"), "2 sessions waiting to be saved")
         attachScreenshot(of: app, named: "Practice, sessions waiting")
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
         let notSavedYet = NSPredicate(format: "label CONTAINS 'not saved yet'")
         let waiting = app.descendants(matching: .any).matching(identifier: "history.session")
@@ -290,7 +371,7 @@ final class PracticeTests: UITestCase {
 
         app = launch(at: start + 60 * 60)
         XCTAssertFalse(app.staticTexts["practice.waiting"].exists)
-        app.buttons["History"].firstMatch.tap()
+        openHistory(app)
         XCTAssertTrue(element(app, "history.day").waitForExistence(timeout: 5))
         let saved = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertEqual(saved.count, 2)
@@ -303,9 +384,14 @@ final class PracticeTests: UITestCase {
     }
 
     @MainActor
-    private func launch(at now: TimeInterval, reset: Bool = false, breakHistory: Bool = false) -> XCUIApplication {
+    private func launch(
+        at now: TimeInterval, reset: Bool = false, breakHistory: Bool = false, undoSeconds: Int? = nil
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["PIANISM_NOW"] = String(now)
+        if let undoSeconds {
+            app.launchEnvironment["PIANISM_UNDO_SECONDS"] = String(undoSeconds)
+        }
         if reset {
             app.launchEnvironment["PIANISM_RESET"] = "1"
         }
@@ -322,6 +408,41 @@ final class PracticeTests: UITestCase {
         let button = app.buttons[identifier]
         XCTAssertTrue(button.waitForExistence(timeout: 5), "No \(identifier) button")
         button.tap()
+    }
+
+    /// Opens the History tab. On iOS 26 a tap can land while the tab bar is still animating and not switch
+    /// tabs, so it taps once more if History doesn't appear.
+    @MainActor
+    private func openHistory(_ app: XCUIApplication) {
+        let tab = app.buttons["History"].firstMatch
+        let history = app.navigationBars["History"]
+        tab.tap()
+        if !history.waitForExistence(timeout: 3) { tab.tap() }
+        XCTAssertTrue(history.waitForExistence(timeout: 5), "History didn't open")
+    }
+
+    /// Taps Delete Session in the confirmation, which iOS nests in a button with the same frame and identifier.
+    @MainActor
+    private func confirmDelete(_ app: XCUIApplication) {
+        let confirm = app.buttons["delete.confirm"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "No delete.confirm button")
+        confirm.tap()
+    }
+
+    /// Deletes History's first session with a swipe, confirmed, and checks the list lost one.
+    @MainActor
+    private func deleteBySwipe(_ app: XCUIApplication) {
+        let sessions = app.descendants(matching: .any).matching(identifier: "history.session")
+        XCTAssertTrue(sessions.firstMatch.waitForExistence(timeout: 5), "No session to delete")
+        let count = sessions.count
+        // A press, then a drag halfway across, which shows Delete without a full swipe. A busy simulator
+        // can read swipeLeft as a tap, which opens the editor instead.
+        let row = sessions.firstMatch
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
+            .press(forDuration: 0.1, thenDragTo: row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
+        tap(app, "history.delete")
+        confirmDelete(app)
+        XCTAssertTrue(sessions.element(boundBy: count - 1).waitForNonExistence(timeout: 5))
     }
 
     /// Sets the editor's end minute with the end picker's wheels: hours, then minutes.

@@ -54,8 +54,8 @@ extension TagPickerModel {
 extension HistoryModel {
     /// A model with practice today, yesterday and last week, or with none, for previews. Times are
     /// local, so "Today" holds in any time zone. `waiting` puts the sessions in the outbox and makes
-    /// history fail to load, as during an outage (ADR 0007).
-    static func preview(empty: Bool = false, waiting: Bool = false) -> HistoryModel {
+    /// history fail to load, as during an outage (ADR 0007). `deleting` deletes the newest session, so Undo shows.
+    static func preview(empty: Bool = false, waiting: Bool = false, deleting: Bool = false) -> HistoryModel {
         let sessions = InMemorySessionHistory()
         let midnight = Calendar.autoupdatingCurrent.startOfDay(for: previewNow)
         let hour: TimeInterval = 60 * 60
@@ -71,9 +71,14 @@ extension HistoryModel {
         }
         let history: any SessionHistory = waiting ? PreviewUnavailableHistory() : sessions
         let outbox = waiting ? sessions : InMemorySessionHistory()
-        return HistoryModel(
+        let model = HistoryModel(
             history: history, tags: InMemoryTagLibrary(previewTags), outbox: outbox,
             clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)))
+        if deleting {
+            model.refresh()
+            if let newest = model.days.first?.sessions.first { model.delete(newest) }
+        }
+        return model
     }
 }
 
@@ -103,6 +108,7 @@ private struct PreviewUnavailableHistory: SessionHistory {
     func save(_: PracticeSession) throws { throw Unavailable() }
     func canEdit(id _: UUID) throws -> Bool { throw Unavailable() }
     func edit(_: PracticeSession) throws { throw Unavailable() }
+    func delete(id _: UUID) throws { throw Unavailable() }
 }
 
 private struct PreviewClock: WallClock {

@@ -9,6 +9,6 @@ public protocol SessionOutbox: Sendable {
     /// Adds `session`, replacing any waiting session with the same ID.
     func add(_ session: PracticeSession) throws
 
-    /// Removes the waiting session with this ID.
+    /// Removes the waiting session with this ID, if there is one.
     func remove(id: UUID) throws
 }

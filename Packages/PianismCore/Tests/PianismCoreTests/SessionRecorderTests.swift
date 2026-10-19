@@ -342,6 +342,7 @@ struct RefusingHistory: SessionHistory {
 
     func canEdit(id: UUID) -> Bool { saved.canEdit(id: id) }
     func edit(_ session: PracticeSession) throws { try saved.edit(session) }
+    func delete(id: UUID) throws { try saved.delete(id: id) }
 }
 
 /// A store where another writer gets in first: `beforeNextUpdate` runs once, just before the next

@@ -290,6 +290,47 @@ final class SwiftDataSessionHistoryTests {
         #expect(try ModelContext(history.store.container()).fetchCount(FetchDescriptor<SessionRecord>()) == 2)
     }
 
+    @Test(
+        "SES-5, ADR 0006: deleting marks every copy deleted without its note or tags, so it stays hidden and saving it again changes nothing"
+    )
+    func deleteMarksEveryCopy() throws {
+        var session = PracticeSession(startedAt: clock.now)
+        try session.stop(at: clock.now + 600)
+        try session.editTags(["skill.scales"])
+        try session.editNote("Left hand alone")
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
+        try history.save(session)
+        // A duplicate as sync would leave it, changed later than this clock.
+        try insertRecord(in: history, id: session.id, endingAfter: 600, modifiedAfter: 60)
+        clock.advance(by: 10)
+
+        try history.delete(id: session.id)
+        try history.save(session)
+
+        let reopened = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
+        #expect(try reopened.sessions().isEmpty)
+        #expect(try !reopened.canEdit(id: session.id))
+        let records = try ModelContext(reopened.store.container()).fetch(FetchDescriptor<SessionRecord>())
+        #expect(records.map(\.deletedAt) == [clock.now, clock.now])
+        // Never earlier than before, as with an edit.
+        #expect(Set(records.map(\.modifiedAt)) == [clock.now, clock.now + 50])
+        #expect(records.allSatisfy { $0.note.isEmpty && $0.tagIDs.isEmpty })
+    }
+
+    @Test("ADR 0006: a session a newer version wrote can't be deleted, and deleting an unsaved one adds nothing")
+    func deleteRefusesNewerAndUnsaved() throws {
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
+        let newer = UUID()
+        try insertRecord(in: history, id: newer, endingAfter: 600, modifiedAfter: 0, version: 2)
+        let before = try history.sessions()
+
+        #expect(throws: RecordFromNewerVersion.self) { try history.delete(id: newer) }
+        try history.delete(id: UUID())
+
+        #expect(try history.sessions() == before)
+        #expect(try ModelContext(history.store.container()).fetchCount(FetchDescriptor<SessionRecord>()) == 1)
+    }
+
     /// Inserts a record as sync would deliver it, bypassing `save`.
     private func insertRecord(
         in history: SwiftDataSessionHistory, id: UUID, endingAfter seconds: TimeInterval,

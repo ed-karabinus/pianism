@@ -31,6 +31,9 @@
     "Couldn't change your tags" : {
 
     },
+    "Couldn't delete that session" : {
+
+    },
     "Couldn't load your earlier history. Sessions waiting to be saved are shown." : {
 
     },
@@ -38,6 +41,15 @@
 
     },
     "Couldn't save that change" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete Session" : {
+
+    },
+    "Delete this session?" : {
 
     },
     "Discard" : {
@@ -121,6 +133,9 @@
     "Scales" : {
       "comment" : "A built-in skill"
     },
+    "Session deleted" : {
+
+    },
     "Sessions you finish appear here." : {
 
     },
@@ -146,6 +161,9 @@
 
     },
     "Today" : {
+
+    },
+    "Undo" : {
 
     },
     "Untagged" : {
