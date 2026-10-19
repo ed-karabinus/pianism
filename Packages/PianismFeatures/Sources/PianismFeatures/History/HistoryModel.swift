@@ -116,6 +116,15 @@ public final class HistoryModel {
             session: session, others: days.flatMap(\.sessions), history: history, library: tags, now: clock.now)
     }
 
+    /// Starts editing the session with `id` as history has it now, for the cap banner, whose copy may be out of
+    /// date (SES-4). Nothing opens if it's gone.
+    func edit(id: UUID) {
+        refresh()
+        if let session = days.lazy.flatMap(\.sessions).first(where: { $0.id == id }) {
+            edit(session)
+        }
+    }
+
     /// Starts adding a session after the fact, 30 minutes long, to adjust (SES-5). It ends now or, if that
     /// would overlap sessions, at the start of each one it meets in turn until it overlaps none, so the
     /// overlap warning doesn't show before anything has been changed.

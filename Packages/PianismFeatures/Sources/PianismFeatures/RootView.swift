@@ -7,6 +7,7 @@ public struct RootView: View {
     let history: HistoryModel
 
     @Environment(\.scenePhase) private var scenePhase
+    @State private var tab = AppTab.practice
 
     public init(practice: PracticeModel, tags: TagPickerModel, history: HistoryModel) {
         self.practice = practice
@@ -15,13 +16,16 @@ public struct RootView: View {
     }
 
     public var body: some View {
-        TabView {
-            Tab(LocalizedStringResource("Practice", bundle: .module), systemImage: "pianokeys") {
-                PracticeView(model: practice, tags: tags)
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier(AccessibilityID.root)
+        TabView(selection: $tab) {
+            Tab(LocalizedStringResource("Practice", bundle: .module), systemImage: "pianokeys", value: .practice) {
+                PracticeView(model: practice, tags: tags) { id in
+                    history.edit(id: id)
+                    tab = .history
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier(AccessibilityID.root)
             }
-            Tab(LocalizedStringResource("History", bundle: .module), systemImage: "calendar") {
+            Tab(LocalizedStringResource("History", bundle: .module), systemImage: "calendar", value: .history) {
                 HistoryView(model: history)
             }
         }
@@ -50,6 +54,8 @@ enum AccessibilityID {
     static let practiceResume = "practice.resume"
     static let practiceStop = "practice.stop"
     static let practiceTags = "practice.tags"
+    static let practiceCapped = "practice.capped"
+    static let practiceCappedEdit = "practice.capped-edit"
     static let tagsAddPiece = "tags.add-piece"
     static let tagsAddSkill = "tags.add-skill"
     static let tagsDone = "tags.done"
@@ -69,6 +75,11 @@ enum AccessibilityID {
     static let historyDelete = "history.delete"
     static let historyUndo = "history.undo"
     static let deleteConfirm = "delete.confirm"
+}
+
+/// The app's tabs, so the cap banner's Edit can switch to History (SES-4).
+private enum AppTab {
+    case practice, history
 }
 
 #Preview {
