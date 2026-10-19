@@ -90,11 +90,10 @@ struct PracticeView: View {
                 .font(.headline)
                 .accessibilityIdentifier(AccessibilityID.practiceStillPracticing)
             if pickingEndOf == session.id {
-                // Wheels, shown at once, as the end is what "I Stopped Earlier" was tapped to set.
                 DatePicker(selection: $stoppedAt, in: session.latestEvent...model.clock.now) {
                     Text("Stopped at", bundle: .module)
                 }
-                .datePickerStyle(.wheel)
+                .wheelsOnIOS()
                 .accessibilityIdentifier(AccessibilityID.practiceStoppedAt)
                 Button(LocalizedStringResource("Stop at This Time", bundle: .module)) {
                     model.stop(at: stoppedAt)
@@ -211,6 +210,16 @@ extension View {
     /// A card for a banner on Practice (SES-3, SES-4).
     fileprivate func bannerStyle() -> some View {
         padding().background(.regularMaterial, in: .rect(cornerRadius: 16))
+    }
+
+    /// Wheels, shown at once, as the end is what "I Stopped Earlier" was tapped to set (SES-3). macOS, where the
+    /// package's tests run, has none.
+    @ViewBuilder func wheelsOnIOS() -> some View {
+        #if os(iOS)
+            datePickerStyle(.wheel)
+        #else
+            self
+        #endif
     }
 }
 
