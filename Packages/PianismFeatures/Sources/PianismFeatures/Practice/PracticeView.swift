@@ -9,10 +9,11 @@ struct PracticeView: View {
     let edit: (UUID) -> Void
 
     @State private var isPickingTags = false
-    /// The session whose "I Stopped Earlier" was tapped, so its end can be picked, and the end picked so far
-    /// (SES-3). Keyed by session, so a session stopped another way doesn't leave the next one picking. The date
-    /// isn't optional: a binding unwrapping one traps if the picker reads it after it's cleared.
-    @State private var pickingEndOf: UUID?
+    /// The session as it was when "I Stopped Earlier" was tapped, while its end is picked, and the end picked so
+    /// far (SES-3). Keyed by the whole session, so a pause, a resume or a session stopped another way goes back
+    /// to the question rather than keeping an end from before. The date isn't optional: a binding unwrapping one
+    /// traps if the picker reads it after it's cleared.
+    @State private var pickingEndOf: PracticeSession?
     @State private var stoppedAt = Date.distantPast
     /// The session whose "Still practicing?" was answered, so it's asked once per session (SES-3).
     @AppStorage("stillPracticingAnswered") private var answeredSessionID = ""
@@ -21,6 +22,33 @@ struct PracticeView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
+        // When Practice doesn't fit, as with the end being picked (SES-3), the time shrinks first, then Practice
+        // scrolls, as at the largest text sizes.
+        ViewThatFits(in: .vertical) {
+            content()
+            content(compactTime: true)
+            ScrollView { content(compactTime: true).frame(maxWidth: .infinity) }
+        }
+        .sheet(isPresented: $isPickingTags) {
+            // Tagging stores the session, so its failure shows over the picker, which covers this screen.
+            TagPickerView(model: tags)
+                .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
+        }
+        .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
+        // Asks "Still practicing?" and ends the session at the cap while Practice is on screen, as on an iPad on a
+        // music stand. Otherwise that happens when Practice or the app next appears (SES-3, SES-4).
+        .task(id: model.session) {
+            while let next = model.nextRefresh,
+                (try? await Task.sleep(for: .seconds(next.timeIntervalSince(model.clock.now)))) != nil
+            {
+                model.refresh()
+            }
+        }
+    }
+
+    /// Everything on Practice, spread to fill the screen when it fits. With `compactTime`, the time is half its
+    /// size.
+    private func content(compactTime: Bool = false) -> some View {
         VStack(spacing: 24) {
             Spacer()
             Text(status, bundle: .module)
@@ -30,7 +58,10 @@ struct PracticeView: View {
             TimelineView(.periodic(from: .now, by: 1)) { _ in
                 let elapsed = model.session?.elapsed(at: model.clock.now) ?? 0
                 Text(ElapsedTime.display(elapsed))
-                    .font(.system(size: timeSize * timeScale, weight: .light, design: .rounded).monospacedDigit())
+                    .font(
+                        .system(size: timeSize * timeScale * (compactTime ? 0.5 : 1), weight: .light, design: .rounded)
+                            .monospacedDigit()
+                    )
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .accessibilityLabel(Text("Practice time", bundle: .module))
@@ -65,21 +96,6 @@ struct PracticeView: View {
         }
         .padding(24)
         .frame(maxWidth: 560)
-        .sheet(isPresented: $isPickingTags) {
-            // Tagging stores the session, so its failure shows over the picker, which covers this screen.
-            TagPickerView(model: tags)
-                .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
-        }
-        .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
-        // Asks "Still practicing?" and ends the session at the cap while Practice is on screen, as on an iPad on a
-        // music stand. Otherwise that happens when Practice or the app next appears (SES-3, SES-4).
-        .task(id: model.session) {
-            while let next = model.nextRefresh,
-                (try? await Task.sleep(for: .seconds(next.timeIntervalSince(model.clock.now)))) != nil
-            {
-                model.refresh()
-            }
-        }
     }
 
     /// Asks whether the session is still going, once its practice passes the nudge, and takes the real end if
@@ -89,39 +105,58 @@ struct PracticeView: View {
             Text("Still practicing?", bundle: .module)
                 .font(.headline)
                 .accessibilityIdentifier(AccessibilityID.practiceStillPracticing)
-            if pickingEndOf == session.id {
-                DatePicker(selection: $stoppedAt, in: session.latestEvent...model.clock.now) {
+            if pickingEndOf == session {
+                // The upper bound never falls below the lower, as a ClosedRange traps then, should the clock step
+                // back.
+                DatePicker(selection: $stoppedAt, in: session.latestEvent...max(session.latestEvent, model.clock.now)) {
                     Text("Stopped at", bundle: .module)
                 }
-                .wheelsOnIOS()
+                // Wheels, shown at once, as the end is what "I Stopped Earlier" was tapped to set. macOS, where
+                // the package's tests run, has none.
+                #if os(iOS)
+                    .datePickerStyle(.wheel)
+                #endif
                 .accessibilityIdentifier(AccessibilityID.practiceStoppedAt)
-                Button(LocalizedStringResource("Stop at This Time", bundle: .module)) {
-                    model.stop(at: stoppedAt)
-                }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier(AccessibilityID.practiceStopAt)
-            } else {
-                ViewThatFits {
-                    HStack { stillPracticingAnswers(session) }
-                    VStack(alignment: .leading) { stillPracticingAnswers(session) }
-                }
-                .buttonStyle(.bordered)
             }
+            ViewThatFits {
+                HStack { stillPracticingAnswers(session) }
+                VStack(alignment: .leading) { stillPracticingAnswers(session) }
+            }
+            .buttonStyle(.bordered)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .bannerStyle()
     }
 
+    /// "Still Practicing" stays while the end is picked, as the way back from a mistaken "I Stopped Earlier".
     @ViewBuilder private func stillPracticingAnswers(_ session: PracticeSession) -> some View {
+        if pickingEndOf == session {
+            Button(LocalizedStringResource("Stop at This Time", bundle: .module)) {
+                // The wheels show the picked end clamped to the range, so stop there too.
+                model.stop(at: max(stoppedAt, session.latestEvent))
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier(AccessibilityID.practiceStopAt)
+        }
         Button(LocalizedStringResource("Still Practicing", bundle: .module)) {
             answeredSessionID = session.id.uuidString
         }
         .accessibilityIdentifier(AccessibilityID.practiceStillPracticingYes)
-        Button(LocalizedStringResource("I Stopped Earlier", bundle: .module)) {
-            stoppedAt = model.clock.now
-            pickingEndOf = session.id
+        if pickingEndOf != session {
+            Button(LocalizedStringResource("I Stopped Earlier", bundle: .module)) {
+                stoppedAt = model.clock.now
+                pickingEndOf = session
+            }
+            .accessibilityIdentifier(AccessibilityID.practiceStoppedEarlier)
         }
-        .accessibilityIdentifier(AccessibilityID.practiceStoppedEarlier)
+    }
+
+    /// A Pause or Resume once practice has passed the nudge shows the user is there, so it answers "Still
+    /// practicing?" for the session (SES-3).
+    private func answerIfPastNudge() {
+        if let session = model.session, session.elapsed(at: model.clock.now) >= model.nudge {
+            answeredSessionID = session.id.uuidString
+        }
     }
 
     /// Says the last session ended itself at the cap, and offers to fix it in History (SES-4).
@@ -172,6 +207,7 @@ struct PracticeView: View {
         case .running:
             HStack(spacing: 16) {
                 CommandButton("Pause", systemImage: "pause.fill", id: AccessibilityID.practicePause) {
+                    answerIfPastNudge()
                     model.pause()
                 }
                 CommandButton("Stop", systemImage: "stop.fill", id: AccessibilityID.practiceStop, prominent: true) {
@@ -181,6 +217,7 @@ struct PracticeView: View {
         case .paused:
             HStack(spacing: 16) {
                 CommandButton("Resume", systemImage: "play.fill", id: AccessibilityID.practiceResume) {
+                    answerIfPastNudge()
                     model.resume()
                 }
                 CommandButton("Stop", systemImage: "stop.fill", id: AccessibilityID.practiceStop, prominent: true) {
@@ -212,18 +249,6 @@ extension View {
         padding().background(.regularMaterial, in: .rect(cornerRadius: 16))
     }
 
-    /// Wheels, shown at once, as the end is what "I Stopped Earlier" was tapped to set (SES-3). macOS, where the
-    /// package's tests run, has none.
-    @ViewBuilder func wheelsOnIOS() -> some View {
-        #if os(iOS)
-            datePickerStyle(.wheel)
-        #else
-            self
-        #endif
-    }
-}
-
-extension View {
     /// Says that Pianism couldn't reach its storage, under `title`.
     func storageAlert(_ title: Text, isPresented: Binding<Bool>) -> some View {
         alert(title, isPresented: isPresented) {
