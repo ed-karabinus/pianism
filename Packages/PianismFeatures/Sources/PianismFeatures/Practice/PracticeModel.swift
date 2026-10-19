@@ -67,12 +67,17 @@ public final class PracticeModel: TagTarget {
         perform { try recorder.stop() }
     }
 
-    /// Ends the session at `date`, when it ended before now (SES-3), within the wheels' range.
+    /// Ends the session at `date`, when it ended before now (SES-3). A date before the last resume, as when the
+    /// clock steps back, ends it at the resume.
     func stop(at date: Date) {
-        let end = session.map {
-            date.keepingSeconds(of: $0.startedAt, within: $0.latestEvent...max($0.latestEvent, clock.now))
-        }
+        let end = session.map { max(date, $0.latestEvent).keepingSeconds(of: $0.startedAt, within: stopRange(of: $0)) }
         perform { try recorder.stop(at: end ?? date) }
+    }
+
+    /// The times "I stopped earlier" offers, from the last resume to now (SES-3). The upper bound never falls
+    /// below the lower, as a ClosedRange traps then, should the clock step back.
+    func stopRange(of session: PracticeSession) -> ClosedRange<Date> {
+        session.latestEvent...max(session.latestEvent, clock.now)
     }
 
     /// When the running session reaches the nudge or the cap next, so Practice refreshes then (SES-3, SES-4).

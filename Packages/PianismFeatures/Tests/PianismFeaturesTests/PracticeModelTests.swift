@@ -121,7 +121,7 @@ struct PracticeModelTests {
 
     @Test(
         "SES-3: \"I stopped earlier\" ends in the picked minute at the start's seconds: 2:00 to 3:00 lasts an hour",
-        arguments: [17, 33] as [TimeInterval])
+        arguments: [17, 33, 50.25] as [TimeInterval])
     func stopAtThePickedTime(startSeconds: TimeInterval) {
         let minute = clock.now
         clock.advance(by: startSeconds)
@@ -153,7 +153,7 @@ struct PracticeModelTests {
         #expect(model.lastSession?.endedAt == minute + 2_000)
     }
 
-    @Test("SES-3: a picked minute that began before the last resume ends the session at the resume")
+    @Test("SES-3: a picked time before the last resume, or in the minute it falls in, ends the session at the resume")
     func stopAtThePickedTimeKeepsTheResume() {
         let start = clock.now
         let model = PracticeModel(
@@ -166,7 +166,7 @@ struct PracticeModelTests {
         model.resume()  // 6:40 in
         clock.advance(by: 2_000)
 
-        model.stop(at: start + 410)  // 6:50 in, in the minute that began at 6:00, before the resume
+        model.stop(at: start + 390)  // 6:30 in, before the resume, as when the clock steps back
 
         #expect(model.session == nil)
         #expect(model.lastSession?.endedAt == start + 400)

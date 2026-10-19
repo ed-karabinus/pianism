@@ -53,12 +53,26 @@ final class SessionEditorModel: TagTarget {
 
     var start: Date {
         get { session.startedAt }
-        set { retime(start: newValue.keepingSeconds(of: end, within: .distantPast...end), end: end) }
+        set { retime(start: picked(newValue, opened: original.startedAt, otherEnd: end, within: startRange), end: end) }
     }
 
     var end: Date {
         get { session.endedAt ?? session.startedAt }
-        set { retime(start: start, end: newValue.keepingSeconds(of: start, within: start...latestEnd)) }
+        set {
+            let opened = original.endedAt ?? original.startedAt
+            retime(start: start, end: picked(newValue, opened: opened, otherEnd: start, within: endRange))
+        }
+    }
+
+    /// The times the start and end wheels offer.
+    var startRange: ClosedRange<Date> { .distantPast...end }
+    var endRange: ClosedRange<Date> { start...latestEnd }
+
+    /// A time picked on the wheels. Back in the minute it opened in, it's the time it opened at, so scrolling away
+    /// and back changes nothing; anywhere else it takes the other end's seconds.
+    private func picked(_ date: Date, opened: Date, otherEnd: Date, within range: ClosedRange<Date>) -> Date {
+        Calendar.autoupdatingCurrent.isDate(date, equalTo: opened, toGranularity: .minute)
+            ? opened : date.keepingSeconds(of: otherEnd, within: range)
     }
 
     var note: String {

@@ -204,7 +204,8 @@ final class PracticeTests: UITestCase {
 
     /// HIS-1: a finished session appears under Today with its time, and the day shows its total.
     /// History is visited before and after Stop in one launch, so it must refresh when shown again.
-    /// It's stored, so it's still there after the app is killed and relaunched.
+    /// Opening the session, and its end's wheels, changes nothing (SES-5). It's stored, so it's still there
+    /// after the app is killed and relaunched.
     @MainActor
     func testFinishedSessionAppearsInHistory() throws {
         var app = launch(at: start, reset: true)
@@ -222,8 +223,17 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(day.waitForExistence(timeout: 5))
         XCTAssertEqual(day.label, "Today")
         XCTAssertEqual(day.value as? String, "25 minutes, 3 seconds")
-        XCTAssertEqual(element(app, "history.session").value as? String, "25 minutes, 3 seconds")
+        let session = element(app, "history.session")
+        XCTAssertEqual(session.value as? String, "25 minutes, 3 seconds")
         attachScreenshot(of: app, named: "History, one session")
+        // Its start and end fall at different seconds, which a time picked on the wheels would change.
+        session.tap()
+        XCTAssertTrue(app.navigationBars["Edit session"].waitForExistence(timeout: 5), "The editor didn't open")
+        setEndMinute(app, to: nil, title: "Edit session")
+        tap(app, "editor.cancel")
+        let editor = app.navigationBars["Edit session"]
+        XCTAssertTrue(editor.waitForNonExistence(timeout: 5), "Cancel asked to discard a change")
+        XCTAssertEqual(session.value as? String, "25 minutes, 3 seconds")
         app.terminate()
 
         app = launch(at: start + 60 * 60)
@@ -333,28 +343,6 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(session.waitForExistence(timeout: 5))
         XCTAssertEqual(session.value as? String, "30 minutes")
         attachScreenshot(of: app, named: "History, added")
-    }
-
-    /// SES-5: opening a session, and its end's wheels, changes nothing, so Cancel just closes the editor and the
-    /// session keeps its length. Its start and end fall at different seconds, which a time picked on the wheels
-    /// would change.
-    @MainActor
-    func testOpeningASessionChangesNothing() throws {
-        var app = launch(at: start + 17, reset: true)
-        tap(app, "practice.start")
-        app.terminate()
-        app = launch(at: start + 25 * 60 + 45)
-        tap(app, "practice.stop")
-        openHistory(app)
-        let session = element(app, "history.session")
-        XCTAssertTrue(session.waitForExistence(timeout: 5))
-        session.tap()
-        XCTAssertTrue(app.navigationBars["Edit session"].waitForExistence(timeout: 5), "The editor didn't open")
-        setEndMinute(app, to: nil, title: "Edit session")
-        tap(app, "editor.cancel")
-
-        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5), "Cancel asked to discard a change")
-        XCTAssertEqual(session.value as? String, "25 minutes, 28 seconds")
     }
 
     /// SES-5: with no changes, Cancel just closes the editor. Once something changes, it can't be swiped

@@ -96,6 +96,22 @@ struct SessionEditorModelTests {
         #expect(editor.session.elapsed(at: .distantPast) == 360)
     }
 
+    @Test("SES-5: a time scrolled away and back to the minute it opened in is the time it opened at")
+    func scrollingBackChangesNothing() throws {
+        var session = PracticeSession(startedAt: clock.now + 17)
+        try session.stop(at: clock.now + 645)
+        let editor = SessionEditorModel(session: session, history: InMemorySessionHistory(), now: clock.now + 900)
+
+        editor.start = clock.now + 300  // lands at 5:45, the end's seconds
+        editor.end = clock.now + 400  // lands at 6:45
+        #expect(editor.hasChanges)
+        editor.start = clock.now + 30  // back in the minute the start opened in
+        editor.end = clock.now + 630
+
+        #expect(!editor.hasChanges)
+        #expect(editor.session == session)
+    }
+
     @Test("SES-5: the editor has changes only while the session differs from how it opened")
     func hasChangesOnlyWhileDifferent() throws {
         let editor = SessionEditorModel(session: try endedSession(), history: InMemorySessionHistory(), now: clock.now)

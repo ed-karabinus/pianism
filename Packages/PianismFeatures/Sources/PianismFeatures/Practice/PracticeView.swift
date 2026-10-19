@@ -106,9 +106,7 @@ struct PracticeView: View {
                 .font(.headline)
                 .accessibilityIdentifier(AccessibilityID.practiceStillPracticing)
             if pickingEndOf == session {
-                // The upper bound never falls below the lower, as a ClosedRange traps then, should the clock step
-                // back.
-                DatePicker(selection: $stoppedAt, in: session.latestEvent...max(session.latestEvent, model.clock.now)) {
+                DatePicker(selection: $stoppedAt, in: model.stopRange(of: session)) {
                     Text("Stopped at", bundle: .module)
                 }
                 // Wheels, shown at once, as the end is what "I stopped earlier" was tapped to set. macOS, where

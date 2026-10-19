@@ -20,11 +20,11 @@ struct SessionEditorView: View {
         NavigationStack {
             Form {
                 Section {
-                    DatePicker(selection: $editor.start, in: ...editor.end) {
+                    DatePicker(selection: $editor.start, in: editor.startRange) {
                         Text("Start", bundle: .module)
                     }
                     .disabled(editor.isReadOnly)
-                    DatePicker(selection: $editor.end, in: editor.start...editor.latestEnd) {
+                    DatePicker(selection: $editor.end, in: editor.endRange) {
                         Text("End", bundle: .module)
                     }
                     .disabled(editor.isReadOnly)
