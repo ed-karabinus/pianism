@@ -171,4 +171,23 @@ struct PracticeModelTests {
         #expect(model.session == nil)
         #expect(model.lastSession?.endedAt == start + 400)
     }
+
+    @Test("SES-3: after a pause, a picked time takes the start's seconds, not the resume's")
+    func stopAtThePickedTimeAfterAPause() {
+        let start = clock.now
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudge: 600, cap: 3_600)
+        model.start()
+        clock.advance(by: 100)
+        model.pause()
+        clock.advance(by: 300)
+        model.resume()  // 6:40 in
+        clock.advance(by: 2_000)
+
+        model.stop(at: start + 1_210)  // the wheels' 20th minute
+
+        #expect(model.lastSession?.endedAt == start + 1_200)
+        #expect(model.lastSession?.elapsed(at: .distantPast) == 900)
+    }
 }
