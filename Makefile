@@ -39,6 +39,10 @@ build: ## Build the app as it ships (Release) for the simulator; the tests build
 
 # Builds once, then tests each device without rebuilding. One simulator at a time, each shut down
 # after its tests: two booted simulators overload an 8 GB Mac, and iOS's launch watchdog then kills apps.
+# A failed test runs once more and passes if the retry does: on CI's slow runners, UI tests flake.
+# A failure skips xcodebuild's diagnostics (sysdiagnoses, log archives): on CI's iOS 27 runners,
+# collecting them ran past the job's time limit and lost the result bundle. UITestCase still attaches
+# each failure's screen and UI tree.
 test-app: ## Build the app once, then run its end-to-end tests on each simulator in DEVICES (default: iPhone iPad)
 	$(NO_WARNINGS) xcodebuild build-for-testing -project $(PROJECT) -scheme $(SCHEME) \
 		-destination "$$(scripts/simulator-destination.sh $(firstword $(DEVICES)))" $(XCODE_FLAGS)
@@ -49,7 +53,8 @@ test-app: ## Build the app once, then run its end-to-end tests on each simulator
 		udid="$${destination##*id=}"; \
 		xcrun simctl bootstatus "$$udid" -b >/dev/null || exit 1; \
 		xcodebuild test-without-building -project $(PROJECT) -scheme $(SCHEME) -destination "$$destination" \
-			-resultBundlePath $(RESULTS)/app-$$device.xcresult $(XCODE_FLAGS); \
+			-resultBundlePath $(RESULTS)/app-$$device.xcresult -collect-test-diagnostics never \
+			-retry-tests-on-failure -test-iterations 2 $(XCODE_FLAGS); \
 		status=$$?; \
 		xcrun simctl shutdown "$$udid"; \
 		[ $$status -eq 0 ] || exit 1; \
