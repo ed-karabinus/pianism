@@ -190,6 +190,42 @@ struct PracticeSessionTests {
         #expect(session.sharedPractice(with: PracticeSession(startedAt: clock.now)) == 0)
     }
 
+    // MARK: SES-4: automatic cap
+
+    @Test("SES-4: a running session reaches a practice time later by each pause's length")
+    func whenPracticeReachesLeavesOutPauses() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start)
+        #expect(session.whenPracticeReaches(600) == start + 600)
+
+        try session.pause(at: start + 100)
+        try session.resume(at: start + 400)
+
+        #expect(session.whenPracticeReaches(600) == start + 900)
+    }
+
+    @Test("SES-4: a paused or ended session never reaches a practice time", arguments: [false, true])
+    func pausedOrEndedNeverReaches(ended: Bool) throws {
+        var session = PracticeSession(startedAt: clock.now)
+        if ended {
+            try session.stop(at: clock.now + 60)
+        } else {
+            try session.pause(at: clock.now + 60)
+        }
+
+        #expect(session.whenPracticeReaches(600) == nil)
+    }
+
+    @Test("SES-4: a session already past a practice time when it last resumed reaches it then")
+    func pastAtResumeReachesAtResume() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start)
+        try session.pause(at: start + 700)
+        try session.resume(at: start + 800)
+
+        #expect(session.whenPracticeReaches(600) == start + 800)
+    }
+
     // MARK: Invalid changes are rejected and leave the session untouched
 
     @Test("Changes in the wrong state are rejected", arguments: InvalidChange.allCases)

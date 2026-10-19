@@ -9,7 +9,7 @@ enum ElapsedTime {
         return duration.formatted(.time(pattern: pattern))
     }
 
-    /// "25 minutes, 3 seconds", for VoiceOver.
+    /// "25 minutes, 3 seconds", for VoiceOver and for sentences.
     static func spoken(_ elapsed: TimeInterval) -> String {
         wholeSeconds(elapsed).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .wide))
     }

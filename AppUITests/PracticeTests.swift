@@ -2,8 +2,9 @@ import XCTest
 
 /// End-to-end tests of the Practice screen (SES-1, SES-2, SES-6).
 ///
-/// Each launch fixes the app's clock (see `App/PianismApp.swift`), so times are exact. Time
-/// passes between launches, which also proves a session survives the app being killed.
+/// Each launch fixes the app's clock (see `App/PianismApp.swift`), so times are exact, unless a test
+/// needs real time to pass. Time passes between launches, which also proves a session survives the app
+/// being killed.
 final class PracticeTests: UITestCase {
     /// 2027-01-01 00:00:00 UTC.
     private let start: TimeInterval = 1_798_761_600
@@ -60,6 +61,48 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
         XCTAssertEqual(text(app, "practice.last-session"), "Last session: 35:03")
         attachScreenshot(of: app, named: "Stopped")
+    }
+
+    /// SES-4: a session left running ends itself at 4 hours of practice. When the app next opens, a banner
+    /// says so, and its Edit opens the session in History, which counts the 4 hours.
+    @MainActor
+    func testSessionLeftRunningStopsAtTheCap() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        app.terminate()
+
+        app = launch(at: start + 9 * 60 * 60)
+        XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
+        XCTAssertEqual(
+            text(app, "practice.capped"),
+            "Pianism stopped your session at 4 hours of practice, in case the timer was left running.")
+        attachScreenshot(of: app, named: "Stopped at the cap")
+        tap(app, "practice.capped-edit")
+        XCTAssertTrue(app.navigationBars["Edit Session"].waitForExistence(timeout: 5), "The editor didn't open")
+        attachScreenshot(of: app, named: "Editing the session the cap stopped")
+        tap(app, "editor.cancel")
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
+        XCTAssertEqual(element(app, "history.session").value as? String, "4 hours")
+
+        app.buttons["Practice"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["practice.last-session"].waitForExistence(timeout: 5))
+        XCTAssertEqual(text(app, "practice.last-session"), "Last session: 4:00:00")
+        XCTAssertFalse(app.staticTexts["practice.capped"].exists, "Edit should hide the banner")
+    }
+
+    /// SES-4: with the app left open, as on a music stand, the session ends itself when it reaches the cap,
+    /// shortened to 3 seconds on the real clock. Nothing is checked while it runs, so a slow simulator can't
+    /// miss it.
+    @MainActor
+    func testSessionStopsAtTheCapWhileOpen() throws {
+        let app = launch(at: nil, reset: true, capSeconds: 3)
+        tap(app, "practice.start")
+
+        XCTAssertTrue(app.staticTexts["practice.capped"].waitForExistence(timeout: 30), "It didn't stop at the cap")
+        XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
+        XCTAssertEqual(
+            text(app, "practice.capped"),
+            "Pianism stopped your session at 3 seconds of practice, in case the timer was left running.")
     }
 
     /// HIS-1: a finished session appears under Today with its time, and the day shows its total.
@@ -383,14 +426,21 @@ final class PracticeTests: UITestCase {
         app.descendants(matching: .any)[identifier].firstMatch
     }
 
+    /// Launches the app with its clock fixed at `now`, or on the real clock if `nil`.
     @MainActor
     private func launch(
-        at now: TimeInterval, reset: Bool = false, breakHistory: Bool = false, undoSeconds: Int? = nil
+        at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, undoSeconds: Int? = nil,
+        capSeconds: Int? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchEnvironment["PIANISM_NOW"] = String(now)
+        if let now {
+            app.launchEnvironment["PIANISM_NOW"] = String(now)
+        }
         if let undoSeconds {
             app.launchEnvironment["PIANISM_UNDO_SECONDS"] = String(undoSeconds)
+        }
+        if let capSeconds {
+            app.launchEnvironment["PIANISM_CAP_SECONDS"] = String(capSeconds)
         }
         if reset {
             app.launchEnvironment["PIANISM_RESET"] = "1"

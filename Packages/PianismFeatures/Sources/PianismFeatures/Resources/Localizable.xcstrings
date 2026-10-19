@@ -61,6 +61,9 @@
     "Don't Show Again" : {
 
     },
+    "Edit" : {
+
+    },
     "Edit Session" : {
 
     },
@@ -98,6 +101,9 @@
 
     },
     "Pianism couldn't reach its storage. Try again in a moment." : {
+
+    },
+    "Pianism stopped your session at %@ of practice, in case the timer was left running." : {
 
     },
     "Pieces" : {
