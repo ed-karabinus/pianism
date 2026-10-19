@@ -76,6 +76,9 @@
     "History" : {
 
     },
+    "I Stopped Earlier" : {
+
+    },
     "Improvisation" : {
       "comment" : "A built-in skill"
     },
@@ -154,7 +157,19 @@
     "Start" : {
 
     },
+    "Still Practicing" : {
+
+    },
+    "Still practicing?" : {
+
+    },
     "Stop" : {
+
+    },
+    "Stop at This Time" : {
+
+    },
+    "Stopped at" : {
 
     },
     "Tags" : {

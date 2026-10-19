@@ -16,7 +16,7 @@ struct TagPickerModelTests {
     init() {
         practice = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, cap: 4 * 60 * 60)
+            clock: clock, nudge: 90 * 60, cap: 4 * 60 * 60)
         practice.start()
         library = InMemoryTagLibrary([ballade, nocturne])
     }

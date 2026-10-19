@@ -9,18 +9,24 @@ private let previewNow = Date(timeIntervalSince1970: 1_798_761_600)
 
 extension PracticeModel {
     enum PreviewState {
-        case ready, running, paused, capped
+        case ready, running, paused, pastNudge, capped
     }
 
-    /// A model over an in-memory store, 25 minutes into a session, or 5 hours into one that ends itself at the
-    /// 4-hour cap, for previews.
+    /// A model over an in-memory store, 25 minutes into a session, 95 minutes into one past the 90-minute nudge,
+    /// or 5 hours into one that ends itself at the 4-hour cap, for previews.
     static func preview(_ state: PreviewState) -> PracticeModel {
-        let started = previewNow.addingTimeInterval(state == .capped ? -5 * 60 * 60 : 0)
+        let minutesEarlier: TimeInterval =
+            switch state {
+            case .pastNudge: 70
+            case .capped: 5 * 60 - 25
+            default: 0
+            }
+        let started = previewNow.addingTimeInterval(-minutesEarlier * 60)
         let store = PreviewStore(state == .ready ? nil : PracticeSession(startedAt: started))
         let clock = PreviewClock(now: previewNow.addingTimeInterval(25 * 60 + 3))
         let model = PracticeModel(
             store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
-            cap: 4 * 60 * 60)
+            nudge: 90 * 60, cap: 4 * 60 * 60)
         if state == .paused {
             model.pause()
         }

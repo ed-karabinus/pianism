@@ -142,8 +142,8 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         return zip(starts, ends).compactMap { $0 < $1 ? $0..<$1 : nil }  // mutate:ignore - empty spans share nothing
     }
 
-    /// The most recent moment anything happened to this session.
-    private var latestEvent: Date {
+    /// The most recent moment anything happened to this session: its start, or its last pause or resume.
+    public var latestEvent: Date {
         guard let last = pauses.last else { return startedAt }
         return last.end ?? last.start
     }
