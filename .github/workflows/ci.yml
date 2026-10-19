@@ -1,10 +1,15 @@
 name: CI
 
-# Pull requests only. Ruleset 25018486 requires a branch to be up to date with main before it
-# merges, so a run on main would retest the tree the pull request's last run passed, holding GitHub
-# Free's 5 macOS slots from the next one. If that setting goes, restore `push: branches: [main]`.
-# A merge that bypasses the ruleset lands untested.
-on: pull_request
+# Pull requests, and main nightly. Ruleset 25018486, which nobody can bypass, requires a branch to be
+# up to date with main and green before it merges. A run on main after each merge would retest the
+# tree the pull request's last run passed, holding GitHub Free's 5 macOS slots from the next one. The
+# nightly run catches what changes without a merge, such as GitHub's runner images, and runs the
+# tests once more. If the ruleset stops requiring up-to-date branches, restore `push: branches: [main]`.
+on:
+  pull_request:
+  schedule:
+    # 10:00 UTC: about 3 AM in California, 2 AM in winter.
+    - cron: "0 10 * * *"
 
 concurrency:
   group: ci-${{ github.ref }}
