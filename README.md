@@ -56,3 +56,9 @@ Open `Pianism.xcodeproj` in Xcode to run the app. To run on a device, create
 | End-to-end (XCUITest in the simulator) | Every PR |
 | Exploratory QA by an agent driving the simulator | Each milestone |
 | Device checks with a real piano ([checklist](docs/device-checklist.md)) | Each milestone, by the owner |
+
+## License
+
+Copyright © 2026 Edward J. Karabinus. The source is public to read under the
+[PolyForm Strict License 1.0.0](LICENSE.md), which allows only noncommercial use: no distributing
+it, changing it or building on it. The license's text is what counts.
