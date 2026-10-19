@@ -9,6 +9,13 @@ struct PracticeView: View {
     let edit: (UUID) -> Void
 
     @State private var isPickingTags = false
+    /// The session whose "I Stopped Earlier" was tapped, so its end can be picked, and the end picked so far
+    /// (SES-3). Keyed by session, so a session stopped another way doesn't leave the next one picking. The date
+    /// isn't optional: a binding unwrapping one traps if the picker reads it after it's cleared.
+    @State private var pickingEndOf: UUID?
+    @State private var stoppedAt = Date.distantPast
+    /// The session whose "Still practicing?" was answered, so it's asked once per session (SES-3).
+    @AppStorage("stillPracticingAnswered") private var answeredSessionID = ""
 
     @ScaledMetric(relativeTo: .largeTitle) private var timeSize = 76
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -29,6 +36,9 @@ struct PracticeView: View {
                     .accessibilityLabel(Text("Practice time", bundle: .module))
                     .accessibilityValue(ElapsedTime.spoken(elapsed))
                     .accessibilityIdentifier(AccessibilityID.practiceElapsed)
+            }
+            if let session = model.session, model.isPastNudge, answeredSessionID != session.id.uuidString {
+                stillPracticingBanner(session)
             }
             if model.session == nil, let last = model.lastSession {
                 if model.lastSessionReachedCap {
@@ -61,14 +71,58 @@ struct PracticeView: View {
                 .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
         }
         .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
-        // Ends the session at the cap while Practice is on screen, as on an iPad on a music stand. Otherwise it ends
-        // when Practice or the app next appears (SES-4).
+        // Asks "Still practicing?" and ends the session at the cap while Practice is on screen, as on an iPad on a
+        // music stand. Otherwise that happens when Practice or the app next appears (SES-3, SES-4).
         .task(id: model.session) {
-            guard let end = model.session?.whenPracticeReaches(model.cap),
-                (try? await Task.sleep(for: .seconds(end.timeIntervalSince(model.clock.now)))) != nil
-            else { return }
-            model.refresh()
+            while let next = model.nextRefresh,
+                (try? await Task.sleep(for: .seconds(next.timeIntervalSince(model.clock.now)))) != nil
+            {
+                model.refresh()
+            }
         }
+    }
+
+    /// Asks whether the session is still going, once its practice passes the nudge, and takes the real end if
+    /// it isn't (SES-3).
+    private func stillPracticingBanner(_ session: PracticeSession) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Still practicing?", bundle: .module)
+                .font(.headline)
+                .accessibilityIdentifier(AccessibilityID.practiceStillPracticing)
+            if pickingEndOf == session.id {
+                // Wheels, shown at once, as the end is what "I Stopped Earlier" was tapped to set.
+                DatePicker(selection: $stoppedAt, in: session.latestEvent...model.clock.now) {
+                    Text("Stopped at", bundle: .module)
+                }
+                .datePickerStyle(.wheel)
+                .accessibilityIdentifier(AccessibilityID.practiceStoppedAt)
+                Button(LocalizedStringResource("Stop at This Time", bundle: .module)) {
+                    model.stop(at: stoppedAt)
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier(AccessibilityID.practiceStopAt)
+            } else {
+                ViewThatFits {
+                    HStack { stillPracticingAnswers(session) }
+                    VStack(alignment: .leading) { stillPracticingAnswers(session) }
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .bannerStyle()
+    }
+
+    @ViewBuilder private func stillPracticingAnswers(_ session: PracticeSession) -> some View {
+        Button(LocalizedStringResource("Still Practicing", bundle: .module)) {
+            answeredSessionID = session.id.uuidString
+        }
+        .accessibilityIdentifier(AccessibilityID.practiceStillPracticingYes)
+        Button(LocalizedStringResource("I Stopped Earlier", bundle: .module)) {
+            stoppedAt = model.clock.now
+            pickingEndOf = session.id
+        }
+        .accessibilityIdentifier(AccessibilityID.practiceStoppedEarlier)
     }
 
     /// Says the last session ended itself at the cap, and offers to fix it in History (SES-4).
@@ -89,8 +143,7 @@ struct PracticeView: View {
             .accessibilityLabel(Text("Edit Session", bundle: .module))
             .accessibilityIdentifier(AccessibilityID.practiceCappedEdit)
         }
-        .padding()
-        .background(.regularMaterial, in: .rect(cornerRadius: 16))
+        .bannerStyle()
     }
 
     /// The session's pieces and skills, which opens the tag picker (TAG-2).
@@ -151,6 +204,13 @@ struct PracticeView: View {
         case .running: "Practicing"
         case .paused: "Paused"
         }
+    }
+}
+
+extension View {
+    /// A card for a banner on Practice (SES-3, SES-4).
+    fileprivate func bannerStyle() -> some View {
+        padding().background(.regularMaterial, in: .rect(cornerRadius: 16))
     }
 }
 
@@ -220,6 +280,18 @@ private struct CommandButton: View {
 
 #Preview("Paused, dark, AX5") {
     let model = PracticeModel.preview(.paused)
+    PracticeView(model: model, tags: .preview(for: model)) { _ in }
+        .preferredColorScheme(.dark)
+        .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("Still practicing?") {
+    let model = PracticeModel.preview(.pastNudge)
+    PracticeView(model: model, tags: .preview(for: model)) { _ in }
+}
+
+#Preview("Still practicing?, dark, AX5") {
+    let model = PracticeModel.preview(.pastNudge)
     PracticeView(model: model, tags: .preview(for: model)) { _ in }
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)

@@ -14,7 +14,7 @@ struct PracticeModelTests {
         let history = FlakyHistory()
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
-            cap: 4 * 60 * 60)
+            nudge: 90 * 60, cap: 4 * 60 * 60)
         model.start()
         clock.advance(by: 600)
 
@@ -35,11 +35,13 @@ struct PracticeModelTests {
         let store = InMemoryRunningSessionStore()
         let history = InMemorySessionHistory()
         let start = clock.now
-        PracticeModel(store: store, history: history, outbox: InMemorySessionHistory(), clock: clock, cap: 600).start()
+        PracticeModel(
+            store: store, history: history, outbox: InMemorySessionHistory(), clock: clock, nudge: 90 * 60, cap: 600
+        ).start()
         clock.advance(by: 36_000)
 
         let reopened = PracticeModel(
-            store: store, history: history, outbox: InMemorySessionHistory(), clock: clock, cap: 600)
+            store: store, history: history, outbox: InMemorySessionHistory(), clock: clock, nudge: 90 * 60, cap: 600)
 
         #expect(reopened.session == nil)
         #expect(history.sessions().map(\.endedAt) == [start + 600])
@@ -55,7 +57,7 @@ struct PracticeModelTests {
     func capBannerOnlyForCappedSessions() {
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, cap: 600)
+            clock: clock, nudge: 90 * 60, cap: 600)
         #expect(!model.lastSessionReachedCap)
         model.start()
         clock.advance(by: 599)
@@ -73,5 +75,62 @@ struct PracticeModelTests {
 
         #expect(!model.lastSessionReachedCap)
         #expect(model.lastSession?.endedAt == clock.now)
+    }
+
+    @Test("SES-3: Practice asks once a running session's practice passes the nudge, and not while it's paused")
+    func asksPastTheNudge() {
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudge: 600, cap: 3_600)
+        model.start()
+        clock.advance(by: 599)
+        model.refresh()
+
+        #expect(!model.isPastNudge)
+
+        clock.advance(by: 1)
+        model.refresh()
+
+        #expect(model.isPastNudge)
+
+        model.pause()
+
+        #expect(!model.isPastNudge)
+    }
+
+    @Test(
+        "SES-3, SES-4: Practice next refreshes when the session reaches the nudge, then the cap, and not while paused")
+    func nextRefreshIsTheNudgeThenTheCap() {
+        let start = clock.now
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudge: 600, cap: 3_600)
+        #expect(model.nextRefresh == nil)
+        model.start()
+
+        #expect(model.nextRefresh == start + 600)
+
+        clock.advance(by: 600)
+
+        #expect(model.nextRefresh == start + 3_600)
+
+        model.pause()
+
+        #expect(model.nextRefresh == nil)
+    }
+
+    @Test("SES-3: \"I stopped earlier\" ends the session at the picked time, and it becomes the last session")
+    func stopAtThePickedTime() {
+        let start = clock.now
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudge: 600, cap: 3_600)
+        model.start()
+        clock.advance(by: 2_000)
+
+        model.stop(at: start + 700)
+
+        #expect(model.session == nil)
+        #expect(model.lastSession?.endedAt == start + 700)
     }
 }

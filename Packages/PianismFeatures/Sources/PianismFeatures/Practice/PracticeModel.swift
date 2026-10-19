@@ -3,7 +3,7 @@ import Observation
 import PianismCore
 import os
 
-/// State and commands for the Practice screen (SES-1, SES-2, SES-6).
+/// State and commands for the Practice screen (SES-1 to SES-4, SES-6).
 ///
 /// Every command goes through a ``SessionRecorder``, which stores it before returning, so the
 /// screen always shows what is stored, even if the app was killed or another process changed it.
@@ -19,10 +19,14 @@ public final class PracticeModel: TagTarget {
     private(set) var waitingCount = 0
     /// Whether to show that a change couldn't be stored.
     var isShowingStorageError = false
+    /// Whether the running session has practiced past the nudge, so Practice asks "Still practicing?" (SES-3).
+    private(set) var isPastNudge = false
     /// The session that ended itself at the cap, until the banner explaining it is acted on (SES-4).
     private var cappedID: UUID?
 
     let clock: any WallClock
+    /// The practice time after which Practice asks "Still practicing?" (SES-3).
+    let nudge: TimeInterval
     /// The practice time that ends a running session by itself, in case it was left running (SES-4).
     let cap: TimeInterval
     private let recorder: SessionRecorder
@@ -32,12 +36,13 @@ public final class PracticeModel: TagTarget {
 
     public init(
         store: any RunningSessionStore, history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock,
-        cap: TimeInterval
+        nudge: TimeInterval, cap: TimeInterval
     ) {
         self.recorder = SessionRecorder(store: store, clock: clock)
         self.history = history
         self.outbox = outbox
         self.clock = clock
+        self.nudge = nudge
         self.cap = cap
         // Loads the stored session now, so the first frame after a relaunch already shows it.
         refresh()
@@ -60,6 +65,17 @@ public final class PracticeModel: TagTarget {
 
     func stop() {
         perform { try recorder.stop() }
+    }
+
+    /// Ends the session at `date`, when it ended before now (SES-3).
+    func stop(at date: Date) {
+        perform { try recorder.stop(at: date) }
+    }
+
+    /// When the running session reaches the nudge or the cap next, so Practice refreshes then (SES-3, SES-4).
+    var nextRefresh: Date? {
+        let now = clock.now
+        return [nudge, cap].compactMap { session?.whenPracticeReaches($0) }.filter { $0 > now }.min()
     }
 
     /// Whether the last session ended itself at the cap, which a banner explains until the next start (SES-4).
@@ -102,6 +118,7 @@ public final class PracticeModel: TagTarget {
             logger.error("Couldn't load the running session: \(error, privacy: .public)")
             isShowingStorageError = true
         }
+        isPastNudge = session?.whenPracticeReaches(nudge).map { $0 <= clock.now } ?? false
     }
 
     /// Runs `command`, then shows what is stored, moving a session it ended into history.
