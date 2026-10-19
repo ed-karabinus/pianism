@@ -53,12 +53,12 @@ final class SessionEditorModel: TagTarget {
 
     var start: Date {
         get { session.startedAt }
-        set { retime(start: newValue, end: end) }
+        set { retime(start: newValue.keepingSeconds(of: end, within: .distantPast...end), end: end) }
     }
 
     var end: Date {
         get { session.endedAt ?? session.startedAt }
-        set { retime(start: start, end: newValue) }
+        set { retime(start: start, end: newValue.keepingSeconds(of: start, within: start...latestEnd)) }
     }
 
     var note: String {

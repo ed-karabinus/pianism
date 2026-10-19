@@ -67,11 +67,12 @@ public final class PracticeModel: TagTarget {
         perform { try recorder.stop() }
     }
 
-    /// Ends the session at `date`, when it ended before now (SES-3). The wheels pick whole minutes, so the end
-    /// drops the seconds, though never back past the last resume, where the wheels stop too.
+    /// Ends the session at `date`, when it ended before now (SES-3), within the wheels' range.
     func stop(at date: Date) {
-        let minute = Calendar.autoupdatingCurrent.dateInterval(of: .minute, for: date)?.start ?? date
-        perform { try recorder.stop(at: max(minute, session?.latestEvent ?? minute)) }
+        let end = session.map {
+            date.keepingSeconds(of: $0.startedAt, within: $0.latestEvent...max($0.latestEvent, clock.now))
+        }
+        perform { try recorder.stop(at: end ?? date) }
     }
 
     /// When the running session reaches the nudge or the cap next, so Practice refreshes then (SES-3, SES-4).
@@ -137,5 +138,19 @@ public final class PracticeModel: TagTarget {
             isShowingStorageError = true
         }
         refresh()
+    }
+}
+
+extension Date {
+    /// This date's minute, at the seconds of `reference`, the session's other end (SES-3, SES-5). Time wheels
+    /// show only minutes, so a picked time would otherwise keep hidden seconds, and a session picked as 2:00 to
+    /// 3:00 could last 59:43. It stays in `range`, as the wheels do; a date already outside is left as it is,
+    /// for the caller to reject.
+    func keepingSeconds(of reference: Date, within range: ClosedRange<Date>) -> Date {
+        guard range.contains(self) else { return self }
+        let calendar = Calendar.autoupdatingCurrent
+        func minute(of date: Date) -> Date { calendar.dateInterval(of: .minute, for: date)?.start ?? date }
+        let picked = minute(of: self) + reference.timeIntervalSince(minute(of: reference))
+        return min(max(picked, range.lowerBound), range.upperBound)
     }
 }

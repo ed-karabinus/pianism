@@ -81,6 +81,21 @@ struct SessionEditorModelTests {
         #expect(late.latestEnd == session.endedAt)
     }
 
+    @Test("SES-5: a picked start or end takes the other end's seconds, keeping the length in whole minutes")
+    func pickedTimesTakeTheOtherEndsSeconds() throws {
+        var session = PracticeSession(startedAt: clock.now + 17)
+        try session.stop(at: clock.now + 617)
+        let editor = SessionEditorModel(session: session, history: InMemorySessionHistory(), now: clock.now + 900)
+
+        editor.end = clock.now + 450  // 7:30, picked as 7 minutes
+        #expect(editor.end == clock.now + 437)
+        #expect(editor.start == clock.now + 17)
+        editor.start = clock.now + 75  // 1:15, picked as 1 minute
+
+        #expect(editor.start == clock.now + 77)
+        #expect(editor.session.elapsed(at: .distantPast) == 360)
+    }
+
     @Test("SES-5: the editor has changes only while the session differs from how it opened")
     func hasChangesOnlyWhileDifferent() throws {
         let editor = SessionEditorModel(session: try endedSession(), history: InMemorySessionHistory(), now: clock.now)

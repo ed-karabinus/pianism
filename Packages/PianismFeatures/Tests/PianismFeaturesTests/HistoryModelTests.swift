@@ -174,7 +174,9 @@ struct HistoryModelTests {
     func editorsWarnOfOverlaps() throws {
         let history = InMemorySessionHistory()
         let waiting = try endedSession(startingAfter: -600)
-        let later = try endedSession(startingAfter: 3_600)
+        var later = PracticeSession(startedAt: clock.now + 3_600)
+        // 1 s past a minute, so a start picked on the wheels, which takes the end's seconds, can share 59 s.
+        try later.stop(at: clock.now + 4_201)
         outbox.add(waiting)
         history.save(later)
         let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
@@ -186,12 +188,14 @@ struct HistoryModelTests {
         added.end = clock.now
         #expect(added.overlap?.session == waiting)
         #expect(added.overlap?.shared == 600)
+        added.end = clock.now - 540
+        #expect(added.overlap?.shared == 60)
         model.edit(later)
         let editor = try #require(model.editing?.editor)
         #expect(editor.overlap == nil)
         editor.start = clock.now - 59
         #expect(editor.overlap == nil)
-        editor.start = clock.now - 60
+        editor.start = clock.now - 61
 
         #expect(editor.overlap?.session == waiting)
     }

@@ -146,15 +146,15 @@ final class PracticeTests: UITestCase {
     }
 
     /// SES-3: "I stopped earlier" shows wheels at the current time, which go back to when practice really
-    /// stopped, and the session ends at the start of that minute.
+    /// stopped, and the session ends in that minute, at the start's seconds, so its length is whole minutes.
     @MainActor
     func testStoppedEarlier() throws {
-        var app = launch(at: start, reset: true)
+        // Started 17 s into a minute, and picked 45 s into one: the wheels keep those 45 s hidden.
+        var app = launch(at: start + 17, reset: true)
         tap(app, "practice.start")
         app.terminate()
 
-        // 17 s into the minute, which the end leaves out.
-        app = launch(at: start + 2 * 60 * 60 + 40 * 60 + 17)
+        app = launch(at: start + 2 * 60 * 60 + 40 * 60 + 45)
         tap(app, "practice.stopped-earlier")
         let picker = app.datePickers["practice.stopped-at"]
         XCTAssertTrue(picker.waitForExistence(timeout: 5), "No end to pick")

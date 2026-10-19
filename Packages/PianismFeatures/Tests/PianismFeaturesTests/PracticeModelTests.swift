@@ -119,19 +119,38 @@ struct PracticeModelTests {
         #expect(model.nextRefresh == nil)
     }
 
-    @Test("SES-3: \"I stopped earlier\" ends the session at the picked minute, and it becomes the last session")
-    func stopAtThePickedTime() {
-        let start = clock.now
+    @Test(
+        "SES-3: \"I stopped earlier\" ends in the picked minute at the start's seconds: 2:00 to 3:00 lasts an hour",
+        arguments: [17, 33] as [TimeInterval])
+    func stopAtThePickedTime(startSeconds: TimeInterval) {
+        let minute = clock.now
+        clock.advance(by: startSeconds)
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudge: 600, cap: 14_400)
+        model.start()
+        clock.advance(by: 5_400)  // 90 minutes in
+
+        model.stop(at: minute + 3_641)  // the wheels' minute an hour in, at whatever seconds they kept
+
+        #expect(model.session == nil)
+        #expect(model.lastSession?.endedAt == minute + 3_600 + startSeconds)
+        #expect(model.lastSession?.elapsed(at: .distantPast) == 3_600)
+    }
+
+    @Test("SES-3: a picked end in the current minute never goes past now")
+    func stopAtThePickedTimeNotPastNow() {
+        let minute = clock.now
+        clock.advance(by: 50)
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
             clock: clock, nudge: 600, cap: 3_600)
         model.start()
-        clock.advance(by: 2_000)
+        clock.advance(by: 1_950)  // now is 33:20 past the minute
 
-        model.stop(at: start + 717)  // 11:57 in, picked as 11 minutes
+        model.stop(at: minute + 1_990)  // 33:10; at the start's seconds it would be 33:50, after now
 
-        #expect(model.session == nil)
-        #expect(model.lastSession?.endedAt == start + 660)
+        #expect(model.lastSession?.endedAt == minute + 2_000)
     }
 
     @Test("SES-3: a picked minute that began before the last resume ends the session at the resume")
