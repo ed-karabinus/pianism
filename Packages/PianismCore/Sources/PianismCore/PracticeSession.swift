@@ -62,8 +62,8 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
     }
 
     /// When a running session's practice time reaches `practice`, if it keeps running, or `nil` if it's paused
-    /// or ended (SES-4). A moment in the past means it already has. One already past it at its last resume, as
-    /// a change from another process can leave it, reaches it then, so it can still stop there.
+    /// or ended (SES-4). A moment in the past means it already has. One already past it when it last resumed, as
+    /// when Pause came after the cap but before the app noticed, reaches it then, so it can still stop there.
     public func whenPracticeReaches(_ practice: TimeInterval) -> Date? {
         guard state == .running else { return nil }
         return max(latestEvent.addingTimeInterval(practice - elapsed(at: latestEvent)), latestEvent)

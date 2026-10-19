@@ -18,10 +18,8 @@ public struct RootView: View {
     public var body: some View {
         TabView(selection: $tab) {
             Tab(LocalizedStringResource("Practice", bundle: .module), systemImage: "pianokeys", value: .practice) {
-                PracticeView(model: practice, tags: tags) { session in
-                    // Edits it in History, as a tap on its row would, after loading the sessions it may overlap.
-                    history.refresh()
-                    history.edit(session)
+                PracticeView(model: practice, tags: tags) { id in
+                    history.edit(id: id)
                     tab = .history
                 }
                 .accessibilityElement(children: .contain)

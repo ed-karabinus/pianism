@@ -65,7 +65,6 @@ public struct SessionRecorder: Sendable {
 
     /// Ends the running session at the moment its practice time reached `cap`, if it has by now, in case it
     /// was left running (SES-4). A paused session is left alone. Returns the ended session, or `nil`.
-    @discardableResult
     public func end(atCap cap: TimeInterval) throws -> PracticeSession? {
         // Read first, as `archive` does, so the usual case writes nothing.
         guard let read = try store.current(), let end = read.whenPracticeReaches(cap), end <= clock.now else {

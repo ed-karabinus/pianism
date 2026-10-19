@@ -5,8 +5,8 @@ import SwiftUI
 struct PracticeView: View {
     @Bindable var model: PracticeModel
     let tags: TagPickerModel
-    /// Opens a finished session's editor, from the banner of one that ended itself at the cap (SES-4).
-    let edit: (PracticeSession) -> Void
+    /// Opens the editor of the session with this ID, from the banner of one that ended itself at the cap (SES-4).
+    let edit: (UUID) -> Void
 
     @State private var isPickingTags = false
 
@@ -32,7 +32,7 @@ struct PracticeView: View {
             }
             if model.session == nil, let last = model.lastSession {
                 if model.lastSessionReachedCap {
-                    capBanner(last)
+                    capBanner(last.id)
                 } else {
                     let duration = ElapsedTime.display(last.elapsed(at: model.clock.now))
                     Text("Last session: \(duration)", bundle: .module)
@@ -61,8 +61,8 @@ struct PracticeView: View {
                 .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
         }
         .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
-        // Ends the session at the cap while the app stays open, as on an iPad on a music stand. Otherwise it ends
-        // when the app next opens (SES-4).
+        // Ends the session at the cap while Practice is on screen, as on an iPad on a music stand. Otherwise it ends
+        // when Practice or the app next appears (SES-4).
         .task(id: model.session) {
             guard let end = model.session?.whenPracticeReaches(model.cap),
                 (try? await Task.sleep(for: .seconds(end.timeIntervalSince(model.clock.now)))) != nil
@@ -72,7 +72,7 @@ struct PracticeView: View {
     }
 
     /// Says the last session ended itself at the cap, and offers to fix it in History (SES-4).
-    private func capBanner(_ session: PracticeSession) -> some View {
+    private func capBanner(_ id: UUID) -> some View {
         VStack(alignment: .trailing, spacing: 12) {
             let cap = ElapsedTime.spoken(model.cap)
             Text(
@@ -83,7 +83,7 @@ struct PracticeView: View {
             .accessibilityIdentifier(AccessibilityID.practiceCapped)
             Button(LocalizedStringResource("Edit", bundle: .module)) {
                 model.dismissCapBanner()
-                edit(session)
+                edit(id)
             }
             .buttonStyle(.bordered)
             .accessibilityLabel(Text("Edit Session", bundle: .module))

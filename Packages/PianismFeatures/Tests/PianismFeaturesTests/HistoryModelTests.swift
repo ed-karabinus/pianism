@@ -129,6 +129,28 @@ struct HistoryModelTests {
         #expect(history.sessions().map(\.note) == ["Coda"])
     }
 
+    @Test("SES-4: Edit from the cap banner opens the session as history has it now, and nothing once it's deleted")
+    func editByIDOpensTheStoredCopy() throws {
+        let history = InMemorySessionHistory()
+        let capped = try endedSession(startingAfter: 0)
+        history.save(capped)
+        // Edited from History since the banner showed.
+        var edited = capped
+        try edited.editNote("Fell asleep")
+        try history.edit(edited)
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+
+        model.edit(id: capped.id)
+
+        #expect(model.editing?.editor.session == edited)
+
+        model.editing = nil
+        model.delete(edited)
+        model.edit(id: capped.id)
+
+        #expect(model.editing == nil)
+    }
+
     @Test("SES-5: an added session ends now, or, to keep clear of sessions in its 30 minutes, where they started")
     func addedSessionKeepsClearOfOthers() throws {
         let history = InMemorySessionHistory()
