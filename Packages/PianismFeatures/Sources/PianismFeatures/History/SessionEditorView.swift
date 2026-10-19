@@ -1,30 +1,56 @@
 import PianismCore
 import SwiftUI
 
-/// Edits a finished session (SES-5). Changes reach history only when saved.
+/// Edits a finished session, or one being added (SES-5). Changes reach history only when saved, and
+/// closing with unsaved changes asks first.
 struct SessionEditorView: View {
     @Bindable var editor: SessionEditorModel
     let tags: TagPickerModel
+    /// Deletes the session once it's confirmed; History then offers Undo (SES-5).
+    var onDelete: () -> Void = {}
 
     @Environment(\.dismiss) private var dismiss
     @State private var isPickingTags = false
+    @State private var isConfirmingDiscard = false
+    @State private var isConfirmingDelete = false
+    /// Off once the user asks not to be warned about overlapping sessions again, on this device.
+    @AppStorage("showsOverlapWarning") private var showsOverlapWarning = true
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    let session = editor.session
+                    DatePicker(selection: $editor.start, in: ...editor.end) {
+                        Text("Start", bundle: .module)
+                    }
+                    .disabled(editor.isReadOnly)
+                    DatePicker(selection: $editor.end, in: editor.start...editor.latestEnd) {
+                        Text("End", bundle: .module)
+                    }
+                    .disabled(editor.isReadOnly)
+                    .accessibilityIdentifier(AccessibilityID.editorEnd)
                     // A finished session's practice time is fixed, so the date passed here is ignored.
                     TimedRow(
-                        title: Text(
-                            session.startedAt..<(session.endedAt ?? session.startedAt),
-                            format: .interval.month(.wide).day().hour().minute()),
-                        duration: session.elapsed(at: .distantPast))
+                        title: Text("Practice time", bundle: .module),
+                        duration: editor.session.elapsed(at: .distantPast))
                 } footer: {
                     if editor.isReadOnly {
                         Text(
                             "A newer version of Pianism changed this session. Update Pianism to change it.",
                             bundle: .module)
+                    } else if showsOverlapWarning, let overlap = editor.overlap {
+                        // A footer shows only its first view, so the button needs a stack to appear.
+                        VStack(alignment: .leading) {
+                            Text(
+                                "This shares \(ElapsedTime.spoken(overlap.shared)) of practice with your \(overlap.session.times) session, so the day's total counts it twice.",
+                                bundle: .module
+                            )
+                            .accessibilityIdentifier(AccessibilityID.editorOverlap)
+                            Button(LocalizedStringResource("Don't Show Again", bundle: .module)) {
+                                showsOverlapWarning = false
+                            }
+                            .accessibilityIdentifier(AccessibilityID.editorOverlapOff)
+                        }
                     }
                 }
                 Button {
@@ -38,11 +64,44 @@ struct SessionEditorView: View {
                 }
                 .disabled(editor.isReadOnly)
                 .accessibilityIdentifier(AccessibilityID.editorTags)
+                TextField(text: $editor.note, axis: .vertical) {
+                    Text("Note", bundle: .module)
+                }
+                .disabled(editor.isReadOnly)
+                .accessibilityIdentifier(AccessibilityID.editorNote)
+                if !editor.isNew, !editor.isReadOnly {
+                    Section {
+                        Button(LocalizedStringResource("Delete Session", bundle: .module), role: .destructive) {
+                            isConfirmingDelete = true
+                        }
+                        .accessibilityIdentifier(AccessibilityID.editorDelete)
+                        .confirmationDialog(
+                            Text("Delete this session?", bundle: .module), isPresented: $isConfirmingDelete,
+                            titleVisibility: .visible
+                        ) {
+                            Button(LocalizedStringResource("Delete Session", bundle: .module), role: .destructive) {
+                                onDelete()
+                            }
+                            .accessibilityIdentifier(AccessibilityID.deleteConfirm)
+                        }
+                    }
+                }
             }
-            .navigationTitle(Text("Edit Session", bundle: .module))
+            .navigationTitle(
+                editor.isNew ? Text("Add Session", bundle: .module) : Text("Edit Session", bundle: .module)
+            )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(role: .cancel) { dismiss() }
+                    Button(role: .cancel) {
+                        if editor.hasChanges { isConfirmingDiscard = true } else { dismiss() }
+                    }
+                    .accessibilityIdentifier(AccessibilityID.editorCancel)
+                    .confirmationDialog(
+                        Text("Discard changes?", bundle: .module), isPresented: $isConfirmingDiscard,
+                        titleVisibility: .visible
+                    ) {
+                        Button(LocalizedStringResource("Discard", bundle: .module), role: .destructive) { dismiss() }
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(role: .confirm) {
@@ -56,12 +115,18 @@ struct SessionEditorView: View {
                 TagPickerView(model: tags)
             }
         }
+        .interactiveDismissDisabled(editor.hasChanges)
         .storageAlert(Text("Couldn't save that change", bundle: .module), isPresented: $editor.isShowingError)
     }
 }
 
 #Preview("Tagged") {
     let edit = SessionEdit.preview()
+    SessionEditorView(editor: edit.editor, tags: edit.tags)
+}
+
+#Preview("Overlapping another session") {
+    let edit = SessionEdit.preview(overlapping: true)
     SessionEditorView(editor: edit.editor, tags: edit.tags)
 }
 

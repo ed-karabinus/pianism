@@ -128,6 +128,104 @@ struct PracticeSessionTests {
         #expect(session == untagged)
     }
 
+    @Test(
+        "SES-5: moving a finished session's start and end keeps pauses inside, cuts those across, drops those outside")
+    func editTimesKeepsPausesInside() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start)
+        for (from, to) in [(10.0, 20.0), (30, 40), (50, 60)] {
+            try session.pause(at: start + from)
+            try session.resume(at: start + to)
+        }
+        try session.stop(at: start + 70)
+        let offsets = {
+            session.pauses.map { [$0.start, $0.end ?? .distantFuture].map { $0.timeIntervalSince(start) } }
+        }
+
+        try session.editTimes(start: start + 15, end: start + 55)
+        #expect([session.startedAt, session.endedAt] == [start + 15, start + 55])
+        #expect(offsets() == [[15, 20], [30, 40], [50, 55]])
+        #expect(session.elapsed(at: .distantPast) == 20)
+
+        try session.editTimes(start: start + 20, end: start + 50)
+        #expect(offsets() == [[30, 40]])
+        try session.editTimes(start: start + 30, end: start + 30)
+        #expect(session.elapsed(at: .distantPast) == 0)
+    }
+
+    @Test("SES-5: a finished session's note can be edited, and clearing it leaves the session as it was")
+    func finishedSessionNoteCanBeEdited() throws {
+        var plain = PracticeSession(startedAt: clock.now)
+        try plain.stop(at: clock.now + 600)
+        var session = plain
+
+        try session.editNote("Coda, slowly")
+        #expect(session.note == "Coda, slowly")
+        try session.editNote("")
+
+        #expect(session == plain)
+    }
+
+    @Test("SES-5: finished sessions share the practice time they overlap, leaving out either's pauses")
+    func sharedPracticeLeavesOutPauses() throws {
+        func finished(_ from: TimeInterval, _ to: TimeInterval, pausedFrom: TimeInterval? = nil) throws
+            -> PracticeSession
+        {
+            var session = PracticeSession(startedAt: clock.now + from)
+            if let pausedFrom {
+                try session.pause(at: clock.now + pausedFrom)
+                try session.resume(at: clock.now + pausedFrom + 100)
+            }
+            try session.stop(at: clock.now + to)
+            return session
+        }
+        let session = try finished(0, 600, pausedFrom: 100)
+        let others = try [
+            finished(150, 250), finished(120, 180), finished(600, 900), finished(-100, 1_000), finished(550, 900),
+            finished(-100, 1_000, pausedFrom: 0),
+        ]
+
+        #expect(others.map(session.sharedPractice) == [50, 0, 0, 500, 50, 400])
+        #expect(others.map { $0.sharedPractice(with: session) } == [50, 0, 0, 500, 50, 400])
+        #expect(session.sharedPractice(with: PracticeSession(startedAt: clock.now)) == 0)
+    }
+
+    // MARK: SES-4: automatic cap
+
+    @Test("SES-4: a running session reaches a practice time later by each pause's length")
+    func whenPracticeReachesLeavesOutPauses() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start)
+        #expect(session.whenPracticeReaches(600) == start + 600)
+
+        try session.pause(at: start + 100)
+        try session.resume(at: start + 400)
+
+        #expect(session.whenPracticeReaches(600) == start + 900)
+    }
+
+    @Test("SES-4: a paused or ended session never reaches a practice time", arguments: [false, true])
+    func pausedOrEndedNeverReaches(ended: Bool) throws {
+        var session = PracticeSession(startedAt: clock.now)
+        if ended {
+            try session.stop(at: clock.now + 60)
+        } else {
+            try session.pause(at: clock.now + 60)
+        }
+
+        #expect(session.whenPracticeReaches(600) == nil)
+    }
+
+    @Test("SES-4: a session already past a practice time when it last resumed reaches it then")
+    func pastAtResumeReachesAtResume() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start)
+        try session.pause(at: start + 700)
+        try session.resume(at: start + 800)
+
+        #expect(session.whenPracticeReaches(600) == start + 800)
+    }
+
     // MARK: Invalid changes are rejected and leave the session untouched
 
     @Test("Changes in the wrong state are rejected", arguments: InvalidChange.allCases)
@@ -190,15 +288,18 @@ enum InvalidChange: CaseIterable, CustomTestStringConvertible {
     case stopAfterStop
     case tagAfterStop
     case editWhileRunning
+    case editTimesWhileRunning
+    case editNoteWhileRunning
     case changeDatedBeforeLastChange
+    case editEndBeforeStart
 
     var expectedError: SessionError {
         switch self {
         case .pauseWhilePaused: .alreadyPaused
         case .resumeWhileRunning: .notPaused
         case .pauseAfterStop, .resumeAfterStop, .stopAfterStop, .tagAfterStop: .alreadyEnded
-        case .editWhileRunning: .notEnded
-        case .changeDatedBeforeLastChange: .timeWentBackwards
+        case .editWhileRunning, .editTimesWhileRunning, .editNoteWhileRunning: .notEnded
+        case .changeDatedBeforeLastChange, .editEndBeforeStart: .timeWentBackwards
         }
     }
 
@@ -211,15 +312,21 @@ enum InvalidChange: CaseIterable, CustomTestStringConvertible {
         case .stopAfterStop: "stop after stop"
         case .tagAfterStop: "tag after stop"
         case .editWhileRunning: "edit while running"
+        case .editTimesWhileRunning: "edit times while running"
+        case .editNoteWhileRunning: "edit the note while running"
         case .changeDatedBeforeLastChange: "a change dated before the last change"
+        case .editEndBeforeStart: "an edit that ends before the start"
         }
     }
 
     func prepare(_ session: inout PracticeSession, _ clock: ManualClock) throws {
         switch self {
         case .pauseWhilePaused: try session.pause(at: clock.now)
-        case .resumeWhileRunning, .editWhileRunning, .changeDatedBeforeLastChange: break
-        case .pauseAfterStop, .resumeAfterStop, .stopAfterStop, .tagAfterStop: try session.stop(at: clock.now)
+        case .resumeWhileRunning, .editWhileRunning, .editTimesWhileRunning, .editNoteWhileRunning,
+            .changeDatedBeforeLastChange:
+            break
+        case .pauseAfterStop, .resumeAfterStop, .stopAfterStop, .tagAfterStop, .editEndBeforeStart:
+            try session.stop(at: clock.now)
         }
     }
 
@@ -230,7 +337,10 @@ enum InvalidChange: CaseIterable, CustomTestStringConvertible {
         case .stopAfterStop: try session.stop(at: clock.now)
         case .tagAfterStop: try session.setTags(["skill.scales"])
         case .editWhileRunning: try session.editTags(["skill.scales"])
+        case .editTimesWhileRunning: try session.editTimes(start: session.startedAt, end: clock.now)
+        case .editNoteWhileRunning: try session.editNote("Coda")
         case .changeDatedBeforeLastChange: try session.pause(at: session.startedAt.addingTimeInterval(-1))
+        case .editEndBeforeStart: try session.editTimes(start: session.startedAt + 1, end: session.startedAt)
         }
     }
 }

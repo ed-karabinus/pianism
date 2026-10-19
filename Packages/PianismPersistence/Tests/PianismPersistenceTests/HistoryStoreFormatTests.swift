@@ -77,6 +77,7 @@ final class HistoryStoreFormatTests {
         try session.pause(at: start + 900.125)
         try session.resume(at: start + 960.875)
         try session.stop(at: start + 1_800.625)
+        try session.editNote("Left hand alone, slowly")
         #expect(try SwiftDataSessionHistory(store: store, clock: clock).sessions() == [session])
         #expect(
             Set(try SwiftDataTagLibrary(store: store, clock: clock).tags()) == [
@@ -86,6 +87,27 @@ final class HistoryStoreFormatTests {
                     id: gMinor, kind: .piece, name: "Chopin G minor", isArchived: true, mergedInto: ballade,
                     createdAt: start - 172_680, isReadOnly: true),
             ])
+    }
+
+    @Test("SES-5, ADR 0006: deleting a v1 session clears only its note and tags, and marks when it was deleted")
+    func v1SessionDeletes() throws {
+        let store = try open("history-v1")
+        let live = try #require(UUID(uuidString: "9C4E2B7A-5D1F-4A3C-8B6E-0F2D4A6C8E13"))
+        let context = ModelContext(try store.container())
+        let before = try #require(try context.fetch(FetchDescriptor<SessionRecord>()).first { $0.id == live }).fields
+        let history = SwiftDataSessionHistory(store: store, clock: clock)
+
+        try history.delete(id: live)
+
+        let after = try #require(
+            try ModelContext(store.container()).fetch(FetchDescriptor<SessionRecord>()).first { $0.id == live })
+        var expected = before
+        expected[4] = [String]()
+        expected[5] = ""
+        // The fixture's change is later than this clock, so it stays the latest.
+        expected[10] = clock.now
+        #expect(after.fields == expected)
+        #expect(try history.sessions().isEmpty)
     }
 
     /// A copy of the fixture `name`, so opening it can't change the original.

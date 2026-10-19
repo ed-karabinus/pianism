@@ -10,6 +10,9 @@
     "Add piece “%@”" : {
 
     },
+    "Add Session" : {
+
+    },
     "Add skill “%@”" : {
 
     },
@@ -28,6 +31,9 @@
     "Couldn't change your tags" : {
 
     },
+    "Couldn't delete that session" : {
+
+    },
     "Couldn't load your earlier history. Sessions waiting to be saved are shown." : {
 
     },
@@ -37,7 +43,31 @@
     "Couldn't save that change" : {
 
     },
+    "Delete" : {
+
+    },
+    "Delete Session" : {
+
+    },
+    "Delete this session?" : {
+
+    },
+    "Discard" : {
+
+    },
+    "Discard changes?" : {
+
+    },
+    "Don't Show Again" : {
+
+    },
+    "Edit" : {
+
+    },
     "Edit Session" : {
+
+    },
+    "End" : {
 
     },
     "Find or add a piece or skill" : {
@@ -61,6 +91,9 @@
     "%@, not saved yet" : {
 
     },
+    "Note" : {
+
+    },
     "Pause" : {
 
     },
@@ -68,6 +101,9 @@
 
     },
     "Pianism couldn't reach its storage. Try again in a moment." : {
+
+    },
+    "Pianism stopped your session at %@ of practice, in case the timer was left running." : {
 
     },
     "Pieces" : {
@@ -103,6 +139,9 @@
     "Scales" : {
       "comment" : "A built-in skill"
     },
+    "Session deleted" : {
+
+    },
     "Sessions you finish appear here." : {
 
     },
@@ -124,7 +163,13 @@
     "Technique" : {
       "comment" : "A built-in skill"
     },
+    "This shares %@ of practice with your %@ session, so the day's total counts it twice." : {
+
+    },
     "Today" : {
+
+    },
+    "Undo" : {
 
     },
     "Untagged" : {

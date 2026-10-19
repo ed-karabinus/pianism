@@ -9,15 +9,18 @@ private let previewNow = Date(timeIntervalSince1970: 1_798_761_600)
 
 extension PracticeModel {
     enum PreviewState {
-        case ready, running, paused
+        case ready, running, paused, capped
     }
 
-    /// A model over an in-memory store, 25 minutes into a session, for previews.
+    /// A model over an in-memory store, 25 minutes into a session, or 5 hours into one that ends itself at the
+    /// 4-hour cap, for previews.
     static func preview(_ state: PreviewState) -> PracticeModel {
-        let store = PreviewStore(state == .ready ? nil : PracticeSession(startedAt: previewNow))
+        let started = previewNow.addingTimeInterval(state == .capped ? -5 * 60 * 60 : 0)
+        let store = PreviewStore(state == .ready ? nil : PracticeSession(startedAt: started))
         let clock = PreviewClock(now: previewNow.addingTimeInterval(25 * 60 + 3))
         let model = PracticeModel(
-            store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock)
+            store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
+            cap: 4 * 60 * 60)
         if state == .paused {
             model.pause()
         }
@@ -54,8 +57,8 @@ extension TagPickerModel {
 extension HistoryModel {
     /// A model with practice today, yesterday and last week, or with none, for previews. Times are
     /// local, so "Today" holds in any time zone. `waiting` puts the sessions in the outbox and makes
-    /// history fail to load, as during an outage (ADR 0007).
-    static func preview(empty: Bool = false, waiting: Bool = false) -> HistoryModel {
+    /// history fail to load, as during an outage (ADR 0007). `deleting` deletes the newest session, so Undo shows.
+    static func preview(empty: Bool = false, waiting: Bool = false, deleting: Bool = false) -> HistoryModel {
         let sessions = InMemorySessionHistory()
         let midnight = Calendar.autoupdatingCurrent.startOfDay(for: previewNow)
         let hour: TimeInterval = 60 * 60
@@ -71,23 +74,33 @@ extension HistoryModel {
         }
         let history: any SessionHistory = waiting ? PreviewUnavailableHistory() : sessions
         let outbox = waiting ? sessions : InMemorySessionHistory()
-        return HistoryModel(
+        let model = HistoryModel(
             history: history, tags: InMemoryTagLibrary(previewTags), outbox: outbox,
             clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)))
+        if deleting {
+            model.refresh()
+            if let newest = model.days.first?.sessions.first { model.delete(newest) }
+        }
+        return model
     }
 }
 
 extension SessionEdit {
     /// A finished session, tagged with a piece and a built-in skill, to edit; read-only as if a newer
-    /// version wrote it, if `readOnly`.
+    /// version wrote it, if `readOnly`; overlapping another session, if `overlapping`.
     @MainActor
-    static func preview(readOnly: Bool = false) -> SessionEdit {
+    static func preview(readOnly: Bool = false, overlapping: Bool = false) -> SessionEdit {
         var session = PracticeSession(startedAt: previewNow)
         try? session.stop(at: previewNow.addingTimeInterval(25 * 60 + 3))
         try? session.editTags(["ballade", BuiltInSkill.scales.rawValue])
+        try? session.editNote("Coda hands separately, slowly. Left hand still rushes the run.")
         let history = InMemorySessionHistory(readOnlyIDs: readOnly ? [session.id] : [])
         history.save(session)
-        return SessionEdit(session: session, history: history, library: InMemoryTagLibrary(previewTags))
+        var other = PracticeSession(startedAt: previewNow.addingTimeInterval(-10 * 60))
+        try? other.stop(at: previewNow.addingTimeInterval(5 * 60))
+        return SessionEdit(
+            session: session, others: overlapping ? [other] : [], history: history,
+            library: InMemoryTagLibrary(previewTags), now: previewNow.addingTimeInterval(60 * 60))
     }
 }
 
@@ -98,6 +111,7 @@ private struct PreviewUnavailableHistory: SessionHistory {
     func save(_: PracticeSession) throws { throw Unavailable() }
     func canEdit(id _: UUID) throws -> Bool { throw Unavailable() }
     func edit(_: PracticeSession) throws { throw Unavailable() }
+    func delete(id _: UUID) throws { throw Unavailable() }
 }
 
 private struct PreviewClock: WallClock {

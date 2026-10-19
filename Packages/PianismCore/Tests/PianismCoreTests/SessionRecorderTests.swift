@@ -270,6 +270,63 @@ struct SessionRecorderTests {
         #expect(history.sessions().count == 1)
     }
 
+    // MARK: SES-4: automatic cap
+
+    @Test("SES-4: a session left running ends when its practice reached the cap, pauses left out, and is stored")
+    func endsAtCap() throws {
+        let start = clock.now
+        try recorder.start()
+        clock.advance(by: 100)
+        try recorder.pause()
+        clock.advance(by: 50)
+        try recorder.resume()
+        clock.advance(by: 9_000)
+
+        let ended = try recorder.end(atCap: 600)
+
+        #expect(ended?.endedAt == start + 650)
+        #expect(ended?.elapsed(at: clock.now) == 600)
+        #expect(store.current() == ended)
+    }
+
+    @Test("SES-4: a running session ends once its practice reaches the cap, not before")
+    func endsOnceReached() throws {
+        try recorder.start()
+        clock.advance(by: 599)
+
+        #expect(try recorder.end(atCap: 600) == nil)
+        #expect(store.current()?.state == .running)
+
+        clock.advance(by: 1)
+        #expect(try recorder.end(atCap: 600)?.endedAt == clock.now)
+    }
+
+    @Test("SES-4: a paused session is left alone however long it stays paused, and no session is no change")
+    func pausedIsLeftAlone() throws {
+        #expect(try recorder.end(atCap: 600) == nil)
+        try recorder.start()
+        clock.advance(by: 300)
+        let paused = try recorder.pause()
+        clock.advance(by: 86_400)
+
+        #expect(try recorder.end(atCap: 600) == nil)
+        #expect(store.current() == paused)
+    }
+
+    @Test("SES-4: a session another process paused after the cap check read it is left as that process left it")
+    func capKeepsAnotherWritersChange() throws {
+        let contended = ContendedStore()
+        let app = SessionRecorder(store: contended, clock: clock)
+        let liveActivity = SessionRecorder(store: contended.base, clock: clock)
+        try app.start()
+        clock.advance(by: 700)
+        // While the app waits for the store, a Live Activity pauses the session.
+        contended.beforeNextUpdate = { try liveActivity.pause() }
+
+        #expect(try app.end(atCap: 600) == nil)
+        #expect(contended.base.current()?.state == .paused)
+    }
+
     // MARK: Two writers
 
     @Test("A command takes the time after another writer's change, not before it")
@@ -342,6 +399,7 @@ struct RefusingHistory: SessionHistory {
 
     func canEdit(id: UUID) -> Bool { saved.canEdit(id: id) }
     func edit(_ session: PracticeSession) throws { try saved.edit(session) }
+    func delete(id: UUID) throws { try saved.delete(id: id) }
 }
 
 /// A store where another writer gets in first: `beforeNextUpdate` runs once, just before the next

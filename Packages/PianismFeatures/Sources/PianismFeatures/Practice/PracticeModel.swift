@@ -19,20 +19,26 @@ public final class PracticeModel: TagTarget {
     private(set) var waitingCount = 0
     /// Whether to show that a change couldn't be stored.
     var isShowingStorageError = false
+    /// The session that ended itself at the cap, until the banner explaining it is acted on (SES-4).
+    private var cappedID: UUID?
 
     let clock: any WallClock
+    /// The practice time that ends a running session by itself, in case it was left running (SES-4).
+    let cap: TimeInterval
     private let recorder: SessionRecorder
     private let history: any SessionHistory
     private let outbox: any SessionOutbox
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "practice")
 
     public init(
-        store: any RunningSessionStore, history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock
+        store: any RunningSessionStore, history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock,
+        cap: TimeInterval
     ) {
         self.recorder = SessionRecorder(store: store, clock: clock)
         self.history = history
         self.outbox = outbox
         self.clock = clock
+        self.cap = cap
         // Loads the stored session now, so the first frame after a relaunch already shows it.
         refresh()
     }
@@ -56,6 +62,14 @@ public final class PracticeModel: TagTarget {
         perform { try recorder.stop() }
     }
 
+    /// Whether the last session ended itself at the cap, which a banner explains until the next start (SES-4).
+    var lastSessionReachedCap: Bool { lastSession.map { $0.id == cappedID } == true }
+
+    /// Hides the cap banner, as its Edit was tapped.
+    func dismissCapBanner() {
+        cappedID = nil
+    }
+
     var tagIDs: [Tag.ID] { session?.tagIDs ?? [] }
 
     /// Replaces the running session's tags (TAG-2).
@@ -63,13 +77,16 @@ public final class PracticeModel: TagTarget {
         perform { try recorder.setTags(ids) }
     }
 
-    /// Shows the stored session, after moving an ended one into history, or into the outbox if
-    /// history can't save it (ADR 0007).
+    /// Shows the stored session, after ending one that reached the cap and moving an ended one into
+    /// history, or into the outbox if history can't save it (ADR 0007).
     ///
     /// Call when the app becomes active: the session may have changed in another process, such as
     /// a Live Activity, or have been restored after the app was killed.
     func refresh() {
         do {
+            if let capped = try recorder.end(atCap: cap) {
+                cappedID = capped.id
+            }
             if let archived = try recorder.archive(to: history, or: outbox) {
                 lastSession = archived
             }

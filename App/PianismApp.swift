@@ -20,22 +20,29 @@ struct PianismApp: App {
             fatalError("Missing the \(Self.appGroup) App Group entitlement.")
         }
         var clock: any WallClock = SystemClock()
+        // A running session ends itself after this much practice, in case it was left running (SES-4).
+        var cap: TimeInterval = 4 * 60 * 60
         var historyURL = URL.applicationSupportDirectory.appending(path: "History/History.store")
         // Finished sessions wait here while history can't save them (ADR 0007). Only the app moves
         // sessions into history, so this stays out of the App Group.
         let outboxURL = URL.applicationSupportDirectory.appending(path: "Outbox")
         #if DEBUG
-            // End-to-end tests fix the time with PIANISM_NOW (seconds since 1970), start with no
-            // running session, history or outbox with PIANISM_RESET=1, and make the history fail to
-            // open with PIANISM_BREAK_HISTORY=1. Release builds ignore all three.
+            // End-to-end tests fix the time with PIANISM_NOW (seconds since 1970), shorten the cap with
+            // PIANISM_CAP_SECONDS, start with no running session, history, outbox or settings with
+            // PIANISM_RESET=1, and make the history fail to open with PIANISM_BREAK_HISTORY=1. Release builds
+            // ignore all four.
             let environment = ProcessInfo.processInfo.environment
             if let seconds = environment["PIANISM_NOW"].flatMap(TimeInterval.init) {
                 clock = FixedClock(now: Date(timeIntervalSince1970: seconds))
+            }
+            if let seconds = environment["PIANISM_CAP_SECONDS"].flatMap(TimeInterval.init) {
+                cap = seconds
             }
             if environment["PIANISM_RESET"] == "1" {
                 try? store.update { $0 = nil }
                 try? FileManager.default.removeItem(at: historyURL.deletingLastPathComponent())
                 try? FileManager.default.removeItem(at: outboxURL)
+                UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier ?? "")
             }
             if environment["PIANISM_BREAK_HISTORY"] == "1" {
                 historyURL = URL(filePath: "/dev/null/History.store")
@@ -46,10 +53,17 @@ struct PianismApp: App {
         let sessions = SwiftDataSessionHistory(store: historyStore, clock: clock)
         let library = SwiftDataTagLibrary(store: historyStore, clock: clock)
         let outbox = FileSessionOutbox(directory: outboxURL)
-        let practice = PracticeModel(store: store, history: sessions, outbox: outbox, clock: clock)
+        let practice = PracticeModel(store: store, history: sessions, outbox: outbox, clock: clock, cap: cap)
         self.practice = practice
         tags = TagPickerModel(practice: practice, library: library)
-        history = HistoryModel(history: sessions, tags: library, outbox: outbox, clock: clock)
+        let history = HistoryModel(history: sessions, tags: library, outbox: outbox, clock: clock)
+        #if DEBUG
+            // End-to-end tests lengthen Undo with PIANISM_UNDO_SECONDS. Release builds ignore it.
+            if let seconds = ProcessInfo.processInfo.environment["PIANISM_UNDO_SECONDS"].flatMap(Int.init) {
+                history.undoDuration = .seconds(seconds)
+            }
+        #endif
+        self.history = history
     }
 
     var body: some Scene {

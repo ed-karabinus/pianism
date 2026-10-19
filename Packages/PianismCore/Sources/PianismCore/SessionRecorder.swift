@@ -63,6 +63,22 @@ public struct SessionRecorder: Sendable {
         try change { session, now in try session.stop(at: now) }
     }
 
+    /// Ends the running session at the moment its practice time reached `cap`, if it has by now, in case it
+    /// was left running (SES-4). A paused session is left alone. Returns the ended session, or `nil`.
+    public func end(atCap cap: TimeInterval) throws -> PracticeSession? {
+        // Read first, as `archive` does, so the usual case writes nothing.
+        guard let read = try store.current(), let end = read.whenPracticeReaches(cap), end <= clock.now else {
+            return nil
+        }
+        return try store.update { stored in
+            // Another process may have paused or stopped it since; the next call sees that change.
+            guard var session = stored, session == read else { return nil }
+            try session.stop(at: end)
+            stored = session
+            return session
+        }
+    }
+
     /// Replaces the running or paused session's tags (TAG-2).
     @discardableResult
     public func setTags(_ ids: [Tag.ID]) throws -> PracticeSession {

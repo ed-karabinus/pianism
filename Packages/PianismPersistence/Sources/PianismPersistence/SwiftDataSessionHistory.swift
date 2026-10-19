@@ -62,6 +62,27 @@ public final class SwiftDataSessionHistory: SessionHistory {
         }
     }
 
+    /// Marks every copy deleted and clears its note and tags, so the user's words are gone (ADR 0006).
+    public func delete(id: UUID) throws {
+        try saving.withLock { _ in
+            let context = ModelContext(try store.container())
+            let copies = try context.fetch(Self.copies(of: id))
+            guard Self.shown(among: copies) != nil else { return }
+            guard copies.allSatisfy({ $0.version <= HistoryStore.recordVersion }) else {
+                throw RecordFromNewerVersion()
+            }
+            let now = clock.now
+            for copy in copies {
+                copy.deletedAt = now
+                copy.modifiedAt = max(now, copy.modifiedAt)
+                copy.note = ""
+                copy.tagIDs = []
+                copy.version = HistoryStore.recordVersion  // mutate:ignore - the default until a release raises it
+            }
+            try context.save()
+        }
+    }
+
     /// Writes `session` into `record`, stamped with this app's record version (ADR 0006).
     private func write(_ session: PracticeSession, to record: SessionRecord, modifiedAt: Date) throws {
         try record.update(from: session)
@@ -100,6 +121,7 @@ extension SessionRecord {
         // A zone this OS doesn't know reads as none; an edit must keep it (ADR 0006).
         timeZoneID = session.timeZone?.identifier ?? timeZoneID
         tagIDs = session.tagIDs
+        note = session.note
         let stored = session.pauses.map { StoredPauses.Pause(start: $0.start, end: $0.end ?? ended) }
         pauses = stored.isEmpty ? Data() : try JSONEncoder().encode(StoredPauses(pauses: stored))
     }
@@ -116,6 +138,7 @@ extension SessionRecord {
             }
         }
         try session.stop(at: endedAt)
+        try session.editNote(note)
         return session
     }
 }
