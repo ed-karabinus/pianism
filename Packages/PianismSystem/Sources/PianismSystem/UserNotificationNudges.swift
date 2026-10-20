@@ -1,7 +1,6 @@
 import Foundation
 import PianismCore
 import UserNotifications
-import os
 
 /// ``PracticeNudges`` as a local notification that asks "Still practicing?", with the banner's answers as its
 /// buttons (SES-3).
@@ -20,7 +19,6 @@ public final class UserNotificationNudges: NSObject, PracticeNudges, UNUserNotif
 
     private let answered: @MainActor @Sendable (UUID) -> Void
     private let opened: @MainActor @Sendable (_ sessionID: UUID, _ pickingEnd: Bool) -> Void
-    private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "nudges")
 
     /// Registers the notification's buttons and takes its answers: `answered` for "Still practicing", `opened`
     /// for "I stopped earlier" or a tap. An answer can launch the app, so create this as the app launches.
@@ -41,23 +39,14 @@ public final class UserNotificationNudges: NSObject, PracticeNudges, UNUserNotif
     }
 
     public func requestPermission() async {
-        do {
-            try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
-        } catch {
-            logger.error(  // mutate:ignore - a log line; no test reads logs
-                "Couldn't ask to send notifications: \(error, privacy: .public)")
-        }
+        _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
     }
 
-    /// Adds the notification even when they aren't allowed, unlike Apple's samples: nothing about it depends on the
-    /// settings, it's shown once they're allowed, and an add waiting on the settings could land after a cancel.
+    /// Adds the notification without checking the settings first, unlike Apple's samples, as an add waiting on them
+    /// could land after a cancel. Until notifications are allowed the system refuses it; the next refresh after they
+    /// are adds it again.
     public func schedule(after delay: TimeInterval, sessionID: UUID) {
-        UNUserNotificationCenter.current().add(Self.request(after: delay, sessionID: sessionID)) { [logger] error in
-            if let error {
-                logger.error(  // mutate:ignore - a log line; no test reads logs
-                    "Couldn't schedule the nudge: \(error, privacy: .public)")
-            }
-        }
+        UNUserNotificationCenter.current().add(Self.request(after: delay, sessionID: sessionID))
     }
 
     /// Also takes a delivered notification out of Notification Center, as the app now shows what it asked.

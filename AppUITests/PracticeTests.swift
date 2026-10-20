@@ -149,8 +149,9 @@ final class PracticeTests: UITestCase {
     }
 
     /// SES-3: the banner offers the notification, which then asks "Still practicing?" while the app is away. Its
-    /// "Still practicing" answers for the session, and its "I stopped earlier" opens Practice to pick the end. The
-    /// clock is real and the nudge 10 s, as the system's notification needs time to pass.
+    /// "Still practicing" answers for the session, and its "I stopped earlier" opens Practice to pick the end. A
+    /// nudge that passes while History shows is asked when Practice is back. The clock is real and the nudge 10 s,
+    /// as the system's notification needs time to pass.
     @MainActor
     func testNotificationAsksStillPracticing() throws {
         let app = launch(at: nil, reset: true, nudgeSeconds: 10)
@@ -185,6 +186,14 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "Opened from the notification's I stopped earlier")
         tap(app, "practice.stop-at")
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
+
+        tap(app, "practice.start")
+        openHistory(app)
+        // Real time has to pass the nudge, with nothing in History to wait for.
+        Thread.sleep(forTimeInterval: 12)
+        app.buttons["Practice"].firstMatch.tap()
+        XCTAssertTrue(
+            app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 3), "It didn't ask on Practice")
     }
 
     /// SES-3: "I stopped earlier" shows wheels at the current time, which go back to when practice really

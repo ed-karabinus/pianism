@@ -79,8 +79,7 @@ public final class PracticeModel: TagTarget {
         perform { try recorder.resume() }
     }
 
-    /// Whether Practice asks "Still practicing?": the running session has practiced past the nudge, and it
-    /// wasn't answered (SES-3).
+    /// Whether Practice asks "Still practicing?" (SES-3).
     var isAskingStillPracticing: Bool { isPastNudge && session.map { $0.id != answeredID } == true }
 
     /// Answers "Still practicing?" for the session with this ID, from the banner or the notification (SES-3).
@@ -103,7 +102,6 @@ public final class PracticeModel: TagTarget {
         nudgeOpened = NudgeOpening(sessionID: id, pickingEnd: pickingEnd)
     }
 
-    /// Learns whether the notification can still be asked for.
     func checkNudges() async {
         canAskForNudges = await nudges.canAskPermission()
     }
@@ -204,8 +202,7 @@ public final class PracticeModel: TagTarget {
     }
 }
 
-/// What the notification opened Practice to show (SES-3): the question about a session, or with `pickingEnd`, its
-/// end being picked, after the notification's "I stopped earlier".
+/// What the notification opened Practice to show (SES-3).
 struct NudgeOpening: Equatable {
     let sessionID: UUID
     let pickingEnd: Bool

@@ -34,7 +34,8 @@ struct PracticeView: View {
         }
         .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
         // Asks "Still practicing?" and ends the session at the cap while Practice is on screen, as on an iPad on a
-        // music stand. Otherwise that happens when Practice or the app next appears (SES-3, SES-4).
+        // music stand, and when Practice or the app next appears (SES-3, SES-4).
+        .onAppear { model.refresh() }
         .task(id: model.session) {
             while let next = model.nextRefresh,
                 (try? await Task.sleep(for: .seconds(next.timeIntervalSince(model.clock.now)))) != nil

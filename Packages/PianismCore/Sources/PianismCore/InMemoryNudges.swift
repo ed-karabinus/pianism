@@ -3,21 +3,13 @@ import Synchronization
 
 /// ``PracticeNudges`` that only remember the nudge waiting, for previews and tests.
 public final class InMemoryNudges: PracticeNudges {
-    /// The nudge waiting: its delay and session.
-    public struct Pending: Sendable {
-        public let delay: TimeInterval
-        public let sessionID: UUID
-    }
-
-    private let state: Mutex<(pending: Pending?, canAsk: Bool)>
+    private let state = Mutex<(pending: (delay: TimeInterval, sessionID: UUID)?, canAsk: Bool)>((nil, true))
 
     /// Nudges that can ask for permission once.
-    public init() {
-        state = Mutex((nil, true))
-    }
+    public init() {}
 
-    /// The nudge waiting, if there is one.
-    public var pending: Pending? { state.withLock { $0.pending } }
+    /// The nudge waiting, if there is one: its delay and session.
+    public var pending: (delay: TimeInterval, sessionID: UUID)? { state.withLock { $0.pending } }
 
     public func canAskPermission() -> Bool {
         state.withLock { $0.canAsk }
@@ -28,7 +20,7 @@ public final class InMemoryNudges: PracticeNudges {
     }
 
     public func schedule(after delay: TimeInterval, sessionID: UUID) {
-        state.withLock { $0.pending = Pending(delay: delay, sessionID: sessionID) }
+        state.withLock { $0.pending = (delay, sessionID) }
     }
 
     public func cancel() {
