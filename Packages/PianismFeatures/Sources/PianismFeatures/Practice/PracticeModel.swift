@@ -67,9 +67,17 @@ public final class PracticeModel: TagTarget {
         perform { try recorder.stop() }
     }
 
-    /// Ends the session at `date`, when it ended before now (SES-3).
+    /// Ends the session at `date`, when it ended before now (SES-3). A date before the last resume, as when the
+    /// clock steps back, ends it at the resume.
     func stop(at date: Date) {
-        perform { try recorder.stop(at: date) }
+        let end = session.map { max(date, $0.latestEvent).keepingSeconds(of: $0.startedAt, within: stopRange(of: $0)) }
+        perform { try recorder.stop(at: end ?? date) }
+    }
+
+    /// The times "I stopped earlier" offers, from the last resume to now (SES-3). The upper bound never falls
+    /// below the lower, as a ClosedRange traps then, should the clock step back.
+    func stopRange(of session: PracticeSession) -> ClosedRange<Date> {
+        session.latestEvent...max(session.latestEvent, clock.now)
     }
 
     /// When the running session reaches the nudge or the cap next, so Practice refreshes then (SES-3, SES-4).
@@ -135,5 +143,19 @@ public final class PracticeModel: TagTarget {
             isShowingStorageError = true
         }
         refresh()
+    }
+}
+
+extension Date {
+    /// This date's minute, at the seconds of `reference`, the session's other end (SES-3, SES-5). Time wheels
+    /// show only minutes, so a picked time would otherwise keep hidden seconds, and a session picked as 2:00 to
+    /// 3:00 could last 59:43. It stays in `range`, as the wheels do; a date already outside is left as it is,
+    /// for the caller to reject.
+    func keepingSeconds(of reference: Date, within range: ClosedRange<Date>) -> Date {
+        guard range.contains(self) else { return self }
+        let calendar = Calendar.autoupdatingCurrent
+        func minute(of date: Date) -> Date { calendar.dateInterval(of: .minute, for: date)?.start ?? date }
+        let picked = minute(of: self) + reference.timeIntervalSince(minute(of: reference))
+        return min(max(picked, range.lowerBound), range.upperBound)
     }
 }

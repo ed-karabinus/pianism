@@ -119,18 +119,75 @@ struct PracticeModelTests {
         #expect(model.nextRefresh == nil)
     }
 
-    @Test("SES-3: \"I stopped earlier\" ends the session at the picked time, and it becomes the last session")
-    func stopAtThePickedTime() {
+    @Test(
+        "SES-3: \"I stopped earlier\" ends in the picked minute at the start's seconds: 2:00 to 3:00 lasts an hour",
+        arguments: [17, 33, 50.25] as [TimeInterval])
+    func stopAtThePickedTime(startSeconds: TimeInterval) {
+        let minute = clock.now
+        clock.advance(by: startSeconds)
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudge: 600, cap: 14_400)
+        model.start()
+        clock.advance(by: 5_400)  // 90 minutes in
+
+        model.stop(at: minute + 3_641)  // the wheels' minute an hour in, at whatever seconds they kept
+
+        #expect(model.session == nil)
+        #expect(model.lastSession?.endedAt == minute + 3_600 + startSeconds)
+        #expect(model.lastSession?.elapsed(at: .distantPast) == 3_600)
+    }
+
+    @Test("SES-3: a picked end in the current minute never goes past now")
+    func stopAtThePickedTimeNotPastNow() {
+        let minute = clock.now
+        clock.advance(by: 50)
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudge: 600, cap: 3_600)
+        model.start()
+        clock.advance(by: 1_950)  // now is 33:20 past the minute
+
+        model.stop(at: minute + 1_990)  // 33:10; at the start's seconds it would be 33:50, after now
+
+        #expect(model.lastSession?.endedAt == minute + 2_000)
+    }
+
+    @Test("SES-3: a picked time before the last resume, or in the minute it falls in, ends the session at the resume")
+    func stopAtThePickedTimeKeepsTheResume() {
         let start = clock.now
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
             clock: clock, nudge: 600, cap: 3_600)
         model.start()
+        clock.advance(by: 100)
+        model.pause()
+        clock.advance(by: 300)
+        model.resume()  // 6:40 in
         clock.advance(by: 2_000)
 
-        model.stop(at: start + 700)
+        model.stop(at: start + 390)  // 6:30 in, before the resume, as when the clock steps back
 
         #expect(model.session == nil)
-        #expect(model.lastSession?.endedAt == start + 700)
+        #expect(model.lastSession?.endedAt == start + 400)
+    }
+
+    @Test("SES-3: after a pause, a picked time takes the start's seconds, not the resume's")
+    func stopAtThePickedTimeAfterAPause() {
+        let start = clock.now
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudge: 600, cap: 3_600)
+        model.start()
+        clock.advance(by: 100)
+        model.pause()
+        clock.advance(by: 300)
+        model.resume()  // 6:40 in
+        clock.advance(by: 2_000)
+
+        model.stop(at: start + 1_210)  // the wheels' 20th minute
+
+        #expect(model.lastSession?.endedAt == start + 1_200)
+        #expect(model.lastSession?.elapsed(at: .distantPast) == 900)
     }
 }

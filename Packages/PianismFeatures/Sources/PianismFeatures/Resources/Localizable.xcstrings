@@ -10,7 +10,7 @@
     "Add piece “%@”" : {
 
     },
-    "Add Session" : {
+    "Add session" : {
 
     },
     "Add skill “%@”" : {
@@ -46,7 +46,7 @@
     "Delete" : {
 
     },
-    "Delete Session" : {
+    "Delete session" : {
 
     },
     "Delete this session?" : {
@@ -58,13 +58,13 @@
     "Discard changes?" : {
 
     },
-    "Don't Show Again" : {
+    "Don't show again" : {
 
     },
     "Edit" : {
 
     },
-    "Edit Session" : {
+    "Edit session" : {
 
     },
     "End" : {
@@ -76,7 +76,7 @@
     "History" : {
 
     },
-    "I Stopped Earlier" : {
+    "I stopped earlier" : {
 
     },
     "Improvisation" : {
@@ -157,7 +157,7 @@
     "Start" : {
 
     },
-    "Still Practicing" : {
+    "Still practicing" : {
 
     },
     "Still practicing?" : {
@@ -166,7 +166,7 @@
     "Stop" : {
 
     },
-    "Stop at This Time" : {
+    "Stop at this time" : {
 
     },
     "Stopped at" : {

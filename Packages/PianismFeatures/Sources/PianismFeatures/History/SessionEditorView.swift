@@ -20,11 +20,11 @@ struct SessionEditorView: View {
         NavigationStack {
             Form {
                 Section {
-                    DatePicker(selection: $editor.start, in: ...editor.end) {
+                    DatePicker(selection: $editor.start, in: editor.startRange) {
                         Text("Start", bundle: .module)
                     }
                     .disabled(editor.isReadOnly)
-                    DatePicker(selection: $editor.end, in: editor.start...editor.latestEnd) {
+                    DatePicker(selection: $editor.end, in: editor.endRange) {
                         Text("End", bundle: .module)
                     }
                     .disabled(editor.isReadOnly)
@@ -46,7 +46,7 @@ struct SessionEditorView: View {
                                 bundle: .module
                             )
                             .accessibilityIdentifier(AccessibilityID.editorOverlap)
-                            Button(LocalizedStringResource("Don't Show Again", bundle: .module)) {
+                            Button(LocalizedStringResource("Don't show again", bundle: .module)) {
                                 showsOverlapWarning = false
                             }
                             .accessibilityIdentifier(AccessibilityID.editorOverlapOff)
@@ -71,7 +71,7 @@ struct SessionEditorView: View {
                 .accessibilityIdentifier(AccessibilityID.editorNote)
                 if !editor.isNew, !editor.isReadOnly {
                     Section {
-                        Button(LocalizedStringResource("Delete Session", bundle: .module), role: .destructive) {
+                        Button(LocalizedStringResource("Delete session", bundle: .module), role: .destructive) {
                             isConfirmingDelete = true
                         }
                         .accessibilityIdentifier(AccessibilityID.editorDelete)
@@ -79,7 +79,7 @@ struct SessionEditorView: View {
                             Text("Delete this session?", bundle: .module), isPresented: $isConfirmingDelete,
                             titleVisibility: .visible
                         ) {
-                            Button(LocalizedStringResource("Delete Session", bundle: .module), role: .destructive) {
+                            Button(LocalizedStringResource("Delete session", bundle: .module), role: .destructive) {
                                 onDelete()
                             }
                             .accessibilityIdentifier(AccessibilityID.deleteConfirm)
@@ -88,7 +88,7 @@ struct SessionEditorView: View {
                 }
             }
             .navigationTitle(
-                editor.isNew ? Text("Add Session", bundle: .module) : Text("Edit Session", bundle: .module)
+                editor.isNew ? Text("Add session", bundle: .module) : Text("Edit session", bundle: .module)
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
