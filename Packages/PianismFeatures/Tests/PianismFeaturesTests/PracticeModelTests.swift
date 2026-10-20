@@ -6,15 +6,23 @@ import Testing
 @testable import PianismFeatures
 
 @MainActor
+@Suite(.serialized)  // The tests share the stand-in for the device's settings.
 struct PracticeModelTests {
     let clock = ManualClock()
+    let nudges = InMemoryNudges()
+    /// Stands in for the device's settings, emptied before each test.
+    let defaults = UserDefaults(suiteName: "PracticeModelTests") ?? .standard
+
+    init() {
+        defaults.removePersistentDomain(forName: "PracticeModelTests")
+    }
 
     @Test("ADR 0007: Practice counts the sessions waiting to be saved, until history takes them")
     func countsWaitingSessions() {
         let history = FlakyHistory()
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
-            nudge: 90 * 60, cap: 4 * 60 * 60)
+            nudges: nudges, defaults: defaults, nudge: 90 * 60, cap: 4 * 60 * 60)
         model.start()
         clock.advance(by: 600)
 
@@ -36,12 +44,14 @@ struct PracticeModelTests {
         let history = InMemorySessionHistory()
         let start = clock.now
         PracticeModel(
-            store: store, history: history, outbox: InMemorySessionHistory(), clock: clock, nudge: 90 * 60, cap: 600
+            store: store, history: history, outbox: InMemorySessionHistory(), clock: clock, nudges: nudges,
+            defaults: defaults, nudge: 90 * 60, cap: 600
         ).start()
         clock.advance(by: 36_000)
 
         let reopened = PracticeModel(
-            store: store, history: history, outbox: InMemorySessionHistory(), clock: clock, nudge: 90 * 60, cap: 600)
+            store: store, history: history, outbox: InMemorySessionHistory(), clock: clock, nudges: nudges,
+            defaults: defaults, nudge: 90 * 60, cap: 600)
 
         #expect(reopened.session == nil)
         #expect(history.sessions().map(\.endedAt) == [start + 600])
@@ -57,7 +67,7 @@ struct PracticeModelTests {
     func capBannerOnlyForCappedSessions() {
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudge: 90 * 60, cap: 600)
+            clock: clock, nudges: nudges, defaults: defaults, nudge: 90 * 60, cap: 600)
         #expect(!model.lastSessionReachedCap)
         model.start()
         clock.advance(by: 599)
@@ -81,7 +91,7 @@ struct PracticeModelTests {
     func asksPastTheNudge() {
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudge: 600, cap: 3_600)
+            clock: clock, nudges: nudges, defaults: defaults, nudge: 600, cap: 3_600)
         model.start()
         clock.advance(by: 599)
         model.refresh()
@@ -104,7 +114,7 @@ struct PracticeModelTests {
         let start = clock.now
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudge: 600, cap: 3_600)
+            clock: clock, nudges: nudges, defaults: defaults, nudge: 600, cap: 3_600)
         #expect(model.nextRefresh == nil)
         model.start()
 
@@ -127,7 +137,7 @@ struct PracticeModelTests {
         clock.advance(by: startSeconds)
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudge: 600, cap: 14_400)
+            clock: clock, nudges: nudges, defaults: defaults, nudge: 600, cap: 14_400)
         model.start()
         clock.advance(by: 5_400)  // 90 minutes in
 
@@ -144,7 +154,7 @@ struct PracticeModelTests {
         clock.advance(by: 50)
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudge: 600, cap: 3_600)
+            clock: clock, nudges: nudges, defaults: defaults, nudge: 600, cap: 3_600)
         model.start()
         clock.advance(by: 1_950)  // now is 33:20 past the minute
 
@@ -158,7 +168,7 @@ struct PracticeModelTests {
         let start = clock.now
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudge: 600, cap: 3_600)
+            clock: clock, nudges: nudges, defaults: defaults, nudge: 600, cap: 3_600)
         model.start()
         clock.advance(by: 100)
         model.pause()
@@ -177,7 +187,7 @@ struct PracticeModelTests {
         let start = clock.now
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudge: 600, cap: 3_600)
+            clock: clock, nudges: nudges, defaults: defaults, nudge: 600, cap: 3_600)
         model.start()
         clock.advance(by: 100)
         model.pause()
@@ -189,5 +199,97 @@ struct PracticeModelTests {
 
         #expect(model.lastSession?.endedAt == start + 1_200)
         #expect(model.lastSession?.elapsed(at: .distantPast) == 900)
+    }
+
+    @Test("SES-3: the notification waits for the running session's practice to reach the nudge")
+    func notificationWaitsForTheNudge() throws {
+        let model = makeModel()
+        model.start()
+        let id = try #require(model.session?.id)
+        #expect(nudges.pending?.delay == 5_400)
+        #expect(nudges.pending?.sessionID == id)
+
+        clock.advance(by: 600)
+        model.pause()
+        #expect(nudges.pending == nil)
+
+        clock.advance(by: 300)
+        model.resume()
+        #expect(nudges.pending?.delay == 4_800)
+        #expect(nudges.pending?.sessionID == id)
+
+        model.stop()
+        #expect(nudges.pending == nil)
+    }
+
+    @Test("SES-3: once practice passes the nudge, Practice asks and no notification waits, so it comes once")
+    func notificationComesOnce() {
+        let model = makeModel()
+        model.start()
+        clock.advance(by: 5_400)
+
+        model.refresh()
+
+        #expect(model.isAskingStillPracticing)
+        #expect(nudges.pending == nil)
+    }
+
+    @Test("SES-3: an answer, from the banner or the notification, is kept after a relaunch")
+    func answerIsKept() throws {
+        let store = InMemoryRunningSessionStore()
+        let model = makeModel(over: store)
+        model.start()
+        clock.advance(by: 5_400)
+        model.refresh()
+
+        model.answerStillPracticing(for: try #require(model.session?.id))
+
+        #expect(!model.isAskingStillPracticing)
+        #expect(!makeModel(over: store).isAskingStillPracticing)
+    }
+
+    @Test("SES-3: a Pause or Resume past the nudge answers the question, and one before it doesn't")
+    func pauseAnswersPastTheNudge() {
+        let model = makeModel()
+        model.start()
+        clock.advance(by: 5_399)
+        model.pause()
+        model.resume()
+        #expect(model.answeredID == nil)
+
+        clock.advance(by: 1)
+        model.pause()
+
+        #expect(model.answeredID == model.session?.id)
+    }
+
+    @Test("SES-3: Practice offers the notification until it's asked for, as the system asks once")
+    func notificationIsOfferedUntilAsked() async {
+        let model = makeModel()
+        await model.checkNudges()
+        #expect(model.canAskForNudges)
+
+        await model.askForNudges()
+        #expect(!model.canAskForNudges)
+
+        await model.checkNudges()
+        #expect(!model.canAskForNudges)
+    }
+
+    @Test("SES-3: the notification opens Practice to the question, or with \"I stopped earlier\" to picking the end")
+    func notificationOpensPractice() {
+        let model = makeModel()
+        let id = UUID()
+
+        model.open(fromNudgeAbout: id, pickingEnd: true)
+
+        #expect(model.nudgeOpened == NudgeOpening(sessionID: id, pickingEnd: true))
+    }
+
+    /// A model over `store`, with the app's nudge and cap.
+    private func makeModel(over store: InMemoryRunningSessionStore = InMemoryRunningSessionStore()) -> PracticeModel {
+        PracticeModel(
+            store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
+            nudges: nudges, defaults: defaults, nudge: 5_400, cap: 14_400)
     }
 }

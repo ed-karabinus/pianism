@@ -26,7 +26,7 @@ extension PracticeModel {
         let clock = PreviewClock(now: previewNow.addingTimeInterval(25 * 60 + 3))
         let model = PracticeModel(
             store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
-            nudge: 90 * 60, cap: 4 * 60 * 60)
+            nudges: InMemoryNudges(), defaults: .standard, nudge: 90 * 60, cap: 4 * 60 * 60)
         if state == .paused {
             model.pause()
         }

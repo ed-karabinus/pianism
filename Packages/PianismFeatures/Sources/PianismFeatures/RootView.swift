@@ -29,6 +29,12 @@ public struct RootView: View {
                 HistoryView(model: history)
             }
         }
+        // The notification opens Practice, to its question or the end being picked (SES-3).
+        .onChange(of: practice.nudgeOpened) { _, opened in
+            if opened != nil {
+                tab = .practice
+            }
+        }
         // Shows changes made while the app was away, and moves "today" along after midnight. Leaving the
         // app ends a deletion's undo (SES-5).
         .onChange(of: scenePhase) {
@@ -56,6 +62,7 @@ enum AccessibilityID {
     static let practiceTags = "practice.tags"
     static let practiceStillPracticing = "practice.still-practicing"
     static let practiceStillPracticingYes = "practice.still-practicing-yes"
+    static let practiceRemindMe = "practice.remind-me"
     static let practiceStoppedEarlier = "practice.stopped-earlier"
     static let practiceStoppedAt = "practice.stopped-at"
     static let practiceStopAt = "practice.stop-at"

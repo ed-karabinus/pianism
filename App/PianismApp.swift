@@ -2,6 +2,7 @@ import Foundation
 import PianismCore
 import PianismFeatures
 import PianismPersistence
+import PianismSystem
 import SwiftUI
 
 /// The composition root: the only place that wires concrete adapters into the core.
@@ -58,8 +59,16 @@ struct PianismApp: App {
         let sessions = SwiftDataSessionHistory(store: historyStore, clock: clock)
         let library = SwiftDataTagLibrary(store: historyStore, clock: clock)
         let outbox = FileSessionOutbox(directory: outboxURL)
+        // The notification's answers reach the model once it exists; an answer can launch the app, so the
+        // notification is set up here, before launch ends (SES-3).
+        let answering = Answering()
+        let nudges = UserNotificationNudges(
+            answered: { answering.practice?.answerStillPracticing(for: $0) },
+            opened: { answering.practice?.open(fromNudgeAbout: $0, pickingEnd: $1) })
         let practice = PracticeModel(
-            store: store, history: sessions, outbox: outbox, clock: clock, nudge: nudge, cap: cap)
+            store: store, history: sessions, outbox: outbox, clock: clock, nudges: nudges, defaults: .standard,
+            nudge: nudge, cap: cap)
+        answering.practice = practice
         self.practice = practice
         tags = TagPickerModel(practice: practice, library: library)
         let history = HistoryModel(history: sessions, tags: library, outbox: outbox, clock: clock)
@@ -77,6 +86,12 @@ struct PianismApp: App {
             RootView(practice: practice, tags: tags, history: history)
         }
     }
+}
+
+/// The model the notification's answers reach, which is made after the notification.
+@MainActor
+private final class Answering {
+    weak var practice: PracticeModel?
 }
 
 /// A clock that always reads the same time, for end-to-end tests.
