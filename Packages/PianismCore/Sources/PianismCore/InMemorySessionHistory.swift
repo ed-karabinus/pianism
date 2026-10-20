@@ -6,14 +6,21 @@ public final class InMemorySessionHistory: SessionHistory {
     private let saved = Mutex<[PracticeSession]>([])
     private let deletedIDs = Mutex<Set<UUID>>([])
     private let readOnlyIDs: Set<UUID>
+    private let unshowable: Int
 
-    /// An empty history, in which sessions saved with `readOnlyIDs` act as if a newer version wrote them.
-    public init(readOnlyIDs: Set<UUID> = []) {
+    /// An empty history, in which sessions saved with `readOnlyIDs` act as if a newer version wrote them, and
+    /// which says it holds `unshowable` sessions it can't show.
+    public init(readOnlyIDs: Set<UUID> = [], unshowable: Int = 0) {
         self.readOnlyIDs = readOnlyIDs
+        self.unshowable = unshowable
     }
 
     public func sessions() -> [PracticeSession] {
         saved.withLock { $0 }
+    }
+
+    public func unshowableCount() -> Int {
+        unshowable
     }
 
     public func save(_ session: PracticeSession) {

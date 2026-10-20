@@ -35,3 +35,21 @@ public final class HistoryStore: Sendable {
         }
     }
 }
+
+#if DEBUG
+    extension HistoryStore {
+        /// Debug only: adds `count` sessions as a newer version might write them, which this one can't rebuild, so
+        /// end-to-end tests can see History count them (HIS-1). A prepared store file could replace this (#88).
+        public func addUnshowableSessions(_ count: Int) throws {
+            let context = ModelContext(try container())
+            for _ in 0..<count {
+                let record = SessionRecord()
+                record.version = Self.recordVersion + 1
+                // A pause with no end, which this version can't read.
+                record.pauses = Data(#"{"pauses":[{"start":0}]}"#.utf8)
+                context.insert(record)
+            }
+            try context.save()
+        }
+    }
+#endif

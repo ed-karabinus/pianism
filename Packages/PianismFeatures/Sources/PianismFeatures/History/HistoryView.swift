@@ -76,7 +76,7 @@ struct HistoryView: View {
                 description: Text("Restart Pianism to try again.", bundle: .module)
             )
             .accessibilityIdentifier(AccessibilityID.historyUnavailable)
-        } else if model.days.isEmpty {
+        } else if model.days.isEmpty, model.unshowableCount == 0 {
             ContentUnavailableView(
                 LocalizedStringResource("No practice yet", bundle: .module), systemImage: "music.note.list",
                 description: Text("Sessions you finish appear here.", bundle: .module)
@@ -94,6 +94,18 @@ struct HistoryView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier(AccessibilityID.historyUnavailable)
+                }
+                if model.unshowableCount > 0 {
+                    // Updating is the fix whether a newer version wrote them or they're damaged (ADR 0006).
+                    Label(
+                        LocalizedStringResource(
+                            "^[\(model.unshowableCount) session](inflect: true) couldn't be shown. Try updating Pianism.",
+                            bundle: .module),
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(AccessibilityID.historyUnshowable)
                 }
                 ForEach(model.days) { day in
                     Section {
@@ -198,6 +210,16 @@ struct TimedRow: View {
 
 #Preview("Empty") {
     HistoryView(model: .preview(empty: true))
+}
+
+#Preview("Sessions that can't be shown") {
+    HistoryView(model: .preview(unshowable: 2))
+}
+
+#Preview("Only sessions that can't be shown, dark, AX5") {
+    HistoryView(model: .preview(empty: true, unshowable: 1))
+        .preferredColorScheme(.dark)
+        .dynamicTypeSize(.accessibility5)
 }
 
 #Preview("History couldn't load, sessions waiting") {

@@ -119,15 +119,34 @@ final class SwiftDataSessionHistoryTests {
         #expect(sessions.first?.endedAt == clock.now + 900)
     }
 
-    @Test("A record that can't be rebuilt is skipped, so it can't hide the rest of history")
-    func unreadableRecordIsSkipped() throws {
+    @Test("A record that can't be rebuilt is skipped, so it can't hide the rest of history, and counted once")
+    func unreadableRecordIsSkippedAndCountedOnce() throws {
         var session = PracticeSession(startedAt: clock.now)
         try session.stop(at: clock.now + 600)
         let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         try history.save(session)
-        try insertRecord(in: history, id: UUID(), endingAfter: 600, modifiedAfter: 1, pauses: Data("not JSON".utf8))
+        let unreadable = Data("not JSON".utf8)
+        try insertRecord(in: history, id: UUID(), endingAfter: 600, modifiedAfter: 1, pauses: unreadable)
+        // Two copies of one session, as sync can leave, count once.
+        let copied = UUID()
+        try insertRecord(in: history, id: copied, endingAfter: 600, modifiedAfter: 1, pauses: unreadable)
+        try insertRecord(in: history, id: copied, endingAfter: 600, modifiedAfter: 2, pauses: unreadable)
+        // A deleted session isn't missing, so it isn't counted.
+        try insertRecord(
+            in: history, id: UUID(), endingAfter: 600, modifiedAfter: 1, isDeleted: true, pauses: unreadable)
 
         #expect(try history.sessions() == [session])
+        #expect(try history.unshowableCount() == 2)
+    }
+
+    @Test("HIS-1: the end-to-end tests' unshowable sessions are skipped and counted, as a newer version's would be")
+    func addedUnshowableSessions() throws {
+        let store = HistoryStore(url: storeURL)
+        try store.addUnshowableSessions(2)
+        let history = SwiftDataSessionHistory(store: store, clock: clock)
+
+        #expect(try history.sessions().isEmpty)
+        #expect(try history.unshowableCount() == 2)
     }
 
     @Test("ADR 0006: pauses are stored as the JSON the ADR fixes, and the time zone by its identifier")

@@ -15,6 +15,8 @@ public final class HistoryModel {
     private(set) var now: Date
     /// Whether the last refresh couldn't read the history. Waiting sessions still show.
     private(set) var loadFailed = false
+    /// How many saved sessions this version can't show, such as ones a newer version wrote (ADR 0006).
+    private(set) var unshowableCount = 0
     /// The tags sessions show, each merged tag as the tag it was merged into (ADR 0004).
     private(set) var tagIndex = TagIndex([])
     /// The finished session being edited or added, if any (SES-5).
@@ -50,11 +52,13 @@ public final class HistoryModel {
         var saved: [PracticeSession] = []
         do {
             saved = try history.sessions()
+            unshowableCount = try history.unshowableCount()
             tagIndex = TagIndex(try tags.allTags())
             loadFailed = false
         } catch {
             logger.error("Couldn't load the history: \(error, privacy: .public)")
             loadFailed = true
+            unshowableCount = 0
         }
         // A session can be in both, when history saved it but it couldn't leave the outbox. It shows
         // once, as saved.

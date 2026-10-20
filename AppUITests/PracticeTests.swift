@@ -547,6 +547,20 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "Leaving the app didn't save it")
     }
 
+    /// HIS-1, ADR 0006: saved sessions this version can't show, such as ones a newer version wrote, are counted
+    /// with a request to update, rather than left out silently or called no practice.
+    @MainActor
+    func testSessionsThatCantBeShownAreCounted() throws {
+        let app = launch(at: start, reset: true, unshowableSessions: 2)
+        openHistory(app)
+        let notice = element(app, "history.unshowable")
+        XCTAssertTrue(notice.waitForExistence(timeout: 5), "It didn't count them")
+        XCTAssertTrue(
+            notice.label.contains("2 sessions couldn't be shown. Try updating Pianism."), "It said \(notice.label)")
+        XCTAssertFalse(element(app, "history.empty").exists, "It said there's no practice")
+        attachScreenshot(of: app, named: "Sessions that can't be shown")
+    }
+
     /// ADR 0007: when the history can't open, practice goes on. Each finished session waits in the
     /// outbox, Practice says how many are waiting, and History shows them marked "not saved yet" under
     /// a notice. Once the history opens, the waiting sessions move into it.
@@ -626,7 +640,8 @@ final class PracticeTests: UITestCase {
     /// Launches the app with its clock fixed at `now`, or on the real clock if `nil`.
     @MainActor
     private func launch(
-        at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, undoSeconds: Int? = nil,
+        at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, unshowableSessions: Int? = nil,
+        undoSeconds: Int? = nil,
         nudgeSeconds: Int? = nil, capSeconds: Int? = nil, largestText: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
@@ -650,6 +665,9 @@ final class PracticeTests: UITestCase {
         }
         if breakHistory {
             app.launchEnvironment["PIANISM_BREAK_HISTORY"] = "1"
+        }
+        if let unshowableSessions {
+            app.launchEnvironment["PIANISM_UNSHOWABLE_SESSIONS"] = String(unshowableSessions)
         }
         app.launch()
         XCTAssertTrue(app.staticTexts["practice.status"].waitForExistence(timeout: 10))

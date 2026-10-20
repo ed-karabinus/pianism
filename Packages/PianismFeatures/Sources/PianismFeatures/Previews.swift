@@ -64,8 +64,11 @@ extension HistoryModel {
     /// A model with practice today, yesterday and last week, or with none, for previews. Times are
     /// local, so "Today" holds in any time zone. `waiting` puts the sessions in the outbox and makes
     /// history fail to load, as during an outage (ADR 0007). `deleting` deletes the newest session, so Undo shows.
-    static func preview(empty: Bool = false, waiting: Bool = false, deleting: Bool = false) -> HistoryModel {
-        let sessions = InMemorySessionHistory()
+    /// `unshowable` saved sessions can't be shown, as if a newer version wrote them (ADR 0006).
+    static func preview(empty: Bool = false, waiting: Bool = false, deleting: Bool = false, unshowable: Int = 0)
+        -> HistoryModel
+    {
+        let sessions = InMemorySessionHistory(unshowable: unshowable)
         let midnight = Calendar.autoupdatingCurrent.startOfDay(for: previewNow)
         let hour: TimeInterval = 60 * 60
         // (Hours after this midnight, minutes of practice.)
@@ -114,6 +117,7 @@ private struct PreviewUnavailableHistory: SessionHistory {
     struct Unavailable: Error {}
 
     func sessions() throws -> [PracticeSession] { throw Unavailable() }
+    func unshowableCount() throws -> Int { throw Unavailable() }
     func save(_: PracticeSession) throws { throw Unavailable() }
     func canEdit(id _: UUID) throws -> Bool { throw Unavailable() }
     func edit(_: PracticeSession) throws { throw Unavailable() }

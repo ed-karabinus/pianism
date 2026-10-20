@@ -32,8 +32,9 @@ struct PianismApp: App {
         #if DEBUG
             // End-to-end tests fix the time with PIANISM_NOW (seconds since 1970), shorten the nudge and the cap
             // with PIANISM_NUDGE_SECONDS and PIANISM_CAP_SECONDS, start with no running session, history, outbox
-            // or settings with PIANISM_RESET=1, and make the history fail to open with PIANISM_BREAK_HISTORY=1.
-            // Release builds ignore all five.
+            // or settings with PIANISM_RESET=1, make the history fail to open with PIANISM_BREAK_HISTORY=1, and
+            // add sessions this version can't show with PIANISM_UNSHOWABLE_SESSIONS (a count). Release builds
+            // ignore all six.
             let environment = ProcessInfo.processInfo.environment
             if let seconds = environment["PIANISM_NOW"].flatMap(TimeInterval.init) {
                 clock = FixedClock(now: Date(timeIntervalSince1970: seconds))
@@ -56,6 +57,11 @@ struct PianismApp: App {
         #endif
         // One store for both, so sessions and the tags they name are kept, and later synced, together.
         let historyStore = HistoryStore(url: historyURL)
+        #if DEBUG
+            if let count = environment["PIANISM_UNSHOWABLE_SESSIONS"].flatMap(Int.init) {
+                try? historyStore.addUnshowableSessions(count)
+            }
+        #endif
         let sessions = SwiftDataSessionHistory(store: historyStore, clock: clock)
         let library = SwiftDataTagLibrary(store: historyStore, clock: clock)
         let outbox = FileSessionOutbox(directory: outboxURL)

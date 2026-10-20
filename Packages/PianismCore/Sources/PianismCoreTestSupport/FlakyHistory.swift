@@ -23,6 +23,11 @@ public final class FlakyHistory: SessionHistory {
         return saved.sessions()
     }
 
+    public func unshowableCount() throws -> Int {
+        try failIfUnreachable()
+        return saved.unshowableCount()
+    }
+
     public func save(_ session: PracticeSession) throws {
         try failIfUnreachable()
         saved.save(session)
