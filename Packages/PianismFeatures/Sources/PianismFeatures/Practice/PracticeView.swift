@@ -18,6 +18,7 @@ struct PracticeView: View {
 
     @ScaledMetric(relativeTo: .largeTitle) private var timeSize = 76
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         // When Practice doesn't fit, as with the end being picked (SES-3), the time shrinks first, then Practice
@@ -34,9 +35,11 @@ struct PracticeView: View {
         }
         .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
         // Asks "Still practicing?" and ends the session at the cap while Practice is on screen, as on an iPad on a
-        // music stand, and when Practice or the app next appears (SES-3, SES-4).
+        // music stand, and when Practice or the app next appears (SES-3, SES-4). Only while the app is in front:
+        // away, the notification asks, and a refresh at the nudge would cancel it as it arrives.
         .onAppear { model.refresh() }
-        .task(id: model.session) {
+        .task(id: scenePhase == .active ? model.session : nil) {
+            guard scenePhase == .active else { return }
             while let next = model.nextRefresh,
                 (try? await Task.sleep(for: .seconds(next.timeIntervalSince(model.clock.now)))) != nil
             {
