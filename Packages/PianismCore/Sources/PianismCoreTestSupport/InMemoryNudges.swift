@@ -1,7 +1,8 @@
 import Foundation
+import PianismCore
 import Synchronization
 
-/// ``PracticeNudges`` that only remember the nudge waiting, for previews and tests.
+/// ``PracticeNudges`` that only remember the nudge waiting, for tests.
 public final class InMemoryNudges: PracticeNudges {
     private let state = Mutex<(pending: (delay: TimeInterval, sessionID: UUID)?, canAsk: Bool)>((nil, true))
 
@@ -9,7 +10,6 @@ public final class InMemoryNudges: PracticeNudges {
     public init() {}
 
     /// The nudge waiting, if there is one: its delay and session.
-    // periphery:ignore - read by PianismFeatures' tests, which Periphery doesn't index
     public var pending: (delay: TimeInterval, sessionID: UUID)? { state.withLock { $0.pending } }
 
     public func canAskPermission() -> Bool {

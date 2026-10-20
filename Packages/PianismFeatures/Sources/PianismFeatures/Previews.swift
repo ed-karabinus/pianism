@@ -26,7 +26,7 @@ extension PracticeModel {
         let clock = PreviewClock(now: previewNow.addingTimeInterval(25 * 60 + 3))
         let model = PracticeModel(
             store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
-            nudges: InMemoryNudges(), defaults: .standard, nudge: 90 * 60, cap: 4 * 60 * 60)
+            nudges: PreviewNudges(), defaults: .standard, nudge: 90 * 60, cap: 4 * 60 * 60)
         if state == .paused {
             model.pause()
         }
@@ -118,6 +118,14 @@ private struct PreviewUnavailableHistory: SessionHistory {
     func canEdit(id _: UUID) throws -> Bool { throw Unavailable() }
     func edit(_: PracticeSession) throws { throw Unavailable() }
     func delete(id _: UUID) throws { throw Unavailable() }
+}
+
+/// Offers the notification, as before it's asked for, and sends none.
+private struct PreviewNudges: PracticeNudges {
+    func canAskPermission() -> Bool { true }
+    func requestPermission() {}
+    func schedule(after _: TimeInterval, sessionID _: UUID) {}
+    func cancel() {}
 }
 
 private struct PreviewClock: WallClock {
