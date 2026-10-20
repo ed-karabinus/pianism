@@ -178,6 +178,8 @@ final class PracticeTests: UITestCase {
 
         tap(app, "practice.stop")
         tap(app, "practice.start")
+        // Left on History, so the notification has to bring Practice back.
+        openHistory(app)
         answerNotification(with: "I stopped earlier")
         XCTAssertTrue(app.datePickers["practice.stopped-at"].waitForExistence(timeout: 10), "No end to pick")
         attachScreenshot(of: app, named: "Opened from the notification's I stopped earlier")
