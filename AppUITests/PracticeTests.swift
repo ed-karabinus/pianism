@@ -148,10 +148,10 @@ final class PracticeTests: UITestCase {
         XCTAssertFalse(app.staticTexts["practice.still-practicing"].exists, "It asked again")
     }
 
-    /// SES-3: the banner offers the notification, which then asks "Still practicing?" while the app is away. Its
-    /// "Still practicing" answers for the session, and its "I stopped earlier" opens Practice to pick the end. A
-    /// nudge that passes while History shows is asked when Practice is back. The clock is real and the nudge 10 s,
-    /// as the system's notification needs time to pass.
+    /// SES-3: the banner offers the notification, which then asks "Still practicing?" while the app is away, unless
+    /// the session is paused. Its "Still practicing" answers for the session, and its "I stopped earlier" opens
+    /// Practice to pick the end. A nudge that passes while History shows is asked when Practice is back. The clock
+    /// is real and the nudge 10 s, as the system's notification needs time to pass.
     @MainActor
     func testNotificationAsksStillPracticing() throws {
         let app = launch(at: nil, reset: true, nudgeSeconds: 10)
@@ -171,6 +171,11 @@ final class PracticeTests: UITestCase {
 
         tap(app, "practice.stop")
         tap(app, "practice.start")
+        tap(app, "practice.pause")
+        XCUIDevice.shared.press(.home)
+        XCTAssertFalse(notification.waitForExistence(timeout: 30), "It nudged a paused session")
+        app.activate()
+        tap(app, "practice.resume")
         answerNotification(with: "Still practicing")
         app.activate()
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
@@ -582,13 +587,17 @@ final class PracticeTests: UITestCase {
     /// The Home Screen, where the system shows notifications.
     @MainActor private var springboard: XCUIApplication { XCUIApplication(bundleIdentifier: "com.apple.springboard") }
 
+    /// The "Still practicing?" notification, as the Home Screen shows it.
+    @MainActor private var notification: XCUIElement {
+        springboard.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS 'Pianism is still timing your session.'")).firstMatch
+    }
+
     /// Leaves the app and answers its "Still practicing?" notification with the button titled `answer`. The system
     /// shows no notification for the app in front, and takes up to about 20 s to show it after the nudge.
     @MainActor
     private func answerNotification(with answer: String) {
         XCUIDevice.shared.press(.home)
-        let notification = springboard.descendants(matching: .any)
-            .matching(NSPredicate(format: "label CONTAINS 'Pianism is still timing your session.'")).firstMatch
         XCTAssertTrue(notification.waitForExistence(timeout: 40), "No notification")
         let button = springboard.buttons[answer]
         if UIDevice.current.userInterfaceIdiom == .pad {
