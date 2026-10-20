@@ -21,6 +21,13 @@ public final class PracticeModel: TagTarget {
     var isShowingStorageError = false
     /// Whether the running session has practiced past the nudge, so Practice asks "Still practicing?" (SES-3).
     private(set) var isPastNudge = false  // mutate:ignore - init's refresh() sets it
+    /// The session whose "Still practicing?" was answered, in the app or its notification, so it's asked once per
+    /// session (SES-3). Stored per device.
+    private(set) var answeredID: UUID?
+    /// Whether Practice offers the notification, which is until it's been asked for, as the system asks once.
+    private(set) var canAskForNudges = false
+    /// What the notification opened Practice to show, until it's shown: the question, or the end being picked.
+    var nudgeOpened: NudgeOpening?
     /// The session that ended itself at the cap, until the banner explaining it is acted on (SES-4).
     private var cappedID: UUID?
 
@@ -32,18 +39,25 @@ public final class PracticeModel: TagTarget {
     private let recorder: SessionRecorder
     private let history: any SessionHistory
     private let outbox: any SessionOutbox
+    private let nudges: any PracticeNudges
+    private let defaults: UserDefaults
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "practice")
+    /// The key under which the banner's `@AppStorage` kept the answer, so answers given before stay given.
+    private static let answeredKey = "stillPracticingAnswered"
 
     public init(
         store: any RunningSessionStore, history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock,
-        nudge: TimeInterval, cap: TimeInterval
+        nudges: any PracticeNudges, defaults: UserDefaults, nudge: TimeInterval, cap: TimeInterval
     ) {
         self.recorder = SessionRecorder(store: store, clock: clock)
         self.history = history
         self.outbox = outbox
         self.clock = clock
+        self.nudges = nudges
+        self.defaults = defaults
         self.nudge = nudge
         self.cap = cap
+        answeredID = defaults.string(forKey: Self.answeredKey).flatMap(UUID.init(uuidString:))
         // Loads the stored session now, so the first frame after a relaunch already shows it.
         refresh()
     }
@@ -56,11 +70,46 @@ public final class PracticeModel: TagTarget {
     }
 
     func pause() {
+        answerIfPastNudge()
         perform { try recorder.pause() }
     }
 
     func resume() {
+        answerIfPastNudge()
         perform { try recorder.resume() }
+    }
+
+    /// Whether Practice asks "Still practicing?" (SES-3).
+    var isAskingStillPracticing: Bool { isPastNudge && session.map { $0.id != answeredID } == true }
+
+    /// Answers "Still practicing?" for the session with this ID, from the banner or the notification (SES-3).
+    public func answerStillPracticing(for id: UUID) {
+        answeredID = id
+        defaults.set(id.uuidString, forKey: Self.answeredKey)
+    }
+
+    /// A Pause or Resume once practice has passed the nudge shows the user is there, so it answers "Still
+    /// practicing?" for the session (SES-3).
+    private func answerIfPastNudge() {
+        if let session, session.elapsed(at: clock.now) >= nudge {
+            answerStillPracticing(for: session.id)
+        }
+    }
+
+    /// Shows Practice with the question about the session with this ID or, after the notification's "I stopped
+    /// earlier", with its end being picked (SES-3).
+    public func open(fromNudgeAbout id: UUID, pickingEnd: Bool) {
+        nudgeOpened = NudgeOpening(sessionID: id, pickingEnd: pickingEnd)
+    }
+
+    func checkNudges() async {
+        canAskForNudges = await nudges.canAskPermission()
+    }
+
+    /// Asks for the notification, which nudges about the sessions after this one (SES-3).
+    func askForNudges() async {
+        canAskForNudges = false
+        await nudges.requestPermission()
     }
 
     func stop() {
@@ -127,6 +176,13 @@ public final class PracticeModel: TagTarget {
             isShowingStorageError = true
         }
         isPastNudge = session?.whenPracticeReaches(nudge).map { $0 <= clock.now } ?? false
+        // The notification waits for the running session to reach the nudge. A pause, a stop or a session already
+        // past it cancels it, so it comes at most once per session.
+        if let session, let date = session.whenPracticeReaches(nudge), date > clock.now {
+            nudges.schedule(after: date.timeIntervalSince(clock.now), sessionID: session.id)
+        } else {
+            nudges.cancel()
+        }
     }
 
     /// Runs `command`, then shows what is stored, moving a session it ended into history.
@@ -144,6 +200,12 @@ public final class PracticeModel: TagTarget {
         }
         refresh()
     }
+}
+
+/// What the notification opened Practice to show (SES-3).
+struct NudgeOpening: Equatable {
+    let sessionID: UUID
+    let pickingEnd: Bool
 }
 
 extension Date {

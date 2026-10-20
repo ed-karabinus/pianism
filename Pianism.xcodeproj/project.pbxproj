@@ -10,6 +10,7 @@
 		0A0000000000000000000072 /* PianismFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000071 /* PianismFeatures */; };
 		0A0000000000000000000075 /* PianismPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000074 /* PianismPersistence */; };
 		0A0000000000000000000078 /* PianismCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000077 /* PianismCore */; };
+		0A0000000000000000000081 /* PianismSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000080 /* PianismSystem */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,6 +54,7 @@
 				0A0000000000000000000072 /* PianismFeatures in Frameworks */,
 				0A0000000000000000000075 /* PianismPersistence in Frameworks */,
 				0A0000000000000000000078 /* PianismCore in Frameworks */,
+				0A0000000000000000000081 /* PianismSystem in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -120,6 +122,7 @@
 				0A0000000000000000000071 /* PianismFeatures */,
 				0A0000000000000000000074 /* PianismPersistence */,
 				0A0000000000000000000077 /* PianismCore */,
+				0A0000000000000000000080 /* PianismSystem */,
 			);
 			productName = Pianism;
 			productReference = 0A0000000000000000000010 /* Pianism.app */;
@@ -180,6 +183,7 @@
 				0A0000000000000000000070 /* XCLocalSwiftPackageReference "Packages/PianismFeatures" */,
 				0A0000000000000000000073 /* XCLocalSwiftPackageReference "Packages/PianismPersistence" */,
 				0A0000000000000000000076 /* XCLocalSwiftPackageReference "Packages/PianismCore" */,
+				0A0000000000000000000079 /* XCLocalSwiftPackageReference "Packages/PianismSystem" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0A0000000000000000000003 /* Products */;
@@ -322,6 +326,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/PianismCore;
 		};
+		0A0000000000000000000079 /* XCLocalSwiftPackageReference "Packages/PianismSystem" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/PianismSystem;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -336,6 +344,10 @@
 		0A0000000000000000000077 /* PianismCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PianismCore;
+		};
+		0A0000000000000000000080 /* PianismSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PianismSystem;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

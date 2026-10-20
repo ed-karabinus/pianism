@@ -15,11 +15,10 @@ struct PracticeView: View {
     /// traps if the picker reads it after it's cleared.
     @State private var pickingEndOf: PracticeSession?
     @State private var stoppedAt = Date.distantPast
-    /// The session whose "Still practicing?" was answered, so it's asked once per session (SES-3).
-    @AppStorage("stillPracticingAnswered") private var answeredSessionID = ""
 
     @ScaledMetric(relativeTo: .largeTitle) private var timeSize = 76
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         // When Practice doesn't fit, as with the end being picked (SES-3), the time shrinks first, then Practice
@@ -36,13 +35,24 @@ struct PracticeView: View {
         }
         .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
         // Asks "Still practicing?" and ends the session at the cap while Practice is on screen, as on an iPad on a
-        // music stand. Otherwise that happens when Practice or the app next appears (SES-3, SES-4).
-        .task(id: model.session) {
+        // music stand, and when Practice or the app next appears (SES-3, SES-4). Only while the app is in front:
+        // away, the notification asks, and a refresh at the nudge would cancel it as it arrives.
+        .onAppear { model.refresh() }
+        .task(id: scenePhase == .active ? model.session : nil) {
+            guard scenePhase == .active else { return }
             while let next = model.nextRefresh,
                 (try? await Task.sleep(for: .seconds(next.timeIntervalSince(model.clock.now)))) != nil
             {
                 model.refresh()
             }
+        }
+        // The notification's "I stopped earlier" opens Practice with the end being picked (SES-3).
+        .onChange(of: model.nudgeOpened, initial: true) { _, opened in
+            guard let opened else { return }
+            if opened.pickingEnd, let session = model.session, session.id == opened.sessionID {
+                pickEnd(of: session)
+            }
+            model.nudgeOpened = nil
         }
     }
 
@@ -68,7 +78,7 @@ struct PracticeView: View {
                     .accessibilityValue(ElapsedTime.spoken(elapsed))
                     .accessibilityIdentifier(AccessibilityID.practiceElapsed)
             }
-            if let session = model.session, model.isPastNudge, answeredSessionID != session.id.uuidString {
+            if let session = model.session, model.isAskingStillPracticing {
                 stillPracticingBanner(session)
             }
             if model.session == nil, let last = model.lastSession {
@@ -124,9 +134,19 @@ struct PracticeView: View {
                 VStack(alignment: .leading) { stillPracticingAnswers(session) }
             }
             .buttonStyle(.bordered)
+            // Offered where its use is plain, as Apple advises, and only until asked, as the system asks once.
+            if model.canAskForNudges, pickingEndOf != session {
+                Button(
+                    LocalizedStringResource("Remind me with a notification", bundle: .module), systemImage: "bell"
+                ) {
+                    Task { await model.askForNudges() }
+                }
+                .accessibilityIdentifier(AccessibilityID.practiceRemindMe)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .bannerStyle()
+        .task { await model.checkNudges() }
     }
 
     /// "Still practicing" stays while the end is picked, as the way back from a mistaken "I stopped earlier".
@@ -139,24 +159,21 @@ struct PracticeView: View {
             .accessibilityIdentifier(AccessibilityID.practiceStopAt)
         }
         Button(LocalizedStringResource("Still practicing", bundle: .module)) {
-            answeredSessionID = session.id.uuidString
+            model.answerStillPracticing(for: session.id)
         }
         .accessibilityIdentifier(AccessibilityID.practiceStillPracticingYes)
         if pickingEndOf != session {
             Button(LocalizedStringResource("I stopped earlier", bundle: .module)) {
-                stoppedAt = model.clock.now
-                pickingEndOf = session
+                pickEnd(of: session)
             }
             .accessibilityIdentifier(AccessibilityID.practiceStoppedEarlier)
         }
     }
 
-    /// A Pause or Resume once practice has passed the nudge shows the user is there, so it answers "Still
-    /// practicing?" for the session (SES-3).
-    private func answerIfPastNudge() {
-        if let session = model.session, session.elapsed(at: model.clock.now) >= model.nudge {
-            answeredSessionID = session.id.uuidString
-        }
+    /// Shows the wheels for the session's real end, set to now.
+    private func pickEnd(of session: PracticeSession) {
+        stoppedAt = model.clock.now
+        pickingEndOf = session
     }
 
     /// Says the last session ended itself at the cap, and offers to fix it in History (SES-4).
@@ -207,7 +224,6 @@ struct PracticeView: View {
         case .running:
             HStack(spacing: 16) {
                 CommandButton("Pause", systemImage: "pause.fill", id: AccessibilityID.practicePause) {
-                    answerIfPastNudge()
                     model.pause()
                 }
                 CommandButton("Stop", systemImage: "stop.fill", id: AccessibilityID.practiceStop, prominent: true) {
@@ -217,7 +233,6 @@ struct PracticeView: View {
         case .paused:
             HStack(spacing: 16) {
                 CommandButton("Resume", systemImage: "play.fill", id: AccessibilityID.practiceResume) {
-                    answerIfPastNudge()
                     model.resume()
                 }
                 CommandButton("Stop", systemImage: "stop.fill", id: AccessibilityID.practiceStop, prominent: true) {

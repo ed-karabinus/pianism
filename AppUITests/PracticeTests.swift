@@ -148,6 +148,59 @@ final class PracticeTests: UITestCase {
         XCTAssertFalse(app.staticTexts["practice.still-practicing"].exists, "It asked again")
     }
 
+    /// SES-3: the banner offers the notification, which then asks "Still practicing?" while the app is away, unless
+    /// the session is paused. Its "Still practicing" answers for the session, and its "I stopped earlier" opens
+    /// Practice to pick the end. A nudge that passes while History shows is asked when Practice is back. The clock
+    /// is real and the nudge 10 s, as the system's notification needs time to pass.
+    @MainActor
+    func testNotificationAsksStillPracticing() throws {
+        let app = launch(at: nil, reset: true, nudgeSeconds: 10)
+        tap(app, "practice.start")
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 20), "It didn't ask")
+        // The system asks once per install, so a retry on the same simulator finds the notification allowed.
+        let remind = app.buttons["practice.remind-me"]
+        if remind.waitForExistence(timeout: 3) {
+            attachScreenshot(of: app, named: "Still practicing? with Remind me")
+            remind.tap()
+            let allow = springboard.alerts.buttons["Allow"]
+            XCTAssertTrue(allow.waitForExistence(timeout: 10), "The system didn't ask")
+            allow.tap()
+            XCTAssertTrue(remind.waitForNonExistence(timeout: 5), "It offered the notification again")
+        }
+        tap(app, "practice.still-practicing-yes")
+
+        tap(app, "practice.stop")
+        tap(app, "practice.start")
+        tap(app, "practice.pause")
+        XCUIDevice.shared.press(.home)
+        XCTAssertFalse(notification.waitForExistence(timeout: 30), "It nudged a paused session")
+        app.activate()
+        tap(app, "practice.resume")
+        answerNotification(with: "Still practicing")
+        app.activate()
+        XCTAssertEqual(text(app, "practice.status"), "Practicing")
+        XCTAssertFalse(
+            app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 3), "The answer was lost")
+
+        tap(app, "practice.stop")
+        tap(app, "practice.start")
+        // Left on History, so the notification has to bring Practice back.
+        openHistory(app)
+        answerNotification(with: "I stopped earlier")
+        XCTAssertTrue(app.datePickers["practice.stopped-at"].waitForExistence(timeout: 10), "No end to pick")
+        attachScreenshot(of: app, named: "Opened from the notification's I stopped earlier")
+        tap(app, "practice.stop-at")
+        XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
+
+        tap(app, "practice.start")
+        openHistory(app)
+        // Real time has to pass the nudge, with nothing in History to wait for.
+        Thread.sleep(forTimeInterval: 12)
+        app.buttons["Practice"].firstMatch.tap()
+        XCTAssertTrue(
+            app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 3), "It didn't ask on Practice")
+    }
+
     /// SES-3: "I stopped earlier" shows wheels at the current time, which go back to when practice really
     /// stopped, and the session ends in that minute, at the start's seconds, so its length is whole minutes.
     @MainActor
@@ -529,6 +582,40 @@ final class PracticeTests: UITestCase {
         let saved = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertEqual(saved.count, 2)
         XCTAssertEqual(saved.matching(notSavedYet).count, 0)
+    }
+
+    /// The Home Screen, where the system shows notifications.
+    @MainActor private var springboard: XCUIApplication { XCUIApplication(bundleIdentifier: "com.apple.springboard") }
+
+    /// The "Still practicing?" notification, as the Home Screen shows it.
+    @MainActor private var notification: XCUIElement {
+        springboard.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS 'Pianism is still timing your session.'")).firstMatch
+    }
+
+    /// Leaves the app and answers its "Still practicing?" notification with the button titled `answer`. The system
+    /// shows no notification for the app in front, and takes up to about 20 s to show it after the nudge.
+    @MainActor
+    private func answerNotification(with answer: String) {
+        XCUIDevice.shared.press(.home)
+        XCTAssertTrue(notification.waitForExistence(timeout: 40), "No notification")
+        let button = springboard.buttons[answer]
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // iPad shows the buttons when the banner is pulled down slowly from its bottom edge and held, not on a
+            // long press. The pull sometimes misses, so it tries again while the banner is there.
+            for _ in 0..<2 where notification.exists && !button.exists {
+                let edge = springboard.coordinate(withNormalizedOffset: .zero)
+                    .withOffset(CGVector(dx: notification.frame.midX, dy: notification.frame.maxY - 10))
+                edge.press(
+                    forDuration: 0.1, thenDragTo: edge.withOffset(CGVector(dx: 0, dy: 500)), withVelocity: .slow,
+                    thenHoldForDuration: 2.5)
+                _ = button.waitForExistence(timeout: 3)
+            }
+        } else {
+            notification.press(forDuration: 1.5)
+        }
+        XCTAssertTrue(button.waitForExistence(timeout: 5), "No \(answer) button")
+        button.tap()
     }
 
     @MainActor
