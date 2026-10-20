@@ -105,6 +105,8 @@ struct HistoryView: View {
                     )
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    // One element, "Warning, 2 sessions…": iOS 26 otherwise reads the icon alone.
+                    .accessibilityElement(children: .combine)
                     .accessibilityIdentifier(AccessibilityID.historyUnshowable)
                 }
                 ForEach(model.days) { day in
