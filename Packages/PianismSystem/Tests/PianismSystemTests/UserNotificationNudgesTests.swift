@@ -30,6 +30,8 @@ struct UserNotificationNudgesTests {
         let request = UserNotificationNudges.request(after: 600, sessionID: id)
 
         #expect(request.content.title == "Still practicing?")
+        #expect(request.content.body == "Pianism is still timing your session.")
+        #expect(request.content.sound == .default)
         #expect(request.content.categoryIdentifier == UserNotificationNudges.answers.identifier)
         #expect(request.content.userInfo[UserNotificationNudges.sessionKey] as? String == id.uuidString)
         let trigger = try #require(request.trigger as? UNTimeIntervalNotificationTrigger)

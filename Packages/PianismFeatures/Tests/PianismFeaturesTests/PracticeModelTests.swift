@@ -263,9 +263,25 @@ struct PracticeModelTests {
         #expect(model.answeredID == model.session?.id)
     }
 
+    @Test("SES-3: a Resume past the nudge answers too, for a session paused there by a version that didn't ask")
+    func resumeAnswersPastTheNudge() {
+        let store = InMemoryRunningSessionStore()
+        let older = makeModel(over: store)
+        older.start()
+        clock.advance(by: 5_400)
+        older.pause()
+        defaults.removeObject(forKey: "stillPracticingAnswered")
+
+        let model = makeModel(over: store)
+        model.resume()
+
+        #expect(model.answeredID == model.session?.id)
+    }
+
     @Test("SES-3: Practice offers the notification until it's asked for, as the system asks once")
     func notificationIsOfferedUntilAsked() async {
         let model = makeModel()
+        #expect(!model.canAskForNudges, "Offered before the system says it can ask")
         await model.checkNudges()
         #expect(model.canAskForNudges)
 
