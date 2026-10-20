@@ -9,6 +9,7 @@ public final class InMemoryNudges: PracticeNudges {
     public init() {}
 
     /// The nudge waiting, if there is one: its delay and session.
+    // periphery:ignore - read by PianismFeatures' tests, which Periphery doesn't index
     public var pending: (delay: TimeInterval, sessionID: UUID)? { state.withLock { $0.pending } }
 
     public func canAskPermission() -> Bool {
