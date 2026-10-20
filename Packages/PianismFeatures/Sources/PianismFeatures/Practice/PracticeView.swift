@@ -129,7 +129,10 @@ struct PracticeView: View {
                 .labelsHidden()
                 .accessibilityIdentifier(AccessibilityID.practiceStoppedAt)
             }
-            ViewThatFits {
+            // Side by side whenever they fit the width. By default it checks the height too, which Practice's stack
+            // offers differently from one layout pass to the next, so the card was measured with one arrangement
+            // and drawn with the other.
+            ViewThatFits(in: .horizontal) {
                 HStack { stillPracticingAnswers(session) }
                 VStack(alignment: .leading) { stillPracticingAnswers(session) }
             }

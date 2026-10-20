@@ -68,9 +68,17 @@ struct PianismApp: App {
         // The notification's answers reach the model once it exists; an answer can launch the app, so the
         // notification is set up here, before launch ends (SES-3).
         let answering = Answering()
-        let nudges = UserNotificationNudges(
+        let notifications = UserNotificationNudges(
             answered: { answering.practice?.answerStillPracticing(for: $0) },
             opened: { answering.practice?.open(fromNudgeAbout: $0, pickingEnd: $1) })
+        #if DEBUG
+            // End-to-end tests have the banner offer the notification whatever the system says with
+            // PIANISM_OFFER_NUDGES=1, as the system asks once per install. Release builds ignore it.
+            let nudges: any PracticeNudges =
+                ProcessInfo.processInfo.environment["PIANISM_OFFER_NUDGES"] == "1" ? OfferingNudges() : notifications
+        #else
+            let nudges = notifications
+        #endif
         let practice = PracticeModel(
             store: store, history: sessions, outbox: outbox, clock: clock, nudges: nudges, defaults: .standard,
             nudge: nudge, cap: cap)
@@ -98,6 +106,14 @@ struct PianismApp: App {
 @MainActor
 private final class Answering {
     weak var practice: PracticeModel?
+}
+
+/// Offers the notification and sends none, for end-to-end tests of the banner it's offered in.
+private struct OfferingNudges: PracticeNudges {
+    func canAskPermission() async -> Bool { true }
+    func requestPermission() async {}
+    func schedule(after _: TimeInterval, sessionID _: UUID) {}
+    func cancel() {}
 }
 
 /// A clock that always reads the same time, for end-to-end tests.
