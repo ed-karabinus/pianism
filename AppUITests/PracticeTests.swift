@@ -148,6 +148,20 @@ final class PracticeTests: UITestCase {
         XCTAssertFalse(app.staticTexts["practice.still-practicing"].exists, "It asked again")
     }
 
+    /// SES-3: with the notification offered, the answers stay side by side where they fit. The card was once measured
+    /// for one arrangement and drawn with the other. The system offers it once per install, so the app offers it
+    /// here whatever the system says, and a retry checks again. At the default text size they fit side by side on
+    /// the iPhones and iPads CI picks, 402 pt wide or more.
+    @MainActor
+    func testRemindMeKeepsTheAnswersSideBySide() throws {
+        let app = launch(at: nil, reset: true, nudgeSeconds: 3, offerNudges: true)
+        tap(app, "practice.start")
+        XCTAssertTrue(app.buttons["practice.remind-me"].waitForExistence(timeout: 20), "It didn't offer it")
+        XCTAssertEqual(
+            app.buttons["practice.still-practicing-yes"].frame.minY, app.buttons["practice.stopped-earlier"].frame.minY,
+            accuracy: 1, "The answers stacked")
+    }
+
     /// SES-3: the banner offers the notification, which then asks "Still practicing?" while the app is away, unless
     /// the session is paused. Its "Still practicing" answers for the session, and its "I stopped earlier" opens
     /// Practice to pick the end. A nudge that passes while History shows is asked when Practice is back. The clock
@@ -199,6 +213,9 @@ final class PracticeTests: UITestCase {
         app.buttons["Practice"].firstMatch.tap()
         XCTAssertTrue(
             app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 3), "It didn't ask on Practice")
+        // A new banner asks the system again, which says it's allowed.
+        XCTAssertFalse(
+            app.buttons["practice.remind-me"].waitForExistence(timeout: 3), "It offered the notification again")
     }
 
     /// SES-3: "I stopped earlier" shows wheels at the current time, which go back to when practice really
@@ -627,7 +644,7 @@ final class PracticeTests: UITestCase {
     @MainActor
     private func launch(
         at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, undoSeconds: Int? = nil,
-        nudgeSeconds: Int? = nil, capSeconds: Int? = nil, largestText: Bool = false
+        nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false, largestText: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         if largestText {
@@ -644,6 +661,9 @@ final class PracticeTests: UITestCase {
         }
         if let capSeconds {
             app.launchEnvironment["PIANISM_CAP_SECONDS"] = String(capSeconds)
+        }
+        if offerNudges {
+            app.launchEnvironment["PIANISM_OFFER_NUDGES"] = "1"
         }
         if reset {
             app.launchEnvironment["PIANISM_RESET"] = "1"
