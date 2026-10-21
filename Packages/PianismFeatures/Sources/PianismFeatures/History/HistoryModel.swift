@@ -19,6 +19,8 @@ public final class HistoryModel {
     private(set) var unshowableCount = 0
     /// The tags sessions show, each merged tag as the tag it was merged into (ADR 0004).
     private(set) var tagIndex = TagIndex([])
+    /// Whether iCloud can't sync the history, so History says so (SYN-1). The app sets it.
+    public var isNotSyncing = false
     /// The finished session being edited or added, if any (SES-5).
     var editing: SessionEdit?
     /// The session deleted but still undoable, hidden until ``commitDelete()`` writes it to storage (SES-5).
