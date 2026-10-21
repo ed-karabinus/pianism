@@ -63,6 +63,18 @@ final class SwiftDataTagLibraryTests {
         #expect(try library.tags() == [Tag(id: "a", kind: .piece, name: "Renamed", isArchived: false)])
     }
 
+    @Test("ADR 0006: a tag a later version deleted doesn't show, even beside a newer copy, and stays deleted")
+    func deletedTagStaysHidden() throws {
+        try insertRecord(id: "a", name: "Old", modifiedAfter: 1, isDeleted: true)
+        try insertRecord(id: "a", name: "New", modifiedAfter: 2)
+        try insertRecord(id: "b", name: "Kept", modifiedAfter: 1)
+
+        try library.rename(id: "a", to: "Renamed")
+
+        #expect(try library.tags().map(\.id) == ["b"])
+        #expect(try records().filter { $0.id == "a" }.map(\.name).sorted() == ["New", "Old"])
+    }
+
     @Test("ADR 0006: a tag a newer version wrote can't be renamed or archived, so this version can't damage it")
     func newerVersionIsReadOnly() throws {
         try insertRecord(id: "a", name: "Étude", modifiedAfter: 1, version: 2)
@@ -98,7 +110,7 @@ final class SwiftDataTagLibraryTests {
     /// Inserts a record as sync would deliver it, bypassing the library.
     private func insertRecord(
         id: String, name: String, modifiedAfter modified: TimeInterval, kind: String = "piece", version: Int = 1,
-        isArchived: Bool = false, mergedInto: String = ""
+        isArchived: Bool = false, mergedInto: String = "", isDeleted: Bool = false
     ) throws {
         let context = ModelContext(try HistoryStore(url: storeURL).container())
         let record = TagRecord()
@@ -109,6 +121,7 @@ final class SwiftDataTagLibraryTests {
         record.version = version
         record.isArchived = isArchived
         record.mergedInto = mergedInto
+        record.deletedAt = isDeleted ? clock.now + modified : nil
         context.insert(record)
         try context.save()
     }

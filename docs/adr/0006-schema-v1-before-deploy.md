@@ -53,12 +53,30 @@ Option 2 for both, plus the changes below.
 | `SessionRecord` | remove | `practicedSeconds` | | The core totals sessions from their timestamps. Nothing would read a stored copy, and a sync merge could make it disagree |
 | `SessionRecord` | change | `id` | `UUID`, a new UUID | CloudKit needs a default, and ADR 0004 gave none |
 | `SessionRecord` | specify | `pauses` | `Data`, empty | JSON, `{"pauses": [...]}`, dates in `Date`'s own encoding (seconds since 2001), which round-trips exactly. An object, so it can gain keys. Empty means no pauses |
+| `SessionRecord` | specify | `note` | `String`, `""` | Encrypted in iCloud (`.allowsCloudEncryption`). See "Before the CloudKit deploy" |
+| `TagRecord` | add | `deletedAt` | `Date?`, `nil` | See "Before the CloudKit deploy" |
 
 Corrected 2026-10-15 by the first store code: the `pauses` row first said `.secondsSince1970`. That
 loses the last bit of a fractional time, so a session stopped while paused could read back with its
 pause ending after the session; the test "a session stopped while paused comes back exactly" catches
 it. "Duplicates from this device" first said saves go through one `ModelActor`; a lock does the same
 without making the synchronous `SessionHistory` port async.
+
+**Before the CloudKit deploy** (amended 2026-10-20 by the owner, for SYN-1). The deploy freezes every
+record type and field, so three changes come first:
+
+- `note` is encrypted in iCloud, as the only field holding the user's own words. A field's encryption
+  can't change once deployed, either way. Tag names and composers stay plain.
+- `TagRecord` gains `deletedAt`, under the same rule as sessions: an ID with any deleted copy doesn't
+  show. Tags are only archived today; with the field there now, a version that deletes them won't
+  leave nameless tags showing in this one. A session keeps a deleted tag's ID, as it keeps one this
+  device hasn't synced yet, and the screen leaves it out.
+- iCloud keeps `startedAt` and `endedAt` to the millisecond but `pauses` exactly, so a pause can stick
+  out of a synced session by less than a millisecond. Reading clamps each pause into the session;
+  without that, a session stopped while paused would be hidden on the other device. Any pause outside
+  the session is cut to it, as an edit does, but a pause that ends up empty is kept: a session paused
+  and stopped at the same instant holds one, and dropping it would make `save` refuse that session.
+  "Round-trips exactly" holds on one device only.
 
 **Records from newer versions.** `version` starts at 1. A release raises it when it adds a field, or
 a stored value such as a new `source`, that an older app would lose by saving, whether or not the

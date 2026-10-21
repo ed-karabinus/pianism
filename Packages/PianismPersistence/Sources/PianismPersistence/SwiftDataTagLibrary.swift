@@ -13,7 +13,8 @@ public final class SwiftDataTagLibrary: TagLibrary {
         self.clock = clock
     }
 
-    /// Each ID once, as its latest change, in case sync delivers a duplicate (ADR 0004).
+    /// Each ID once, as its latest change, in case sync delivers a duplicate, leaving out an ID with any
+    /// deleted record (ADR 0004, 0006).
     public func tags() throws -> [Tag] {
         let records = try ModelContext(store.container()).fetch(FetchDescriptor<TagRecord>())
         return Dictionary(grouping: records, by: \.id).values.compactMap(Self.shown).map { record in
@@ -61,8 +62,9 @@ public final class SwiftDataTagLibrary: TagLibrary {
         try context.save()
     }
 
-    /// The copy of an ID that shows: its latest change.
+    /// The copy of an ID that shows: its latest change, or none if any copy was deleted.
     private static func shown(among copies: [TagRecord]) -> TagRecord? {
-        copies.max { $0.modifiedAt < $1.modifiedAt }  // mutate:ignore - only ties differ
+        guard copies.allSatisfy({ $0.deletedAt == nil }) else { return nil }
+        return copies.max { $0.modifiedAt < $1.modifiedAt }  // mutate:ignore - only ties differ
     }
 }

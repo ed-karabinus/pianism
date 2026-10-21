@@ -1,3 +1,4 @@
+import CoreData
 import Foundation
 import PianismCore
 import PianismCoreTestSupport
@@ -65,9 +66,9 @@ final class HistoryStoreFormatTests {
         let tags = try context.fetch(FetchDescriptor<TagRecord>(sortBy: [SortDescriptor(\.createdAt)]))
         #expect(
             tags.map(\.fields) == [
-                [ballade, "piece", "Ballade No. 1", false, "Chopin", 72, "", start - 172_800, start - 7_200, 1],
-                [pedalling, "skill", "Pedalling", true, "", nil, "", start - 172_740, start - 7_140, 1],
-                [gMinor, "piece", "Chopin G minor", true, "", nil, ballade, start - 172_680, start - 7_080, 2],
+                [ballade, "piece", "Ballade No. 1", false, "Chopin", 72, "", start - 172_800, start - 7_200, 1, nil],
+                [pedalling, "skill", "Pedalling", true, "", nil, "", start - 172_740, start - 7_140, 1, nil],
+                [gMinor, "piece", "Chopin G minor", true, "", nil, ballade, start - 172_680, start - 7_080, 2, nil],
             ])
 
         var session = PracticeSession(id: live, startedAt: start, timeZone: vienna)
@@ -87,6 +88,35 @@ final class HistoryStoreFormatTests {
                     id: gMinor, kind: .piece, name: "Chopin G minor", isArchived: true, mergedInto: ballade,
                     createdAt: start - 172_680, isReadOnly: true),
             ])
+    }
+
+    @Test("SYN-1, ADR 0006: a store with a deleted tag, the field added before sync, reads it and leaves it out")
+    func deletedTagStoreReads() throws {
+        let store = try open("history-v1-deleted-tag")
+        let pedalling = "b3f1d2e4-6a5c-4b7d-8e9f-0a1b2c3d4e5f"
+
+        let tags = try ModelContext(try store.container()).fetch(FetchDescriptor<TagRecord>())
+        #expect(
+            tags.first { $0.id == pedalling }?.fields
+                == [
+                    pedalling, "skill", "Pedalling", true, "", nil, "", start - 172_740, start - 7_140, 1,
+                    start - 7_000,
+                ])
+        #expect(
+            Set(try SwiftDataTagLibrary(store: store, clock: clock).tags().map(\.name)) == [
+                "Ballade No. 1", "Chopin G minor",
+            ])
+        #expect(try SwiftDataSessionHistory(store: store, clock: clock).sessions().count == 1)
+    }
+
+    @Test("SYN-1: of everything stored, only a session's note is encrypted in iCloud")
+    func onlyNoteIsEncrypted() throws {
+        let model = try #require(NSManagedObjectModel.makeManagedObjectModel(for: HistorySchemaV1.models))
+        let encrypted = model.entities.flatMap { entity in
+            entity.attributesByName.values.filter(\.allowsCloudEncryption).map { "\(entity.name ?? "").\($0.name)" }
+        }
+
+        #expect(encrypted == ["SessionRecord.note"])
     }
 
     @Test("SES-5, ADR 0006: deleting a v1 session clears only its note and tags, and marks when it was deleted")
@@ -130,6 +160,10 @@ extension SessionRecord {
 
 extension TagRecord {
     fileprivate var fields: [AnyHashable?] {
-        [id, kind, name, isArchived, composer, targetTempo as Int?, mergedInto, createdAt, modifiedAt, version as Int]
+        [
+            id, kind, name, isArchived, composer, targetTempo as Int?, mergedInto, createdAt, modifiedAt,
+            version as Int,
+            deletedAt,
+        ]
     }
 }
