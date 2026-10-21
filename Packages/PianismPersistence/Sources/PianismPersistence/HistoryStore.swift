@@ -69,6 +69,7 @@ public final class HistoryStore: Sendable {
             }
             let directory = FileManager.default.temporaryDirectory.appending(path: "CloudKitSchema-\(UUID())")
             defer { try? FileManager.default.removeItem(at: directory) }
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let description = NSPersistentStoreDescription(url: directory.appending(path: "Schema.store"))
             description.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(
                 containerIdentifier: cloudKitContainer)
