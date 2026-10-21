@@ -47,6 +47,8 @@ final class SwiftDataSessionHistoryTests {
     @Test("SYN-1: a save to the store from elsewhere, as an iCloud import makes, is reported", .timeLimit(.minutes(1)))
     func changeFromElsewhereIsReported() async throws {
         let store = HistoryStore(url: storeURL)
+        // Open, as at launch: only an open store reports a change, and the one saving below closes once it has.
+        store.open()
         var changes = store.changes.makeAsyncIterator()
 
         var session = PracticeSession(startedAt: clock.now)
