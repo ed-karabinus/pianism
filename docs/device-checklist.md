@@ -26,6 +26,7 @@ Pairing, prompts, device names, the Bluetooth and USB switch, and power-off stay
 | --- | --- | --- |
 | 1 | **Test simulators stay signed out of iCloud:** in Settings on every simulator named `iPhone…` or `iPad…`, no Apple Account is signed in. The two that check sync are named `Sync S1` and `Sync S2`, which `scripts/simulator-destination.sh` never picks | Not run |
 | 2 | **The CloudKit schema matches before the deploy:** the steps in [ADR 0008](adr/0008-icloud-sync-environments-and-deploy.md), from creating the schema on `Sync S1` to the export matching `docs/cloudkit/schema-v1-fields.txt` | Steps 3–4, 2026-10-20, the model as of main de616f7: every expected field matched. The only extra was Core Data's own `CD_moveReceipt` (and its `_ckAsset`) on both record types, now in the file. The owner signed off on #15. Step 5 not yet run. |
+| 3 | **iCloud's pushes reach an open app:** with a session running and its tag picker open on the owner's iPhone, add a piece on another device signed into the same account; it shows in the picker within a minute, with no relaunch. Simulators get no CloudKit pushes, so this needs a real device; the end-to-end test `testChangesFromAnotherDeviceShowWhileOpen` covers the rest, from a save to the store to the screens | Not run |
 
 **Why these are manual:** they need an iCloud account, and CI never uses the owner's (E4). `simctl`
 can't read whether a simulator is signed in. Once the not-syncing notice's end-to-end test lands (#15),

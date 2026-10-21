@@ -44,8 +44,9 @@ public final class HistoryModel {
     }
 
     /// Loads the history again, and moves "today" along. Call when the screen appears and when the
-    /// app returns to the foreground: sessions finish elsewhere, and midnight may have passed.
-    func refresh() {
+    /// app returns to the foreground, and when iCloud brings changes (SYN-1): sessions finish elsewhere, and
+    /// midnight may have passed.
+    public func refresh() {
         now = clock.now
         // An outbox that can't be read is reported by Practice, which raises its storage alert.
         let waiting = (try? outbox.sessions()) ?? []
@@ -66,6 +67,9 @@ public final class HistoryModel {
         let unsaved = waiting.filter { !savedIDs.contains($0.id) }
         waitingIDs = Set(unsaved.map(\.id))
         days = PracticeDay.group((saved + unsaved).filter { $0.id != pendingDeletion?.id }, in: calendar)
+        // A session open for editing keeps its own copy, but shows tags as they are now, such as one renamed on
+        // another device (SYN-1).
+        editing?.tags.refresh()
     }
 
     /// Whether `session` can be deleted: one still waiting can, and a saved one can when it can be edited.

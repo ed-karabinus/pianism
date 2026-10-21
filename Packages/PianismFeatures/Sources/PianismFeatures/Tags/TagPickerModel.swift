@@ -107,8 +107,8 @@ public final class TagPickerModel {
         perform { try library.setArchived(true, id: tag.id) }
     }
 
-    /// Loads the tags again. Call when the picker opens.
-    func refresh() {
+    /// Loads the tags again. Call when the picker opens, and when iCloud brings changes (SYN-1).
+    public func refresh() {
         perform {}
     }
 

@@ -48,6 +48,11 @@ the adapter implements:
 Both ports also report when anything they hold changes, on this device or from iCloud, so view
 models know when to fetch again.
 
+Amended 2026-10-21 by SYN-1: the store reports changes, not the ports. `HistoryStore.changes` fires
+after each save to the store, by this app or an iCloud import (Core Data's remote-change notification),
+and the app then refetches History and the tag picker. Nothing reads SwiftData's history, and Practice
+isn't refreshed: the only synced data it shows is tag names, which the picker refreshes.
+
 Amended 2026-10-16 by TAG-1: a tag's ID is `Tag.ID`, a `String`, rather than a separate `TagID`
 type, since a session stores built-in and user tag IDs alike as strings. Both adapters share one
 SwiftData store, `HistoryStore`, so a session and the tags it names live, and later sync, together.
@@ -157,12 +162,11 @@ queries need, and makes every record opaque in the CloudKit dashboard.
 - Good: built-in skills can't be duplicated by sync, and their names can be localized and renamed
   freely.
 - Bad: no `@Query` in views, so the app tracks changes itself, which `@Query` would do for free.
-  The ports publish a "changed" signal for saves made anywhere in the app and for records imported
-  from iCloud, read from SwiftData's history. Each list's view model refetches its date range when
-  it fires. That's about 200 lines plus tests, but lines aren't the real cost: if the signal misses
-  a change, a screen shows stale data. Local saves are covered by an integration test with two
-  containers on one store, and an end-to-end test that stops a session and sees it in history.
-  iCloud imports can only be checked on two real devices (SYN-1). If that signal proves
+  The store publishes a "changed" signal for saves made anywhere in the app and for records imported
+  from iCloud, and the screens refetch when it fires (amended 2026-10-21; about 30 lines). Lines aren't
+  the real cost: if the signal misses a change, a screen shows stale data. A save through a second
+  store on the same file, as an import makes, is covered by an integration test and an end-to-end
+  test. iCloud's pushes can only be checked on a real device (SYN-1). If that signal proves
   unreliable, a list can fall back to `@Query` in its view, mapping records to core values before
   any rule runs. The core doesn't change.
 - Bad: "sessions for this piece" (HIS-4, M4) filters `tagIDs` in memory, because SwiftData

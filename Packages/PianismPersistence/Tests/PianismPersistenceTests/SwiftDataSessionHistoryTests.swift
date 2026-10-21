@@ -37,6 +37,25 @@ final class SwiftDataSessionHistoryTests {
         #expect(Set(try reopened.sessions()) == [paused, plain])
     }
 
+    @Test("SYN-1: opening the store opens it now, so sync starts at launch rather than at first use")
+    func openOpensNow() {
+        HistoryStore(url: storeURL).open()
+
+        #expect(FileManager.default.fileExists(atPath: storeURL.path()))
+    }
+
+    @Test("SYN-1: a save to the store from elsewhere, as an iCloud import makes, is reported", .timeLimit(.minutes(1)))
+    func changeFromElsewhereIsReported() async throws {
+        let store = HistoryStore(url: storeURL)
+        var changes = store.changes.makeAsyncIterator()
+
+        var session = PracticeSession(startedAt: clock.now)
+        try session.stop(at: clock.now + 600)
+        try SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock).save(session)
+
+        #expect(await changes.next(isolation: #isolation) != nil)
+    }
+
     @Test("ADR 0006: a session stopped while paused comes back exactly, even at a fraction of a second")
     func stoppedWhilePausedSurvivesExactly() throws {
         // The pause ends at the same instant as the session. If the store moved either time by
