@@ -4,3 +4,5 @@ SWIFT_OPTIMIZATION_LEVEL = -O
 SWIFT_COMPILATION_MODE = wholemodule
 VALIDATE_PRODUCT = YES
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
+// The CloudKit environment this build syncs with (SYN-1; see Pianism.entitlements).
+PIANISM_CLOUDKIT_ENVIRONMENT = Production

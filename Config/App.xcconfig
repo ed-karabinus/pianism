@@ -9,6 +9,8 @@ CURRENT_PROJECT_VERSION = 1
 CODE_SIGN_ENTITLEMENTS = Config/Pianism.entitlements
 
 GENERATE_INFOPLIST_FILE = YES
+// Keys the generator has no setting for, merged with the generated ones.
+INFOPLIST_FILE = Config/Info.plist
 INFOPLIST_KEY_CFBundleDisplayName = Pianism
 INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.music
 INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES
