@@ -77,10 +77,15 @@ struct HistoryView: View {
             )
             .accessibilityIdentifier(AccessibilityID.historyUnavailable)
         } else if model.days.isEmpty, model.unshowableCount == 0 {
-            ContentUnavailableView(
-                LocalizedStringResource("No practice yet", bundle: .module), systemImage: "music.note.list",
-                description: Text("Sessions you finish appear here.", bundle: .module)
-            )
+            ContentUnavailableView {
+                Label(LocalizedStringResource("No practice yet", bundle: .module), systemImage: "music.note.list")
+            } description: {
+                Text("Sessions you finish appear here.", bundle: .module)
+            } actions: {
+                if model.isNotSyncing { notSyncingNotice }
+            }
+            // Its own element, so the notice inside keeps its identifier.
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier(AccessibilityID.historyEmpty)
         } else {
             List {
@@ -109,6 +114,7 @@ struct HistoryView: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier(AccessibilityID.historyUnshowable)
                 }
+                if model.isNotSyncing { notSyncingNotice }
                 ForEach(model.days) { day in
                     Section {
                         ForEach(day.sessions) { session in
@@ -153,6 +159,20 @@ struct HistoryView: View {
                 }
             }
         }
+    }
+
+    /// Says iCloud isn't syncing, and how to fix it (SYN-1).
+    private var notSyncingNotice: some View {
+        Label(
+            LocalizedStringResource(
+                "Your history isn't syncing. In Settings, sign in to iCloud and turn it on for Pianism.",
+                bundle: .module),
+            systemImage: "icloud.slash"
+        )
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(AccessibilityID.historyNotSyncing)
     }
 
     /// "Today", "Yesterday", or the date, such as "Wednesday, October 14".
@@ -220,6 +240,16 @@ struct TimedRow: View {
 
 #Preview("Only sessions that can't be shown, dark, AX5") {
     HistoryView(model: .preview(empty: true, unshowable: 1))
+        .preferredColorScheme(.dark)
+        .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("Not syncing, with the other notices") {
+    HistoryView(model: .preview(unshowable: 2, notSyncing: true))
+}
+
+#Preview("Not syncing, empty, dark, AX5") {
+    HistoryView(model: .preview(empty: true, notSyncing: true))
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }

@@ -66,10 +66,12 @@ extension HistoryModel {
     /// A model with practice today, yesterday and last week, or with none, for previews. Times are
     /// local, so "Today" holds in any time zone. `waiting` puts the sessions in the outbox and makes
     /// history fail to load, as during an outage (ADR 0007). `deleting` deletes the newest session, so Undo shows.
-    /// `unshowable` saved sessions can't be shown, as if a newer version wrote them (ADR 0006).
-    static func preview(empty: Bool = false, waiting: Bool = false, deleting: Bool = false, unshowable: Int = 0)
-        -> HistoryModel
-    {
+    /// `unshowable` saved sessions can't be shown, as if a newer version wrote them (ADR 0006). `notSyncing` shows
+    /// that iCloud isn't syncing (SYN-1).
+    static func preview(
+        empty: Bool = false, waiting: Bool = false, deleting: Bool = false, unshowable: Int = 0,
+        notSyncing: Bool = false
+    ) -> HistoryModel {
         let sessions = InMemorySessionHistory(unshowable: unshowable)
         let midnight = Calendar.autoupdatingCurrent.startOfDay(for: previewNow)
         let hour: TimeInterval = 60 * 60
@@ -88,6 +90,7 @@ extension HistoryModel {
         let model = HistoryModel(
             history: history, tags: InMemoryTagLibrary(previewTags), outbox: outbox,
             clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)))
+        model.isNotSyncing = notSyncing
         if deleting {
             model.refresh()
             if let newest = model.days.first?.sessions.first { model.delete(newest) }

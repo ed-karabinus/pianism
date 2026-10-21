@@ -397,22 +397,23 @@ final class PracticeTests: UITestCase {
 
     /// SYN-1: what iCloud brings from another device shows while the app is open, with no relaunch: a piece in
     /// the open tag picker, then a session tagged with it in the open History. A Debug switch saves them through a
-    /// second store on the same file, as an iCloud import does, 15 and 30 seconds after launch. Each screen is checked
-    /// empty first, so a slow launch fails here rather than passing on the screen's own refresh as it opens.
+    /// second store on the same file, as an iCloud import does, 25 and 50 seconds after launch, which leaves a slow
+    /// CI iPad time to open each screen first. Each screen is checked empty first, so a slow launch fails here
+    /// rather than passing on the screen's own refresh as it opens.
     @MainActor
     func testChangesFromAnotherDeviceShowWhileOpen() throws {
-        let app = launch(at: start, reset: true, syncArrivesSeconds: 15)
+        let app = launch(at: start, reset: true, syncArrivesSeconds: 25)
         tap(app, "practice.start")
         tap(app, "practice.tags")
         XCTAssertTrue(app.buttons["tags.done"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Synced piece"].exists, "The piece arrived before the picker opened")
-        XCTAssertTrue(app.buttons["Synced piece"].waitForExistence(timeout: 30), "The piece didn't show")
+        XCTAssertTrue(app.buttons["Synced piece"].waitForExistence(timeout: 45), "The piece didn't show")
         tap(app, "tags.done")
         openHistory(app)
         let synced = app.descendants(matching: .any).matching(identifier: "history.session")
             .matching(NSPredicate(format: "label ENDSWITH 'Synced piece'")).firstMatch
         XCTAssertFalse(synced.exists, "The session arrived before History opened")
-        XCTAssertTrue(synced.waitForExistence(timeout: 30), "The session didn't show")
+        XCTAssertTrue(synced.waitForExistence(timeout: 45), "The session didn't show")
         attachScreenshot(of: app, named: "History, with a session from another device")
     }
 
@@ -624,6 +625,50 @@ final class PracticeTests: UITestCase {
         app = launch(at: start + 53 * 60)
         openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "Leaving the app didn't save it")
+    }
+
+    /// SYN-1: on a simulator signed out of iCloud, as every test simulator must be, History says its history isn't
+    /// syncing, whether it's empty or has practice. This checks that test simulators stay signed out
+    /// (docs/device-checklist.md).
+    @MainActor
+    func testHistorySaysWhenICloudIsntSyncing() throws {
+        let app = launch(at: start, reset: true)
+        openHistory(app)
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
+        let notice = element(app, "history.not-syncing")
+        XCTAssertTrue(
+            notice.waitForExistence(timeout: 10),
+            "No notice: is this simulator signed into iCloud? Test simulators must stay signed out (docs/device-checklist.md)."
+        )
+        XCTAssertTrue(
+            notice.label.contains(
+                "Your history isn't syncing. In Settings, sign in to iCloud and turn it on for Pianism."),
+            "It said \(notice.label)")
+        attachScreenshot(of: app, named: "History, not syncing")
+
+        app.buttons["Practice"].firstMatch.tap()
+        tap(app, "practice.start")
+        tap(app, "practice.stop")
+        openHistory(app)
+        XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "history.not-syncing").exists, "The notice went once there was practice")
+        attachScreenshot(of: app, named: "History, one session, not syncing")
+    }
+
+    /// SYN-1: at the largest text size, empty History scrolls, so the not-syncing notice can be read in full above
+    /// the tab bar on iPhone, or the bottom of the screen on iPad, whose tab bar is at the top.
+    @MainActor
+    func testNotSyncingNoticeScrollsAtLargestText() throws {
+        let app = launch(at: start, reset: true, largestText: true)
+        openHistory(app)
+        let notice = element(app, "history.not-syncing")
+        XCTAssertTrue(notice.waitForExistence(timeout: 10), "No notice")
+        app.swipeUp()
+        let tabBar = app.tabBars.firstMatch
+        let screen = app.windows.firstMatch.frame
+        let bottom = tabBar.exists && tabBar.frame.minY > screen.midY ? tabBar.frame.minY : screen.maxY
+        XCTAssertLessThanOrEqual(notice.frame.maxY, bottom, "The notice stays under the tab bar or off screen")
+        attachScreenshot(of: app, named: "History, not syncing, largest text")
     }
 
     /// HIS-1, ADR 0006: saved sessions this version can't show, such as ones a newer version wrote, are counted
