@@ -1,6 +1,6 @@
 # 6. Schema v1 gains a record version, a time zone and a deleted mark before it ships
 
-- Status: accepted
+- Status: accepted; the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md)
 - Date: 2026-10-15
 - Amends: [ADR 0004](0004-synced-data-model.md)
 
@@ -128,9 +128,10 @@ Following [Apple's SwiftData
 guide](https://developer.apple.com/documentation/swiftdata/syncing-model-data-across-a-persons-devices),
 a Debug build creates the full schema with
 `NSPersistentCloudKitContainer.initializeCloudKitSchema()`, which uploads "a representative value
-for every field". Apple's sample runs this on every Debug launch; ours runs only with a launch
-argument, because the simulators in CI have no iCloud account. The CloudKit dashboard is then
-compared with these tables. This is part of SYN-1, before the first TestFlight build.
+for every field". Apple's sample runs this on every Debug launch; ours runs only with the environment
+variable `PIANISM_INIT_CLOUDKIT_SCHEMA=1`, because the simulators in CI have no iCloud account. The
+export is then compared with these tables, as [ADR 0008](0008-icloud-sync-environments-and-deploy.md)
+sets out. This is part of SYN-1, before the first TestFlight build.
 
 **Smaller fixes.**
 

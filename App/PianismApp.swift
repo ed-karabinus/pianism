@@ -10,6 +10,8 @@ import SwiftUI
 struct PianismApp: App {
     /// Shared with the widget and Live Activity. Must match `Config/Pianism.entitlements`.
     static let appGroup = "group.com.edkarabinus.Pianism"
+    /// Holds synced history (SYN-1). Must match `Config/Pianism.entitlements`.
+    static let iCloudContainer = "iCloud.com.edkarabinus.Pianism"
 
     @State private var practice: PracticeModel
     @State private var tags: TagPickerModel
@@ -36,7 +38,8 @@ struct PianismApp: App {
             // with PIANISM_NUDGE_SECONDS and PIANISM_CAP_SECONDS, start with no running session, history, outbox
             // or settings with PIANISM_RESET=1, make the history fail to open with PIANISM_BREAK_HISTORY=1,
             // add sessions this version can't show with PIANISM_UNSHOWABLE_SESSIONS (a count), and sync with
-            // iCloud's Development environment with PIANISM_SYNC=1. Release builds ignore all seven.
+            // iCloud's Development environment with PIANISM_SYNC=1. The owner creates the CloudKit schema there
+            // with PIANISM_INIT_CLOUDKIT_SCHEMA=1 (ADR 0008). Release builds ignore all eight.
             let environment = ProcessInfo.processInfo.environment
             if let seconds = environment["PIANISM_NOW"].flatMap(TimeInterval.init) {
                 clock = FixedClock(now: Date(timeIntervalSince1970: seconds))
@@ -57,7 +60,14 @@ struct PianismApp: App {
                 historyURL = URL(filePath: "/dev/null/History.store")
             }
             if environment["PIANISM_SYNC"] == "1" {
-                cloudKitContainer = "iCloud.com.edkarabinus.Pianism"
+                cloudKitContainer = Self.iCloudContainer
+            }
+            if environment["PIANISM_INIT_CLOUDKIT_SCHEMA"] == "1" {
+                do {
+                    try HistoryStore.initializeCloudKitSchema(cloudKitContainer: Self.iCloudContainer)
+                } catch {
+                    fatalError("Couldn't create the CloudKit schema: \(error)")
+                }
             }
         #endif
         // One store for both, so sessions and the tags they name are kept, and later synced, together.
