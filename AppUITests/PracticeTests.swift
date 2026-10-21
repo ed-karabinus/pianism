@@ -585,6 +585,34 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "Leaving the app didn't save it")
     }
 
+    /// SYN-1: on a simulator signed out of iCloud, as every test simulator must be, History says its history isn't
+    /// syncing, whether it's empty or has practice. This checks that test simulators stay signed out
+    /// (docs/device-checklist.md).
+    @MainActor
+    func testHistorySaysWhenICloudIsntSyncing() throws {
+        let app = launch(at: start, reset: true)
+        openHistory(app)
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
+        let notice = element(app, "history.not-syncing")
+        XCTAssertTrue(
+            notice.waitForExistence(timeout: 10),
+            "No notice: is this simulator signed into iCloud? Test simulators must stay signed out (docs/device-checklist.md)."
+        )
+        XCTAssertTrue(
+            notice.label.contains(
+                "Your history isn't syncing. In Settings, sign in to iCloud and turn it on for Pianism."),
+            "It said \(notice.label)")
+        attachScreenshot(of: app, named: "History, not syncing")
+
+        app.buttons["Practice"].firstMatch.tap()
+        tap(app, "practice.start")
+        tap(app, "practice.stop")
+        openHistory(app)
+        XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "history.not-syncing").exists, "The notice went once there was practice")
+        attachScreenshot(of: app, named: "History, one session, not syncing")
+    }
+
     /// HIS-1, ADR 0006: saved sessions this version can't show, such as ones a newer version wrote, are counted
     /// with a request to update, rather than left out silently or called no practice.
     @MainActor
