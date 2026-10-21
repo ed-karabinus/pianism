@@ -17,4 +17,8 @@ public protocol TagLibrary: Sendable {
 
     /// Archives or unarchives a tag. Throws ``RecordFromNewerVersion`` for a tag a newer version wrote.
     func setArchived(_ isArchived: Bool, id: Tag.ID) throws
+
+    /// Sets a piece's composer and target tempo (TAG-3). Throws ``RecordFromNewerVersion`` for a tag a newer
+    /// version wrote.
+    func setDetails(composer: String, targetTempo: Int?, id: Tag.ID) throws
 }

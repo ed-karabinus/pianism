@@ -71,7 +71,9 @@ final class HistoryStoreFormatTests {
         #expect(try SwiftDataSessionHistory(store: store, clock: clock).sessions() == [session])
         #expect(
             Set(try SwiftDataTagLibrary(store: store, clock: clock).tags()) == [
-                Tag(id: ballade, kind: .piece, name: "Ballade No. 1", isArchived: false, createdAt: start - 172_800),
+                Tag(
+                    id: ballade, kind: .piece, name: "Ballade No. 1", isArchived: false, createdAt: start - 172_800,
+                    composer: "Chopin", targetTempo: 72),
                 Tag(id: pedalling, kind: .skill, name: "Pedalling", isArchived: true, createdAt: start - 172_740),
                 Tag(
                     id: gMinor, kind: .piece, name: "Chopin G minor", isArchived: true, mergedInto: ballade,

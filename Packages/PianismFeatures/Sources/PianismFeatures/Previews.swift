@@ -36,7 +36,9 @@ extension PracticeModel {
 
 /// Pieces and skills for previews, one archived.
 private let previewTags = [
-    Tag(id: "ballade", kind: .piece, name: "Ballade No. 1 in G minor", isArchived: false),
+    Tag(
+        id: "ballade", kind: .piece, name: "Ballade No. 1 in G minor", isArchived: false, composer: "Chopin",
+        targetTempo: 72),
     Tag(id: "invention", kind: .piece, name: "Invention No. 1 in C major", isArchived: false),
     Tag(id: "nocturne", kind: .piece, name: "Nocturne in E-flat major", isArchived: true),
     Tag(id: "pedalling", kind: .skill, name: "Pedalling", isArchived: false),

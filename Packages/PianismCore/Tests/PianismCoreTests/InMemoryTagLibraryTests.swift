@@ -21,13 +21,30 @@ struct InMemoryTagLibraryTests {
         #expect(library.tags().map(\.isArchived) == [false, false])
     }
 
-    @Test("ADR 0006: a read-only tag can't be renamed or archived, and an unknown ID changes nothing")
+    @Test("TAG-3: a piece's composer and target tempo are kept, and can be cleared")
+    func details() throws {
+        let library = InMemoryTagLibrary()
+        let ballade = library.add(name: "Ballade", kind: .piece)
+        #expect(ballade.composer.isEmpty && ballade.targetTempo == nil)
+
+        try library.setDetails(composer: "Chopin", targetTempo: 72, id: ballade.id)
+        #expect(library.tags().map(\.composer) == ["Chopin"])
+        #expect(library.tags().map(\.targetTempo) == [72])
+
+        try library.setDetails(composer: "", targetTempo: nil, id: ballade.id)
+        #expect(library.tags() == [ballade])
+    }
+
+    @Test("ADR 0006: a read-only tag can't be renamed, archived or given details, and an unknown ID changes nothing")
     func readOnlyAndUnknown() throws {
         let newer = PianismCore.Tag(id: "newer", kind: .piece, name: "Étude", isArchived: false, isReadOnly: true)
         let library = InMemoryTagLibrary([newer])
 
         #expect(throws: RecordFromNewerVersion.self) { try library.rename(id: "newer", to: "Etude") }
         #expect(throws: RecordFromNewerVersion.self) { try library.setArchived(true, id: "newer") }
+        #expect(throws: RecordFromNewerVersion.self) {
+            try library.setDetails(composer: "Chopin", targetTempo: 72, id: "newer")
+        }
         try library.rename(id: "unknown", to: "Etude")
         #expect(library.tags() == [newer])
     }

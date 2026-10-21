@@ -27,6 +27,13 @@ public final class InMemoryTagLibrary: TagLibrary {
         try change(id) { $0.isArchived = isArchived }
     }
 
+    public func setDetails(composer: String, targetTempo: Int?, id: Tag.ID) throws {
+        try change(id) {
+            $0.composer = composer
+            $0.targetTempo = targetTempo
+        }
+    }
+
     private func change(_ id: Tag.ID, _ apply: (inout Tag) -> Void) throws {
         try stored.withLock { tags in
             guard let index = tags.firstIndex(where: { $0.id == id }) else { return }
