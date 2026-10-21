@@ -55,6 +55,7 @@ Option 2 for both, plus the changes below.
 | `SessionRecord` | specify | `pauses` | `Data`, empty | JSON, `{"pauses": [...]}`, dates in `Date`'s own encoding (seconds since 2001), which round-trips exactly. An object, so it can gain keys. Empty means no pauses |
 | `SessionRecord` | specify | `note` | `String`, `""` | Encrypted in iCloud (`.allowsCloudEncryption`). See "Before the CloudKit deploy" |
 | `TagRecord` | add | `deletedAt` | `Date?`, `nil` | See "Before the CloudKit deploy" |
+| `SessionRecord` | change | `tagIDs` | `Data`, empty | A JSON array of strings, such as `["skill.scales"]`. Empty means none. See "Before the CloudKit deploy" |
 
 Corrected 2026-10-15 by the first store code: the `pauses` row first said `.secondsSince1970`. That
 loses the last bit of a fractional time, so a session stopped while paused could read back with its
@@ -63,7 +64,7 @@ it. "Duplicates from this device" first said saves go through one `ModelActor`; 
 without making the synchronous `SessionHistory` port async.
 
 **Before the CloudKit deploy** (amended 2026-10-20 by the owner, for SYN-1). The deploy freezes every
-record type and field, so three changes come first:
+record type and field, so four changes come first:
 
 - `note` is encrypted in iCloud, as the only field holding the user's own words. A field's encryption
   can't change once deployed, either way. Tag names and composers stay plain.
@@ -71,6 +72,11 @@ record type and field, so three changes come first:
   show. Tags are only archived today; with the field there now, a version that deletes them won't
   leave nameless tags showing in this one. A session keeps a deleted tag's ID, as it keeps one this
   device hasn't synced yet, and the screen leaves it out.
+- `tagIDs` becomes JSON, like `pauses`, rather than `[String]`. SwiftData stored the array as a keyed
+  archive (`NSSecureUnarchiveFromData`) whose bytes it chooses, and devices on different iOS versions
+  share these records. Core Data can't convert the type, so stores written before this change don't
+  open: only the owner's iPhone had history, and it is reinstalled. The fixture stores were replaced
+  once, and the one from before tags was retired.
 - iCloud keeps `startedAt` and `endedAt` to the millisecond but `pauses` exactly, so a pause can stick
   out of a synced session by less than a millisecond. Reading clamps each pause into the session;
   without that, a session stopped while paused would be hidden on the other device. Any pause outside
@@ -136,8 +142,8 @@ sets out. This is part of SYN-1, before the first TestFlight build.
 **Smaller fixes.**
 
 - Undoing a tag merge clears `mergedInto` and also unarchives the tag.
-- Each fixture store sets every field to a value other than its default, so a change in how
-  SwiftData stores `tagIDs`, or in how we encode `pauses`, fails a test.
+- Each fixture store sets every field to a value other than its default, so a change in how we
+  encode `tagIDs` or `pauses` fails a test.
 
 ## Consequences
 
