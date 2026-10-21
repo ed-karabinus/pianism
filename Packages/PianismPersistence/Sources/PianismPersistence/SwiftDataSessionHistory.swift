@@ -87,7 +87,7 @@ public final class SwiftDataSessionHistory: SessionHistory {
                 copy.deletedAt = now
                 copy.modifiedAt = max(now, copy.modifiedAt)
                 copy.note = ""
-                copy.tagIDs = []
+                copy.tagIDs = Data()
                 copy.version = HistoryStore.recordVersion  // mutate:ignore - the default until a release raises it
             }
             try context.save()
@@ -131,7 +131,7 @@ extension SessionRecord {
         endedAt = ended
         // A zone this OS doesn't know reads as none; an edit must keep it (ADR 0006).
         timeZoneID = session.timeZone?.identifier ?? timeZoneID
-        tagIDs = session.tagIDs
+        tagIDs = session.tagIDs.isEmpty ? Data() : try JSONEncoder().encode(session.tagIDs)
         note = session.note
         let stored = session.pauses.map { StoredPauses.Pause(start: $0.start, end: $0.end ?? ended) }
         pauses = stored.isEmpty ? Data() : try JSONEncoder().encode(StoredPauses(pauses: stored))
@@ -141,7 +141,7 @@ extension SessionRecord {
     /// rules as any other session.
     fileprivate func session() throws -> PracticeSession {
         var session = PracticeSession(id: id, startedAt: startedAt, timeZone: TimeZone(identifier: timeZoneID))
-        try session.setTags(tagIDs)
+        try session.setTags(tagIDs.isEmpty ? [] : try JSONDecoder().decode([String].self, from: tagIDs))
         // iCloud keeps `startedAt` and `endedAt` to the millisecond but `pauses` exactly, so a synced
         // pause can stick out of the session by less than that (ADR 0006).
         let within = { (date: Date) in min(max(date, self.startedAt), self.endedAt) }

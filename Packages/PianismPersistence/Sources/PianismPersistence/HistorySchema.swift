@@ -17,7 +17,8 @@ enum HistorySchemaV1: VersionedSchema {
         var endedAt: Date = Date.distantPast
         /// The pauses as JSON (``StoredPauses``); empty means none.
         var pauses: Data = Data()
-        var tagIDs: [String] = []
+        /// The tag IDs as a JSON array of strings; empty means none (ADR 0006).
+        var tagIDs: Data = Data()
         /// Encrypted in iCloud, as the user's own words; a field's encryption can't change after SYN-1 deploys it.
         @Attribute(.allowsCloudEncryption) var note: String = ""
         // periphery:ignore - schema v1; manual entries (SES-5) and MIDI (MIDI-1) set it
