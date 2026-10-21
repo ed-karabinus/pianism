@@ -8,7 +8,8 @@ import Testing
 @testable import PianismPersistence
 
 /// History stores as builds have written them to devices, opened with the current schema. Every build
-/// must open every fixture, or an update loses the user's history (ADR 0004). Never edit a fixture;
+/// must open every fixture, or an update loses the user's history (ADR 0004). The fixtures were replaced
+/// once, on 2026-10-20, when tag IDs became JSON while only the owner's iPhone had history (ADR 0006). Never edit one;
 /// when the schema changes, add one that sets every field to a value other than its default, so a
 /// change in how a field is stored fails a test (ADR 0006). Write it through `HistoryStore` from a
 /// scratch test, then run `sqlite3 <store> 'PRAGMA journal_mode=DELETE'`: until then, its records
@@ -24,19 +25,6 @@ final class HistoryStoreFormatTests {
         try? FileManager.default.removeItem(at: directory)
     }
 
-    @Test("TAG-1: a store written before tags existed, as on the owner's iPhone, still opens with its session")
-    func storeFromBeforeTagsOpens() throws {
-        let store = try open("history-before-tags")
-        let id = try #require(UUID(uuidString: "3F2B8C1E-7A4D-4E9B-8C2F-1D5A6B7C8E90"))
-        var expected = PracticeSession(id: id, startedAt: start, timeZone: vienna)
-        try expected.pause(at: start + 300.25)
-        try expected.resume(at: start + 360.5)
-        try expected.stop(at: start + 1_800.625)
-
-        #expect(try SwiftDataSessionHistory(store: store, clock: clock).sessions() == [expected])
-        #expect(try SwiftDataTagLibrary(store: store, clock: clock).tags().isEmpty)
-    }
-
     @Test("ADR 0006: a store with every field of schema v1 set reads back exactly, stored and through the adapters")
     func v1StoreReads() throws {
         let store = try open("history-v1")
@@ -49,17 +37,18 @@ final class HistoryStoreFormatTests {
         let pauses =
             #"{"pauses":[{"start":820454700.5,"end":820454760.75},{"start":820455300.375,"end":820455361.125}]}"#
         let tagIDs = [ballade, BuiltInSkill.scales.rawValue, pedalling]
+        let storedTagIDs = Data(#"["\#(ballade)","skill.scales","\#(pedalling)"]"#.utf8)
 
         // Every field in schema order. Two records have version 2, as sync from a newer app leaves them.
         let sessions = try context.fetch(FetchDescriptor<SessionRecord>(sortBy: [SortDescriptor(\.startedAt)]))
         #expect(
             sessions.map(\.fields) == [
                 [
-                    deleted, start - 86_400, start - 85_199.5, Data(), [String](), "", "timer", "America/Los_Angeles",
+                    deleted, start - 86_400, start - 85_199.5, Data(), Data(), "", "timer", "America/Los_Angeles",
                     start - 3_600, 2, start - 3_600,
                 ],
                 [
-                    live, start, start + 1_800.625, Data(pauses.utf8), tagIDs, "Left hand alone, slowly", "midi",
+                    live, start, start + 1_800.625, Data(pauses.utf8), storedTagIDs, "Left hand alone, slowly", "midi",
                     "Europe/Vienna", start + 1_805.5, 1, nil,
                 ],
             ])
@@ -125,7 +114,7 @@ final class HistoryStoreFormatTests {
                 "SessionRecord.pauses binary default",
                 "SessionRecord.source string default",
                 "SessionRecord.startedAt date default",
-                "SessionRecord.tagIDs transformable default NSSecureUnarchiveFromData",
+                "SessionRecord.tagIDs binary default",
                 "SessionRecord.timeZoneID string default",
                 "SessionRecord.version integer64 default",
                 "TagRecord.composer string default",
@@ -179,7 +168,7 @@ final class HistoryStoreFormatTests {
         let after = try #require(
             try ModelContext(store.container()).fetch(FetchDescriptor<SessionRecord>()).first { $0.id == live })
         var expected = before
-        expected[4] = [String]()
+        expected[4] = Data()
         expected[5] = ""
         // The fixture's change is later than this clock, so it stays the latest.
         expected[10] = clock.now

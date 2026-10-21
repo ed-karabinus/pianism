@@ -151,12 +151,14 @@ final class SwiftDataSessionHistoryTests {
         let copied = UUID()
         try insertRecord(in: history, id: copied, endingAfter: 600, modifiedAfter: 1, pauses: unreadable)
         try insertRecord(in: history, id: copied, endingAfter: 600, modifiedAfter: 2, pauses: unreadable)
+        // Unreadable tags hide a session too, so an edit can't save it without them on every device.
+        try insertRecord(in: history, id: UUID(), endingAfter: 600, modifiedAfter: 1, tagIDs: unreadable)
         // A deleted session isn't missing, so it isn't counted.
         try insertRecord(
             in: history, id: UUID(), endingAfter: 600, modifiedAfter: 1, isDeleted: true, pauses: unreadable)
 
         #expect(try history.sessions() == [session])
-        #expect(try history.unshowableCount() == 2)
+        #expect(try history.unshowableCount() == 3)
     }
 
     @Test("HIS-1: the end-to-end tests' unshowable sessions are skipped and counted, as a newer version's would be")
@@ -294,7 +296,7 @@ final class SwiftDataSessionHistoryTests {
         let stored = try #require(
             try ModelContext(history.store.container()).fetch(FetchDescriptor<SessionRecord>()).first)
         #expect([stored.note, stored.source, stored.timeZoneID] == ["Left hand alone", "midi", "Mars/Olympus_Mons"])
-        #expect(stored.tagIDs == ["skill.scales"])
+        #expect(stored.tagIDs == Data(#"["skill.scales"]"#.utf8))
     }
 
     @Test("ADR 0006: an edit changes the copy that shows and keeps it the latest, even with this clock behind")
@@ -383,7 +385,8 @@ final class SwiftDataSessionHistoryTests {
     /// Inserts a record as sync would deliver it, bypassing `save`.
     private func insertRecord(
         in history: SwiftDataSessionHistory, id: UUID, endingAfter seconds: TimeInterval,
-        modifiedAfter modified: TimeInterval, isDeleted: Bool = false, pauses: Data = Data(), version: Int = 1
+        modifiedAfter modified: TimeInterval, isDeleted: Bool = false, pauses: Data = Data(), tagIDs: Data = Data(),
+        version: Int = 1
     ) throws {
         let context = ModelContext(try history.store.container())
         let record = SessionRecord()
@@ -391,6 +394,7 @@ final class SwiftDataSessionHistoryTests {
         record.startedAt = clock.now
         record.endedAt = clock.now + seconds
         record.pauses = pauses
+        record.tagIDs = tagIDs
         record.modifiedAt = clock.now + modified
         record.deletedAt = isDeleted ? clock.now + modified : nil
         record.version = version

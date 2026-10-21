@@ -64,7 +64,7 @@ the day it started.**
 | `startedAt`, `endedAt` | `Date`, `.distantPast` | |
 | `pauses` | `Data`, empty | Encoded `[Pause]`; read and written as a whole |
 | `practicedSeconds` | `Double`, `0` | Derived from the timestamps on every save, so totals are a sum |
-| `tagIDs` | `[String]`, `[]` | See "Tags by ID" |
+| `tagIDs` | `Data`, empty (JSON, amended by ADR 0006) | See "Tags by ID" |
 | `note` | `String`, `""` | SES-5 |
 | `source` | `String`, `"timer"` | `timer`, `manual` (SES-5) or `midi` (MIDI-1) |
 | `modifiedAt` | `Date`, `.distantPast` | Breaks ties between duplicates |
@@ -166,7 +166,7 @@ queries need, and makes every record opaque in the CloudKit dashboard.
   unreliable, a list can fall back to `@Query` in its view, mapping records to core values before
   any rule runs. The core doesn't change.
 - Bad: "sessions for this piece" (HIS-4, M4) filters `tagIDs` in memory, because SwiftData
-  predicates can't look inside an array attribute. At a few thousand sessions, that is milliseconds.
+  predicates can't look inside the stored JSON. At a few thousand sessions, that is milliseconds.
   The same pass resolves merged tags. The NFR performance test will measure it.
 - Bad: two devices that add the same piece before syncing still get two pieces, until the user
   merges them. The merge screen is a separate story, proposed as TAG-4 alongside HIS-4 in M4. Until
