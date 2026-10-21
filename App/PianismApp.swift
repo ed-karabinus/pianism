@@ -83,6 +83,7 @@ struct PianismApp: App {
             // End-to-end tests have another device's changes arrive while the app is open with
             // PIANISM_SYNC_ARRIVES_SECONDS: after that long a piece, and after as long again a 30-minute session
             // tagged with it, each saved through a second store on the same file, as an iCloud import saves them.
+            // It runs on the main actor, like the rest of launch.
             if let seconds = environment["PIANISM_SYNC_ARRIVES_SECONDS"].flatMap(Double.init) {
                 Task { [clock, historyURL] in
                     let elsewhere = HistoryStore(url: historyURL)

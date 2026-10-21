@@ -356,17 +356,21 @@ final class PracticeTests: UITestCase {
 
     /// SYN-1: what iCloud brings from another device shows while the app is open, with no relaunch: a piece in
     /// the open tag picker, then a session tagged with it in the open History. A Debug switch saves them through a
-    /// second store on the same file, as an iCloud import does, 8 and 16 seconds after launch.
+    /// second store on the same file, as an iCloud import does, 15 and 30 seconds after launch. Each screen is checked
+    /// empty first, so a slow launch fails here rather than passing on the screen's own refresh as it opens.
     @MainActor
     func testChangesFromAnotherDeviceShowWhileOpen() throws {
-        let app = launch(at: start, reset: true, syncArrivesSeconds: 8)
+        let app = launch(at: start, reset: true, syncArrivesSeconds: 15)
         tap(app, "practice.start")
         tap(app, "practice.tags")
+        XCTAssertTrue(app.buttons["tags.done"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Synced piece"].exists, "The piece arrived before the picker opened")
         XCTAssertTrue(app.buttons["Synced piece"].waitForExistence(timeout: 30), "The piece didn't show")
         tap(app, "tags.done")
         openHistory(app)
         let synced = app.descendants(matching: .any).matching(identifier: "history.session")
             .matching(NSPredicate(format: "label ENDSWITH 'Synced piece'")).firstMatch
+        XCTAssertFalse(synced.exists, "The session arrived before History opened")
         XCTAssertTrue(synced.waitForExistence(timeout: 30), "The session didn't show")
         attachScreenshot(of: app, named: "History, with a session from another device")
     }
