@@ -847,6 +847,7 @@ final class PracticeTests: UITestCase {
 
     /// Shows `row`'s swipe actions with a press, then a drag halfway across, rather than a full swipe. A busy
     /// simulator can read swipeLeft as a tap, which would open or toggle the row instead.
+    @MainActor
     private func revealSwipeActions(_ row: XCUIElement) {
         XCTAssertTrue(row.waitForExistence(timeout: 5), "No row to swipe")
         row.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
