@@ -42,9 +42,11 @@ Option 2.
   2. Development lists only `Users`, or is reset (`xcrun cktool reset-schema`).
   3. A Debug build launched with `PIANISM_INIT_CLOUDKIT_SCHEMA=1` on a simulator signed into iCloud
      creates the schema (`initializeCloudKitSchema()`, as Apple's sample does). If iCloud takes over
-     30 seconds, Core Data gives up and the app stops; launching it again is safe.
+     30 seconds, Core Data gives up (error 134060) and the app stops; launching it again is safe.
   4. `xcrun cktool export-schema` of Development, reduced by `scripts/cloudkit-fields.sh`, matches the
-     fields file. Each difference is explained on #15, and a reviewer signs off.
+     fields file. Each difference is explained on #15, and a reviewer signs off. Core Data adds
+     `CD_moveReceipt` (and its `_ckAsset`) to every mirrored record type, so the file lists it
+     though no attribute maps to it.
   5. Two signed-in simulators sync real records, with every field set, and the export still matches.
   6. The owner deploys in CloudKit Console. Production's export must equal Development's, and is kept
      as `docs/cloudkit/schema-v1.ckdb`.
