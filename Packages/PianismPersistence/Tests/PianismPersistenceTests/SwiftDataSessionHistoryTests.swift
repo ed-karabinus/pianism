@@ -37,11 +37,16 @@ final class SwiftDataSessionHistoryTests {
         #expect(Set(try reopened.sessions()) == [paused, plain])
     }
 
-    @Test(
-        "SYN-1: once open, the store reports a save from elsewhere, as an iCloud import makes", .timeLimit(.minutes(1)))
+    @Test("SYN-1: opening the store opens it now, so sync starts at launch rather than at first use")
+    func openOpensNow() {
+        HistoryStore(url: storeURL).open()
+
+        #expect(FileManager.default.fileExists(atPath: storeURL.path()))
+    }
+
+    @Test("SYN-1: a save to the store from elsewhere, as an iCloud import makes, is reported", .timeLimit(.minutes(1)))
     func changeFromElsewhereIsReported() async throws {
         let store = HistoryStore(url: storeURL)
-        store.open()
         var changes = store.changes.makeAsyncIterator()
 
         var session = PracticeSession(startedAt: clock.now)
