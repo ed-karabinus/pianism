@@ -41,7 +41,8 @@ Option 2.
      CloudKit will see it, and checks that `docs/cloudkit/schema-v1-fields.txt` names each one.
   2. Development lists only `Users`, or is reset (`xcrun cktool reset-schema`).
   3. A Debug build launched with `PIANISM_INIT_CLOUDKIT_SCHEMA=1` on a simulator signed into iCloud
-     creates the schema (`initializeCloudKitSchema()`, as Apple's sample does).
+     creates the schema (`initializeCloudKitSchema()`, as Apple's sample does). If iCloud takes over
+     30 seconds, Core Data gives up and the app stops; launching it again is safe.
   4. `xcrun cktool export-schema` of Development, reduced by `scripts/cloudkit-fields.sh`, matches the
      fields file. Each difference is explained on #15, and a reviewer signs off.
   5. Two signed-in simulators sync real records, with every field set, and the export still matches.
