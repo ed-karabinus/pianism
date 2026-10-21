@@ -7,5 +7,20 @@
 	<array>
 		<string>group.com.edkarabinus.Pianism</string>
 	</array>
+	<!-- iCloud sync of history (SYN-1, #15): the private CloudKit database, and the pushes that announce
+	     its changes. Debug builds use the Development environment and Release builds Production, so real
+	     history never lands where the schema is tried out. -->
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.edkarabinus.Pianism</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+	</array>
+	<key>com.apple.developer.icloud-container-environment</key>
+	<string>$(PIANISM_CLOUDKIT_ENVIRONMENT)</string>
+	<key>aps-environment</key>
+	<string>development</string>
 </dict>
 </plist>

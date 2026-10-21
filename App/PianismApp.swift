@@ -29,12 +29,14 @@ struct PianismApp: App {
         // Finished sessions wait here while history can't save them (ADR 0007). Only the app moves
         // sessions into history, so this stays out of the App Group.
         let outboxURL = URL.applicationSupportDirectory.appending(path: "Outbox")
+        // Sync stays off in Release until the schema is deployed to CloudKit's Production environment (SYN-1).
+        var cloudKitContainer: String?
         #if DEBUG
             // End-to-end tests fix the time with PIANISM_NOW (seconds since 1970), shorten the nudge and the cap
             // with PIANISM_NUDGE_SECONDS and PIANISM_CAP_SECONDS, start with no running session, history, outbox
-            // or settings with PIANISM_RESET=1, make the history fail to open with PIANISM_BREAK_HISTORY=1, and
-            // add sessions this version can't show with PIANISM_UNSHOWABLE_SESSIONS (a count). Release builds
-            // ignore all six.
+            // or settings with PIANISM_RESET=1, make the history fail to open with PIANISM_BREAK_HISTORY=1,
+            // add sessions this version can't show with PIANISM_UNSHOWABLE_SESSIONS (a count), and sync with
+            // iCloud's Development environment with PIANISM_SYNC=1. Release builds ignore all seven.
             let environment = ProcessInfo.processInfo.environment
             if let seconds = environment["PIANISM_NOW"].flatMap(TimeInterval.init) {
                 clock = FixedClock(now: Date(timeIntervalSince1970: seconds))
@@ -54,9 +56,12 @@ struct PianismApp: App {
             if environment["PIANISM_BREAK_HISTORY"] == "1" {
                 historyURL = URL(filePath: "/dev/null/History.store")
             }
+            if environment["PIANISM_SYNC"] == "1" {
+                cloudKitContainer = "iCloud.com.edkarabinus.Pianism"
+            }
         #endif
         // One store for both, so sessions and the tags they name are kept, and later synced, together.
-        let historyStore = HistoryStore(url: historyURL)
+        let historyStore = HistoryStore(url: historyURL, cloudKitContainer: cloudKitContainer)
         #if DEBUG
             if let count = environment["PIANISM_UNSHOWABLE_SESSIONS"].flatMap(Int.init) {
                 try? historyStore.addUnshowableSessions(count)

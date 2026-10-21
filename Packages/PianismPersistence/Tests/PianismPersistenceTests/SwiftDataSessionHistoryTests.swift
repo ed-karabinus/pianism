@@ -183,6 +183,16 @@ final class SwiftDataSessionHistoryTests {
         #expect(try history.sessions().isEmpty)
     }
 
+    @Test("SYN-1: the store syncs through the private database of the iCloud container it's given, and only then")
+    func syncsOnlyThroughAGivenContainer() {
+        let synced = HistoryStore(url: storeURL, cloudKitContainer: "iCloud.com.example.Test").configuration
+        let local = HistoryStore(url: storeURL).configuration
+
+        #expect(synced.cloudKitContainerIdentifier == "iCloud.com.example.Test")
+        #expect(synced.url == storeURL)
+        #expect(local.cloudKitContainerIdentifier == nil)
+    }
+
     @Test("ADR 0007: a store that couldn't open opens on a later call, once the cause is gone")
     func opensOnceTheCauseIsGone() throws {
         var session = PracticeSession(startedAt: clock.now)

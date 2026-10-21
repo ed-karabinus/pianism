@@ -7,3 +7,5 @@ GCC_PREPROCESSOR_DEFINITIONS = DEBUG=1 $(inherited)
 ONLY_ACTIVE_ARCH = YES
 ENABLE_TESTABILITY = YES
 DEBUG_INFORMATION_FORMAT = dwarf
+// The CloudKit environment this build syncs with (SYN-1; see Pianism.entitlements).
+PIANISM_CLOUDKIT_ENVIRONMENT = Development

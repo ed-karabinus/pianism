@@ -662,6 +662,9 @@ final class PracticeTests: UITestCase {
         largestText: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
+        // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
+        // work as before, with no sign-in prompt (SYN-1).
+        app.launchEnvironment["PIANISM_SYNC"] = "1"
         if largestText {
             app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         }
