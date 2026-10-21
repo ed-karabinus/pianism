@@ -70,7 +70,8 @@ record type and field, so four changes come first:
 - `note` is encrypted in iCloud, as the only field holding the user's own words. A field's encryption
   can't change once deployed, either way. Tag names and composers stay plain.
   Amended 2026-10-21 by the owner (#15): tag names and composers are encrypted too. People type
-  anything into them, and only encrypted fields become end-to-end under Advanced Data Protection.
+  anything into them, and only encrypted fields and assets become end-to-end under Advanced Data
+  Protection.
   IDs, kinds, dates and tag IDs stay plain, so CloudKit Console can still show what synced.
 - `TagRecord` gains `deletedAt`, under the same rule as sessions: an ID with any deleted copy doesn't
   show. Tags are only archived today; with the field there now, a version that deletes them won't

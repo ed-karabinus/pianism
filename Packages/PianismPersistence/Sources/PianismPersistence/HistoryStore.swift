@@ -77,7 +77,7 @@ public final class HistoryStore: Sendable {
 
         /// Debug only: creates schema v1's record types and fields in the Development environment of
         /// `cloudKitContainer`, from a scratch store, ready to check and deploy (SYN-1, ADR 0008). It needs
-        /// an iCloud account, so the owner runs it on a signed-in simulator.
+        /// an iCloud account, so the owner runs it on a device signed into iCloud (ADR 0008, step 3).
         public static func initializeCloudKitSchema(cloudKitContainer: String) throws {
             guard let model = NSManagedObjectModel.makeManagedObjectModel(for: HistorySchemaV1.models) else {
                 preconditionFailure("Schema v1 has no Core Data model")
