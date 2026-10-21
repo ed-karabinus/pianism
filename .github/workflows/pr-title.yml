@@ -1,0 +1,26 @@
+name: PR title
+
+# Pull request titles become main's commits (only squash merges are allowed), so they follow
+# Conventional Commits with the requirement ID as the scope, as CLAUDE.md's Workflow says. A workflow
+# of its own, so that editing a title doesn't restart CI.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  title:
+    name: Conventional title
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check the title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat\([A-Z]+-[A-Z0-9]+\)|fix(\([A-Z]+-[A-Z0-9]+\))?|build|chore|ci|docs|perf|refactor|revert|test)!?: [A-Z]'
+          if [[ ! "$TITLE" =~ $pattern ]]; then
+            echo "::error::\"$TITLE\" should look like \"feat(SYN-1): Store tag IDs as JSON\" or \"ci: Retry the Linux build\" (CLAUDE.md, Workflow)."
+            exit 1
+          fi
