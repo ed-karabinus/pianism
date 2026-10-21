@@ -41,8 +41,8 @@ public final class HistoryStore: Sendable {
             .map { _ in () }
     }
 
-    /// Whether iCloud can't sync this store, with no account, a restricted one or one that isn't ready, as it is
-    /// now and after each change to the account (SYN-1). A store that doesn't sync says nothing.
+    /// Whether iCloud can't sync this store, with no account or one that isn't ready, as it is now and after each
+    /// change to the account (SYN-1). A store that doesn't sync says nothing.
     public var notSyncing: AsyncStream<Bool> {
         guard let cloudKitContainer else { return AsyncStream { $0.finish() } }
         // Held by the check, as the account-changed notification comes only while a container exists.
@@ -68,8 +68,10 @@ public final class HistoryStore: Sendable {
     private static func isNotSyncing(_ status: () async throws -> CKAccountStatus) async -> Bool {
         do {
             switch try await status() {
-            case .noAccount, .restricted, .temporarilyUnavailable: return true
+            case .noAccount, .temporarilyUnavailable: return true
             case .available: return false
+            // Whoever restricted the device chose this, and the person using it can't sign in.
+            case .restricted: return false
             // Can't tell: saying nothing beats a wrong notice.
             case .couldNotDetermine: return false
             @unknown default: return false

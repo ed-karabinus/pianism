@@ -18,9 +18,9 @@ struct HistoryStoreSyncTests {
     }
 
     @Test(
-        "SYN-1: with no iCloud account, a restricted one or one not ready, the store says it isn't syncing",
+        "SYN-1: with no iCloud account or one not ready, the store says it isn't syncing; restricted, it says nothing",
         arguments: [
-            (CKAccountStatus.noAccount, true), (.restricted, true), (.temporarilyUnavailable, true),
+            (CKAccountStatus.noAccount, true), (.restricted, false), (.temporarilyUnavailable, true),
             (.available, false), (.couldNotDetermine, false),
         ])
     func statusSaysWhetherSyncing(status: CKAccountStatus, isNotSyncing: Bool) async {

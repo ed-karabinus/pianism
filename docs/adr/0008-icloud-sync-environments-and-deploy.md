@@ -36,7 +36,8 @@ Option 2.
   changes from other devices arrive within seconds.
 - **Signing out.** When a device signs out of iCloud, or turns iCloud off for Pianism, Apple's sync
   removes the synced history from that device. It comes back on sign-in. History says it isn't syncing
-  while there's no account, it's restricted or it isn't ready; what Pianism's own iCloud switch reports
+  while there's no account or it isn't ready, but not when the device is restricted, as the person
+  using it can't sign in; what Pianism's own iCloud switch reports
   is checked on a device (device checklist).
 - **The deploy,** done once for schema v1 and the same way for any later change:
   1. The snapshot test in `HistoryStoreFormatTests` is green on main. It lists every attribute as
