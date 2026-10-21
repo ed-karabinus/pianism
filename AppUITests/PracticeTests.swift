@@ -613,6 +613,20 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "History, one session, not syncing")
     }
 
+    /// SYN-1: at the largest text size, empty History scrolls, so the not-syncing notice can be read in full above
+    /// the tab bar.
+    @MainActor
+    func testNotSyncingNoticeScrollsAtLargestText() throws {
+        let app = launch(at: start, reset: true, largestText: true)
+        openHistory(app)
+        let notice = element(app, "history.not-syncing")
+        XCTAssertTrue(notice.waitForExistence(timeout: 10), "No notice")
+        app.swipeUp()
+        XCTAssertLessThanOrEqual(
+            notice.frame.maxY, app.tabBars.firstMatch.frame.minY, "The notice stays under the tab bar")
+        attachScreenshot(of: app, named: "History, not syncing, largest text")
+    }
+
     /// HIS-1, ADR 0006: saved sessions this version can't show, such as ones a newer version wrote, are counted
     /// with a request to update, rather than left out silently or called no practice.
     @MainActor

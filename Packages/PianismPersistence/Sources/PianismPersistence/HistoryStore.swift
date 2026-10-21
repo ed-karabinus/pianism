@@ -69,8 +69,9 @@ public final class HistoryStore: Sendable {
         do {
             switch try await status() {
             case .noAccount, .restricted, .temporarilyUnavailable: return true
+            case .available: return false
             // Can't tell: saying nothing beats a wrong notice.
-            case .available, .couldNotDetermine: return false
+            case .couldNotDetermine: return false
             @unknown default: return false
             }
         } catch {
