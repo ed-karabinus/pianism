@@ -24,6 +24,21 @@ public final class HistoryStore: Sendable {
         self.cloudKitContainer = cloudKitContainer
     }
 
+    /// Opens the store now rather than at first use, so iCloud sync starts at launch (SYN-1). If it can't, the
+    /// first use reports why (ADR 0007).
+    public func open() {
+        _ = try? container()
+    }
+
+    /// Fires after each save to this store once it has opened, by this app or by an iCloud import (SYN-1).
+    /// Whatever runs on it must only read, or each change would cause another.
+    public var changes: some AsyncSequence<Void, Never> {
+        let url = url.standardizedFileURL
+        return NotificationCenter.default.notifications(named: .NSPersistentStoreRemoteChange)
+            .filter { ($0.userInfo?[NSPersistentStoreURLKey] as? URL)?.standardizedFileURL == url }
+            .map { _ in () }
+    }
+
     var configuration: ModelConfiguration {
         ModelConfiguration(url: url, cloudKitDatabase: cloudKitContainer.map { .private($0) } ?? .none)
     }

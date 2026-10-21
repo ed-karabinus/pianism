@@ -27,6 +27,24 @@ struct HistoryModelTests {
         #expect(!model.loadFailed)
     }
 
+    @Test("SYN-1: a session open for editing shows a tag renamed elsewhere once History refreshes")
+    func openEditorShowsRenamedTag() throws {
+        let library = InMemoryTagLibrary([Tag(id: "ballade", kind: .piece, name: "Ballade No. 1", isArchived: false)])
+        var session = PracticeSession(startedAt: clock.now)
+        try session.setTags(["ballade"])
+        try session.stop(at: clock.now + 600)
+        let history = InMemorySessionHistory()
+        history.save(session)
+        let model = HistoryModel(history: history, tags: library, outbox: outbox, clock: clock)
+        model.refresh()
+        model.edit(session)
+
+        try library.rename(id: "ballade", to: "Ballade No. 2")
+        model.refresh()
+
+        #expect(model.editing?.tags.selected.map(\.name) == ["Ballade No. 2"])
+    }
+
     @Test("ADR 0007: while history can't load, waiting sessions still show, and the failure clears once it loads")
     func waitingShowDuringFailure() throws {
         let history = FlakyHistory()

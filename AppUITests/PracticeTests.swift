@@ -354,6 +354,23 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "History, tagged and untagged")
     }
 
+    /// SYN-1: what iCloud brings from another device shows while the app is open, with no relaunch: a piece in
+    /// the open tag picker, then a session tagged with it in the open History. A Debug switch saves them through a
+    /// second store on the same file, as an iCloud import does, 8 and 16 seconds after launch.
+    @MainActor
+    func testChangesFromAnotherDeviceShowWhileOpen() throws {
+        let app = launch(at: start, reset: true, syncArrivesSeconds: 8)
+        tap(app, "practice.start")
+        tap(app, "practice.tags")
+        XCTAssertTrue(app.buttons["Synced piece"].waitForExistence(timeout: 30), "The piece didn't show")
+        tap(app, "tags.done")
+        openHistory(app)
+        let synced = app.descendants(matching: .any).matching(identifier: "history.session")
+            .matching(NSPredicate(format: "label ENDSWITH 'Synced piece'")).firstMatch
+        XCTAssertTrue(synced.waitForExistence(timeout: 30), "The session didn't show")
+        attachScreenshot(of: app, named: "History, with a session from another device")
+    }
+
     /// SES-5, TAG-2: a finished session is tagged, ended 5 minutes earlier and given a note from History,
     /// which shows the tags and the shorter practice time once the edit is saved. It's all stored, so
     /// it's still there after the app is killed and relaunched.
@@ -659,7 +676,7 @@ final class PracticeTests: UITestCase {
     private func launch(
         at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, unshowableSessions: Int? = nil,
         undoSeconds: Int? = nil, nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false,
-        largestText: Bool = false
+        largestText: Bool = false, syncArrivesSeconds: Int? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -688,6 +705,9 @@ final class PracticeTests: UITestCase {
         }
         if breakHistory {
             app.launchEnvironment["PIANISM_BREAK_HISTORY"] = "1"
+        }
+        if let syncArrivesSeconds {
+            app.launchEnvironment["PIANISM_SYNC_ARRIVES_SECONDS"] = String(syncArrivesSeconds)
         }
         if let unshowableSessions {
             app.launchEnvironment["PIANISM_UNSHOWABLE_SESSIONS"] = String(unshowableSessions)

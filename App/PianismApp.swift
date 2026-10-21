@@ -16,6 +16,7 @@ struct PianismApp: App {
     @State private var practice: PracticeModel
     @State private var tags: TagPickerModel
     @State private var history: HistoryModel
+    private let historyStore: HistoryStore
 
     init() {
         guard let store = FileRunningSessionStore(appGroup: Self.appGroup) else {
@@ -39,7 +40,8 @@ struct PianismApp: App {
             // or settings with PIANISM_RESET=1, make the history fail to open with PIANISM_BREAK_HISTORY=1,
             // add sessions this version can't show with PIANISM_UNSHOWABLE_SESSIONS (a count), and sync with
             // iCloud's Development environment with PIANISM_SYNC=1. The owner creates the CloudKit schema there
-            // with PIANISM_INIT_CLOUDKIT_SCHEMA=1 (ADR 0008). Release builds ignore all eight.
+            // with PIANISM_INIT_CLOUDKIT_SCHEMA=1 (ADR 0008). Release builds ignore all nine, the last one
+            // below.
             let environment = ProcessInfo.processInfo.environment
             if let seconds = environment["PIANISM_NOW"].flatMap(TimeInterval.init) {
                 clock = FixedClock(now: Date(timeIntervalSince1970: seconds))
@@ -72,9 +74,27 @@ struct PianismApp: App {
         #endif
         // One store for both, so sessions and the tags they name are kept, and later synced, together.
         let historyStore = HistoryStore(url: historyURL, cloudKitContainer: cloudKitContainer)
+        historyStore.open()
+        self.historyStore = historyStore
         #if DEBUG
             if let count = environment["PIANISM_UNSHOWABLE_SESSIONS"].flatMap(Int.init) {
                 try? historyStore.addUnshowableSessions(count)
+            }
+            // End-to-end tests have another device's changes arrive while the app is open with
+            // PIANISM_SYNC_ARRIVES_SECONDS: after that long a piece, and after as long again a 30-minute session
+            // tagged with it, each saved through a second store on the same file, as an iCloud import saves them.
+            if let seconds = environment["PIANISM_SYNC_ARRIVES_SECONDS"].flatMap(Double.init) {
+                Task { [clock, historyURL] in
+                    let elsewhere = HistoryStore(url: historyURL)
+                    try? await Task.sleep(for: .seconds(seconds))
+                    let piece = try? SwiftDataTagLibrary(store: elsewhere, clock: clock)
+                        .add(name: "Synced piece", kind: .piece)
+                    try? await Task.sleep(for: .seconds(seconds))
+                    var session = PracticeSession(startedAt: clock.now - 30 * 60)
+                    try? session.setTags(piece.map { [$0.id] } ?? [])
+                    try? session.stop(at: clock.now)
+                    try? SwiftDataSessionHistory(store: elsewhere, clock: clock).save(session)
+                }
             }
         #endif
         let sessions = SwiftDataSessionHistory(store: historyStore, clock: clock)
@@ -113,6 +133,14 @@ struct PianismApp: App {
     var body: some Scene {
         WindowGroup {
             RootView(practice: practice, tags: tags, history: history)
+                // Shows what iCloud brings from the user's other devices while the app is open (SYN-1). Practice
+                // shows nothing synced but tag names, which the picker refreshes.
+                .task {
+                    for await _ in historyStore.changes {
+                        history.refresh()
+                        tags.refresh()
+                    }
+                }
         }
     }
 }
