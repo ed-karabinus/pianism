@@ -126,6 +126,8 @@ compared with these tables. This is part of SYN-1, before the first TestFlight b
 - Good: an older version can't damage newer data, and the rule is one comparison rather than a
   discipline every later version has to keep.
 - Bad: on an older version, records a newer one wrote are read-only until the user updates.
+- Bad: a record this version can't rebuild at all, newer or damaged, can't be shown, even read-only.
+  History counts such sessions and asks the user to update (HIS-1, #65, 2026-10-20).
 - Bad: every deleted session leaves an empty record of a few bytes, forever.
 - Bad: `timeZoneID` is stored before anything uses it.
 - Bad: when two devices edit the same session before syncing, one edit can be lost. SYN-1 will show

@@ -196,6 +196,9 @@
     "Yesterday" : {
 
     },
+    "^[%lld session](inflect: true) couldn't be shown. Try updating Pianism." : {
+
+    },
     "^[%lld session](inflect: true) waiting to be saved" : {
 
     }

@@ -46,6 +46,19 @@ struct HistoryModelTests {
         #expect(!model.loadFailed)
     }
 
+    @Test("HIS-1, ADR 0006: History counts saved sessions it can't show, beside those it can")
+    func countsUnshowable() throws {
+        let history = InMemorySessionHistory(unshowable: 2)
+        let session = try endedSession(startingAfter: 0)
+        history.save(session)
+        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+
+        model.refresh()
+
+        #expect(model.days.flatMap(\.sessions) == [session])
+        #expect(model.unshowableCount == 2)
+    }
+
     @Test("ADR 0007: an outbox that can't be read doesn't hide the saved history")
     func unreadableOutboxKeepsHistory() throws {
         let history = InMemorySessionHistory()
@@ -409,6 +422,7 @@ private struct UndeletableHistory: SessionHistory {
     let saved = InMemorySessionHistory()
 
     func sessions() -> [PracticeSession] { saved.sessions() }
+    func unshowableCount() -> Int { 0 }
     func save(_ session: PracticeSession) { saved.save(session) }
     func canEdit(id: UUID) -> Bool { saved.canEdit(id: id) }
     func edit(_ session: PracticeSession) throws { try saved.edit(session) }

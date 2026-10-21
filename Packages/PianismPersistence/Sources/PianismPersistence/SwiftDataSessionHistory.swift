@@ -18,20 +18,31 @@ public final class SwiftDataSessionHistory: SessionHistory {
         self.clock = clock
     }
 
-    /// Each ID once, as its latest change, leaving out an ID with any deleted record (ADR 0004,
-    /// 0006). A record that can't be rebuilt is left out too, so it can't hide the rest.
     public func sessions() throws -> [PracticeSession] {
+        try read().sessions
+    }
+
+    public func unshowableCount() throws -> Int {
+        try read().unshowable
+    }
+
+    /// Each ID once, as its latest change, leaving out an ID with any deleted record (ADR 0004,
+    /// 0006). A record that can't be rebuilt is left out too, so it can't hide the rest, and counted.
+    private func read() throws -> (sessions: [PracticeSession], unshowable: Int) {
         let records = try ModelContext(store.container()).fetch(FetchDescriptor<SessionRecord>())
-        return Dictionary(grouping: records, by: \.id).values.compactMap { duplicates in
+        var unshowable = 0
+        let sessions = Dictionary(grouping: records, by: \.id).values.compactMap { duplicates -> PracticeSession? in
             guard let latest = Self.shown(among: duplicates) else { return nil }
             do {
                 return try latest.session()
             } catch {
                 logger.error(  // mutate:ignore - a log line; no test reads logs
                     "Skipped session \(latest.id, privacy: .public): it can't be rebuilt: \(error)")
+                unshowable += 1
                 return nil
             }
         }
+        return (sessions, unshowable)
     }
 
     public func save(_ session: PracticeSession) throws {

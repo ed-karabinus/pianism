@@ -409,6 +409,8 @@ struct RefusingHistory: SessionHistory {
         saved.sessions()
     }
 
+    func unshowableCount() -> Int { 0 }
+
     func save(_ session: PracticeSession) throws {
         if session.id == refusing {
             if asOutage { throw FlakyHistory.Failure() } else { throw SessionRefused() }

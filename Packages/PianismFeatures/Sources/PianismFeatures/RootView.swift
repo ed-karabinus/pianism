@@ -73,6 +73,7 @@ enum AccessibilityID {
     static let tagsDone = "tags.done"
     static let historyEmpty = "history.empty"
     static let historyUnavailable = "history.unavailable"
+    static let historyUnshowable = "history.unshowable"
     static let historyDay = "history.day"
     static let historySession = "history.session"
     static let historyAdd = "history.add"
