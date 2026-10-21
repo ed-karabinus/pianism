@@ -142,10 +142,13 @@ extension SessionRecord {
     fileprivate func session() throws -> PracticeSession {
         var session = PracticeSession(id: id, startedAt: startedAt, timeZone: TimeZone(identifier: timeZoneID))
         try session.setTags(tagIDs)
+        // iCloud keeps `startedAt` and `endedAt` to the millisecond but `pauses` exactly, so a synced
+        // pause can stick out of the session by less than that (ADR 0006).
+        let within = { (date: Date) in min(max(date, self.startedAt), self.endedAt) }
         if !pauses.isEmpty {
             for pause in try JSONDecoder().decode(StoredPauses.self, from: pauses).pauses {
-                try session.pause(at: pause.start)
-                try session.resume(at: pause.end)
+                try session.pause(at: within(pause.start))
+                try session.resume(at: within(pause.end))
             }
         }
         try session.stop(at: endedAt)

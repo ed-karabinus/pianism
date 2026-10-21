@@ -51,6 +51,26 @@ final class SwiftDataSessionHistoryTests {
         #expect(try history.sessions() == [session])
     }
 
+    @Test("SYN-1, ADR 0006: a session whose times iCloud kept to the millisecond still reads, its pauses inside it")
+    func pausesStayInsideMillisecondTimes() throws {
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
+        let id = UUID()
+        // A pause from the very start, and one the session stopped in, each 0.4 ms outside the synced times.
+        let pauses = StoredPauses(pauses: [
+            .init(start: clock.now - 0.000_4, end: clock.now + 10),
+            .init(start: clock.now + 595, end: clock.now + 600.000_4),
+        ])
+        try insertRecord(
+            in: history, id: id, endingAfter: 600, modifiedAfter: 1, pauses: try JSONEncoder().encode(pauses))
+
+        var expected = PracticeSession(id: id, startedAt: clock.now)
+        try expected.pause(at: clock.now)
+        try expected.resume(at: clock.now + 10)
+        try expected.pause(at: clock.now + 595)
+        try expected.stop(at: clock.now + 600)
+        #expect(try history.sessions() == [expected])
+    }
+
     @Test("ADR 0004: saving the same session again, even from many tasks at once, keeps one record")
     func savingTwiceKeepsOne() async throws {
         var ended = PracticeSession(startedAt: clock.now)
