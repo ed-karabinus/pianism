@@ -1,6 +1,7 @@
 # 4. Finished sessions and tags in SwiftData, mapped to core values and synced through CloudKit
 
-- Status: accepted; schema v1 and some rules amended by [ADR 0006](0006-schema-v1-before-deploy.md)
+- Status: accepted; schema v1 and some rules amended by [ADR 0006](0006-schema-v1-before-deploy.md); sync
+  environments and the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md)
 - Date: 2026-10-13
 - Issue: #25
 

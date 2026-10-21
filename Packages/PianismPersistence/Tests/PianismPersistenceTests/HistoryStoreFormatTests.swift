@@ -109,14 +109,61 @@ final class HistoryStoreFormatTests {
         #expect(try SwiftDataSessionHistory(store: store, clock: clock).sessions().count == 1)
     }
 
-    @Test("SYN-1: of everything stored, only a session's note is encrypted in iCloud")
-    func onlyNoteIsEncrypted() throws {
+    @Test("SYN-1: schema v1 is exactly what the CloudKit deploy freezes, and the expected export lists every field")
+    func schemaIsWhatTheDeployFreezes() throws {
         let model = try #require(NSManagedObjectModel.makeManagedObjectModel(for: HistorySchemaV1.models))
-        let encrypted = model.entities.flatMap { entity in
-            entity.attributesByName.values.filter(\.allowsCloudEncryption).map { "\(entity.name ?? "").\($0.name)" }
-        }
+        let properties = model.entities.flatMap { entity in entity.properties.map { (entity.name ?? "", $0) } }
 
-        #expect(encrypted == ["SessionRecord.note"])
+        // Changing any line changes what syncs; after the deploy, only adding fields is possible (ADR 0008).
+        #expect(
+            properties.map { "\($0).\($1.name) \(Self.describe($1))" }.sorted() == [
+                "SessionRecord.deletedAt date optional",
+                "SessionRecord.endedAt date default",
+                "SessionRecord.id UUID default",
+                "SessionRecord.modifiedAt date default",
+                "SessionRecord.note string default encrypted",
+                "SessionRecord.pauses binary default",
+                "SessionRecord.source string default",
+                "SessionRecord.startedAt date default",
+                "SessionRecord.tagIDs transformable default NSSecureUnarchiveFromData",
+                "SessionRecord.timeZoneID string default",
+                "SessionRecord.version integer64 default",
+                "TagRecord.composer string default",
+                "TagRecord.createdAt date default",
+                "TagRecord.deletedAt date optional",
+                "TagRecord.id string default",
+                "TagRecord.isArchived boolean default",
+                "TagRecord.kind string default",
+                "TagRecord.mergedInto string default",
+                "TagRecord.modifiedAt date default",
+                "TagRecord.name string default",
+                "TagRecord.targetTempo integer64 optional",
+                "TagRecord.version integer64 default",
+            ])
+        #expect(model.entities.allSatisfy { $0.uniquenessConstraints.isEmpty })
+        // The fields the deploy must contain: one missing there makes every record that sets it fail to sync.
+        let repository = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let expected = try String(
+            contentsOf: repository.appending(path: "docs/cloudkit/schema-v1-fields.txt"), encoding: .utf8)
+        for (entity, property) in properties {
+            #expect(expected.contains("CD_\(entity).CD_\(property.name) "), "\(entity).\(property.name)")
+        }
+    }
+
+    /// The type and options CloudKit sees for `property`.
+    private static func describe(_ property: NSPropertyDescription) -> String {
+        guard let attribute = property as? NSAttributeDescription else { return "relationship" }
+        let types: [NSAttributeType: String] = [
+            .stringAttributeType: "string", .dateAttributeType: "date", .UUIDAttributeType: "UUID",
+            .binaryDataAttributeType: "binary", .transformableAttributeType: "transformable",
+            .integer64AttributeType: "integer64", .booleanAttributeType: "boolean",
+        ]
+        var words = [types[attribute.attributeType] ?? "type \(attribute.attributeType.rawValue)"]
+        words.append(attribute.defaultValue != nil ? "default" : attribute.isOptional ? "optional" : "required")
+        words += [attribute.valueTransformerName, attribute.allowsCloudEncryption ? "encrypted" : nil].compactMap(
+            \.self)
+        return words.joined(separator: " ")
     }
 
     @Test("SES-5, ADR 0006: deleting a v1 session clears only its note and tags, and marks when it was deleted")
