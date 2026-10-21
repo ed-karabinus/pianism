@@ -1,7 +1,7 @@
 # Device checklist
 
-Checks that need a real piano, so CI can't run them (CLAUDE.md, rule 8). The owner runs them each
-milestone, as the README's Testing table says. Each row gives the last result, from issue #20.
+Checks that need a real piano or an iCloud account, so CI can't run them (CLAUDE.md, rule 8). The
+owner runs them each milestone, as the README's Testing table says. Each row gives the last result.
 
 ## Kawai CA59 (issue #20)
 
@@ -19,3 +19,14 @@ milestone, as the README's Testing table says. Each row gives the last result, f
 no simulator or CI runner has. The recordings from rows 1, 4 and 5 are kept on the owner's Mac.
 Once MIDI-1 (#43) lands, they become fixtures for its detector tests, covering the messages.
 Pairing, prompts, device names, the Bluetooth and USB switch, and power-off stay manual.
+
+## iCloud sync (SYN-1, issue #15)
+
+| # | Check | Last result |
+| --- | --- | --- |
+| 1 | **Test simulators stay signed out of iCloud:** in Settings on every simulator named `iPhone…` or `iPad…`, no Apple Account is signed in. The two that check sync are named `Sync S1` and `Sync S2`, which `scripts/simulator-destination.sh` never picks | Not run |
+| 2 | **The CloudKit schema matches before the deploy:** the steps in [ADR 0008](adr/0008-icloud-sync-environments-and-deploy.md), from creating the schema on `Sync S1` to the export matching `docs/cloudkit/schema-v1-fields.txt` | Not run |
+
+**Why these are manual:** they need an iCloud account, and CI never uses the owner's (E4). `simctl`
+can't read whether a simulator is signed in. Once the not-syncing notice's end-to-end test lands (#15),
+a signed-in test simulator fails it, and row 1 goes.

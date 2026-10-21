@@ -1,3 +1,4 @@
+import CoreData
 import Foundation
 import SwiftData
 import Synchronization
@@ -57,6 +58,30 @@ public final class HistoryStore: Sendable {
                 context.insert(record)
             }
             try context.save()
+        }
+
+        /// Debug only: creates schema v1's record types and fields in the Development environment of
+        /// `cloudKitContainer`, from a scratch store, ready to check and deploy (SYN-1, ADR 0008). It needs
+        /// an iCloud account, so the owner runs it on a signed-in simulator.
+        public static func initializeCloudKitSchema(cloudKitContainer: String) throws {
+            guard let model = NSManagedObjectModel.makeManagedObjectModel(for: HistorySchemaV1.models) else {
+                preconditionFailure("Schema v1 has no Core Data model")
+            }
+            let directory = FileManager.default.temporaryDirectory.appending(path: "CloudKitSchema-\(UUID())")
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let description = NSPersistentStoreDescription(url: directory.appending(path: "Schema.store"))
+            description.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(
+                containerIdentifier: cloudKitContainer)
+            description.shouldAddStoreAsynchronously = false
+            let container = NSPersistentCloudKitContainer(name: "Schema", managedObjectModel: model)
+            container.persistentStoreDescriptions = [description]
+            var loadError: (any Error)?
+            container.loadPersistentStores { _, error in loadError = error }
+            if let loadError { throw loadError }
+            try container.initializeCloudKitSchema()
+            for store in container.persistentStoreCoordinator.persistentStores {
+                try container.persistentStoreCoordinator.remove(store)
+            }
         }
     }
 #endif
