@@ -142,6 +142,12 @@ struct PianismApp: App {
                         tags.refresh()
                     }
                 }
+                // Checked at launch rather than when History opens, so its rows don't move under the user (SYN-1).
+                .task {
+                    for await notSyncing in historyStore.notSyncing {
+                        history.isNotSyncing = notSyncing
+                    }
+                }
         }
     }
 }

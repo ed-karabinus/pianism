@@ -196,6 +196,9 @@
     "Yesterday" : {
 
     },
+    "Your history isn't syncing. In Settings, sign in to iCloud and turn it on for Pianism." : {
+
+    },
     "^[%lld session](inflect: true) couldn't be shown. Try updating Pianism." : {
 
     },

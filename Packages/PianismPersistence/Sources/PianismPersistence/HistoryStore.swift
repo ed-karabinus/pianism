@@ -1,7 +1,9 @@
+import CloudKit
 import CoreData
 import Foundation
 import SwiftData
 import Synchronization
+import os
 
 /// The SwiftData store that holds finished sessions and tags (ADR 0004, as amended by ADR 0006).
 ///
@@ -38,6 +40,49 @@ public final class HistoryStore: Sendable {
             .filter { ($0.userInfo?[NSPersistentStoreURLKey] as? URL)?.standardizedFileURL == url }
             .map { _ in () }
     }
+
+    /// Whether iCloud can't sync this store, with no account or one that isn't ready, as it is now and after each
+    /// change to the account (SYN-1). A store that doesn't sync says nothing.
+    public var notSyncing: AsyncStream<Bool> {
+        guard let cloudKitContainer else { return AsyncStream { $0.finish() } }
+        // Held by the check, as the account-changed notification comes only while a container exists.
+        let container = CKContainer(identifier: cloudKitContainer)
+        return Self.notSyncing { try await container.accountStatus() }
+    }
+
+    /// Whether the account `status` reports can't sync, now and after each change to the account.
+    static func notSyncing(status: @escaping @Sendable () async throws -> CKAccountStatus) -> AsyncStream<Bool> {
+        AsyncStream { continuation in
+            let task = Task {
+                // Made before the first check, so a change during it isn't missed.
+                let changes = NotificationCenter.default.notifications(named: .CKAccountChanged).map { _ in () }
+                continuation.yield(await isNotSyncing(status))
+                for await _ in changes {
+                    continuation.yield(await isNotSyncing(status))
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    private static func isNotSyncing(_ status: () async throws -> CKAccountStatus) async -> Bool {
+        do {
+            switch try await status() {
+            case .noAccount, .temporarilyUnavailable: return true
+            case .available: return false
+            // Whoever restricted the device chose this, and the person using it can't sign in.
+            case .restricted: return false
+            // Can't tell: saying nothing beats a wrong notice.
+            case .couldNotDetermine: return false
+            @unknown default: return false
+            }
+        } catch {
+            logger.error("Couldn't check the iCloud account: \(error, privacy: .public)")
+            return false
+        }
+    }
+
+    private static let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
 
     var configuration: ModelConfiguration {
         ModelConfiguration(url: url, cloudKitDatabase: cloudKitContainer.map { .private($0) } ?? .none)
