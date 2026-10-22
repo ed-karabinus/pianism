@@ -1,7 +1,8 @@
 import PianismCore
 import SwiftUI
 
-/// Tags a session with pieces and skills, and adds, renames and archives them (TAG-1, TAG-2).
+/// Tags a session with pieces and skills, and adds, renames and archives them, and gives pieces details
+/// (TAG-1, TAG-2, TAG-3).
 struct TagPickerView: View {
     @Bindable var model: TagPickerModel
 
@@ -9,6 +10,7 @@ struct TagPickerView: View {
     @State private var renaming: Tag?
     @State private var isRenaming = false
     @State private var newName = ""
+    @State private var detailing: Tag?
     @State private var isSearching = false
 
     var body: some View {
@@ -43,6 +45,9 @@ struct TagPickerView: View {
             Button(LocalizedStringResource("Save", bundle: .module)) { model.rename(tag, to: newName) }
                 .disabled(!model.canRename(tag, to: newName))
             Button(role: .cancel) {}
+        }
+        .sheet(item: $detailing) { tag in
+            PieceDetailsView(tag: tag, model: model)
         }
         .storageAlert(Text("Couldn't change your tags", bundle: .module), isPresented: $model.isShowingError)
     }
@@ -105,6 +110,13 @@ struct TagPickerView: View {
                     isRenaming = true
                 }
                 .tint(.indigo)
+            }
+            if model.canHaveDetails(tag) {
+                Button(LocalizedStringResource("Details", bundle: .module), systemImage: "info.circle") {
+                    detailing = tag
+                }
+                .tint(.teal)
+                .accessibilityIdentifier(AccessibilityID.tagsDetails)
             }
         }
     }

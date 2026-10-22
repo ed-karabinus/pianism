@@ -42,9 +42,9 @@ enum HistorySchemaV1: VersionedSchema {
         /// Encrypted in iCloud, as the user's own words, like a session's note.
         @Attribute(.allowsCloudEncryption) var name: String = ""
         var isArchived: Bool = false
-        // periphery:ignore - schema v1; piece details arrive with TAG-3. Encrypted in iCloud, like `name`
+        /// Encrypted in iCloud, like `name`.
         @Attribute(.allowsCloudEncryption) var composer: String = ""
-        // periphery:ignore - schema v1; piece details arrive with TAG-3, in BPM
+        /// In beats per minute.
         var targetTempo: Int?
         /// The ID of the tag this one was merged into; empty if none.
         var mergedInto: String = ""

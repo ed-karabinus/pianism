@@ -21,7 +21,8 @@ public final class SwiftDataTagLibrary: TagLibrary {
             Tag(
                 id: record.id, kind: Tag.Kind(rawValue: record.kind) ?? .piece, name: record.name,
                 isArchived: record.isArchived, mergedInto: record.mergedInto.isEmpty ? nil : record.mergedInto,
-                createdAt: record.createdAt, isReadOnly: record.version > HistoryStore.recordVersion)
+                createdAt: record.createdAt, isReadOnly: record.version > HistoryStore.recordVersion,
+                composer: record.composer, targetTempo: record.targetTempo)
         }
     }
 
@@ -46,6 +47,13 @@ public final class SwiftDataTagLibrary: TagLibrary {
 
     public func setArchived(_ isArchived: Bool, id: Tag.ID) throws {
         try change(id) { $0.isArchived = isArchived }
+    }
+
+    public func setDetails(composer: String, targetTempo: Int?, id: Tag.ID) throws {
+        try change(id) {
+            $0.composer = composer
+            $0.targetTempo = targetTempo
+        }
     }
 
     /// Applies `apply` to the copy of `id` that ``tags()`` shows, unless a newer version wrote it,

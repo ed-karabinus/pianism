@@ -41,6 +41,41 @@ final class SwiftDataTagLibraryTests {
         #expect(records.allSatisfy { $0.createdAt == added && $0.modifiedAt == clock.now })
     }
 
+    @Test("TAG-3: a piece's details survive reopening, stamp the change, and can be cleared")
+    func detailsSurviveReopening() throws {
+        let library = self.library
+        let added = clock.now
+        let ballade = try library.add(name: "Ballade No. 1", kind: .piece)
+        clock.advance(by: 60)
+
+        try library.setDetails(composer: "Chopin", targetTempo: 72, id: ballade.id)
+
+        #expect(
+            try self.library.tags() == [
+                Tag(
+                    id: ballade.id, kind: .piece, name: "Ballade No. 1", isArchived: false, createdAt: added,
+                    composer: "Chopin", targetTempo: 72)
+            ])
+        #expect(try records().map(\.modifiedAt) == [clock.now])
+
+        try library.setDetails(composer: "", targetTempo: nil, id: ballade.id)
+
+        #expect(try records().map(\.composer) == [""])
+        #expect(try records().map(\.targetTempo) == [nil])
+    }
+
+    @Test("TAG-3: renaming or archiving a piece keeps its details")
+    func changesKeepDetails() throws {
+        let ballade = try library.add(name: "Ballade No. 1", kind: .piece)
+        try library.setDetails(composer: "Chopin", targetTempo: 72, id: ballade.id)
+
+        try library.rename(id: ballade.id, to: "Ballade No. 1 in G minor")
+        try library.setArchived(true, id: ballade.id)
+
+        let tag = try #require(try library.tags().first)
+        #expect(tag.composer == "Chopin" && tag.targetTempo == 72)
+    }
+
     @Test("TAG-1: an archived tag can be brought back")
     func unarchives() throws {
         let tag = try library.add(name: "Arpeggios in thirds", kind: .skill)
@@ -75,13 +110,18 @@ final class SwiftDataTagLibraryTests {
         #expect(try records().filter { $0.id == "a" }.map(\.name).sorted() == ["New", "Old"])
     }
 
-    @Test("ADR 0006: a tag a newer version wrote can't be renamed or archived, so this version can't damage it")
+    @Test(
+        "ADR 0006: a tag a newer version wrote can't be renamed, archived or given details, so this version can't damage it"
+    )
     func newerVersionIsReadOnly() throws {
         try insertRecord(id: "a", name: "Étude", modifiedAfter: 1, version: 2)
 
         #expect(try library.tags() == [Tag(id: "a", kind: .piece, name: "Étude", isArchived: false, isReadOnly: true)])
         #expect(throws: RecordFromNewerVersion.self) { try self.library.rename(id: "a", to: "Etude") }
         #expect(throws: RecordFromNewerVersion.self) { try self.library.setArchived(true, id: "a") }
+        #expect(throws: RecordFromNewerVersion.self) {
+            try self.library.setDetails(composer: "Chopin", targetTempo: 72, id: "a")
+        }
         #expect(try library.tags().map(\.name) == ["Étude"])
     }
 
