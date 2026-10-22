@@ -25,6 +25,9 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.pause")
         XCTAssertEqual(text(app, "practice.status"), "Paused")
         attachScreenshot(of: app, named: "Paused")
+        // Side by side when they fit (testCommandsFitAtTheLargestTextSize).
+        XCTAssertEqual(
+            element(app, "practice.resume").frame.midY, element(app, "practice.stop").frame.midY, accuracy: 1)
 
         tap(app, "practice.resume")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
@@ -261,6 +264,20 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.buttons["practice.still-practicing-yes"].exists)
         tap(app, "practice.pause")
         XCTAssertEqual(text(app, "practice.status"), "Paused")
+    }
+
+    /// SES-1, SES-2: at the largest text size, Pause or Resume and Stop stack where side by side would break their
+    /// names mid-word, as on iPhone, and stay above the tab bar.
+    @MainActor
+    func testCommandsFitAtTheLargestTextSize() throws {
+        let app = launch(at: start, reset: true, largestText: true)
+        tap(app, "practice.start")
+        assertCommandsFit(app, beside: "practice.pause")
+        attachScreenshot(of: app, named: "Practicing, largest text")
+
+        tap(app, "practice.pause")
+        assertCommandsFit(app, beside: "practice.resume")
+        attachScreenshot(of: app, named: "Paused, largest text")
     }
 
     /// SES-3, SES-4: with the app open, Practice asks "Still practicing?" at the nudge, then ends the session at
@@ -761,6 +778,21 @@ final class PracticeTests: UITestCase {
         }
         XCTAssertTrue(button.waitForExistence(timeout: 5), "No \(answer) button")
         button.tap()
+    }
+
+    /// Asserts Stop is below the button `identifier` names, or beside it at the same height, as a name broken onto a
+    /// second line makes its button taller, and that both are above the tab bar.
+    @MainActor
+    private func assertCommandsFit(_ app: XCUIApplication, beside identifier: String) {
+        let other = element(app, identifier).frame
+        let stop = element(app, "practice.stop").frame
+        if stop.minY < other.maxY {
+            XCTAssertEqual(stop.height, other.height, accuracy: 1, "A name broke beside Stop")
+        }
+        let tabBar = app.tabBars.firstMatch
+        let screen = app.windows.firstMatch.frame
+        let bottom = tabBar.exists && tabBar.frame.minY > screen.midY ? tabBar.frame.minY : screen.maxY
+        XCTAssertLessThanOrEqual(max(stop.maxY, other.maxY), bottom, "A button is under the tab bar")
     }
 
     @MainActor

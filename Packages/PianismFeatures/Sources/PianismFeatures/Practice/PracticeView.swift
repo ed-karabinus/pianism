@@ -225,7 +225,7 @@ struct PracticeView: View {
                 model.start()
             }
         case .running:
-            HStack(spacing: 16) {
+            commandPair {
                 CommandButton("Pause", systemImage: "pause.fill", id: AccessibilityID.practicePause) {
                     model.pause()
                 }
@@ -234,7 +234,7 @@ struct PracticeView: View {
                 }
             }
         case .paused:
-            HStack(spacing: 16) {
+            commandPair {
                 CommandButton("Resume", systemImage: "play.fill", id: AccessibilityID.practiceResume) {
                     model.resume()
                 }
@@ -242,6 +242,15 @@ struct PracticeView: View {
                     model.stop()
                 }
             }
+        }
+    }
+
+    /// Side by side whenever they fit the width, and stacked otherwise, as at the largest text sizes, where side by
+    /// side broke their names mid-word.
+    private func commandPair(@ViewBuilder _ buttons: () -> some View) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 16, content: buttons)
+            VStack(spacing: 16, content: buttons)
         }
     }
 
