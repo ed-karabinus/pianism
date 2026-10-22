@@ -3,10 +3,10 @@
 **A piano practice log that fills itself in.** Connect a digital piano and practice sessions start
 and stop as you play. Built for distractible brains: one tap, no guilt, time always visible.
 
-Status: **M1, the core loop**, in progress. You can time a session (pause and resume, and it survives
-the app being killed), tag it with pieces and skills, see History by day, add a session you forgot to
-time, and fix a finished session's times, tags and note. MIDI auto-start comes in M2. Not on the App
-Store yet.
+Status: **M1, the core loop**, done. You can time a session (pause and resume, and it survives the
+app being killed), tag it with pieces and skills, give a piece its composer and target tempo, see
+History by day, add a session you forgot to time, fix or delete a finished one, and keep it all in
+sync across your devices through iCloud. MIDI auto-start comes in M2. Not on the App Store yet.
 
 | Practice | Tags | History | Edit session |
 | --- | --- | --- | --- |
