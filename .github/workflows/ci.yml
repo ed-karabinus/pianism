@@ -1,19 +1,22 @@
 name: CI
 
-# Pull requests, and main nightly. Ruleset 25018486, which nobody can bypass, requires a branch to be
-# up to date with main and green before it merges, and the repository allows only squash merges, so
-# main gets exactly the tree the pull request's last run passed. A run on main after each merge would
-# retest it, holding GitHub Free's 5 macOS slots from the next pull request's run. The nightly run
-# catches what changes without a merge, such as GitHub's runner images, and runs the tests once more.
-# If either setting changes, restore `push: branches: [main]`.
+# Pull requests, main after each merge, and main nightly. A branch needn't be up to date with main to
+# merge (the owner's choice, 2026-10-21), so a green pull request merges at once, even after another
+# has merged. After each merge, main runs the jobs that compile and unit-test everything, in a few
+# minutes. It skips the end-to-end tests: they'd hold GitHub Free's 5 macOS slots for half an hour
+# and delay the next pull request's run. The nightly run has them, so two pull requests that each
+# passed alone are tested together within a day, and it catches changes to GitHub's runner images.
 on:
   pull_request:
+  push:
+    branches: [main]
   schedule:
     # 10:17 UTC: about 3 AM in California, 2 AM in winter. Off the hour, which GitHub delays most.
     - cron: "17 10 * * *"
 
+# By event too, so a merge doesn't cancel a nightly run that GitHub started late.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -89,6 +92,7 @@ jobs:
   e2e:
     name: End-to-end tests (${{ matrix.device }}, iOS ${{ matrix.ios }})
     needs: [core, lint]
+    if: github.event_name != 'push'
     runs-on: ${{ matrix.ios == 26 && 'macos-26' || 'xcode-27' }}
     timeout-minutes: 60
     strategy:
@@ -124,7 +128,7 @@ jobs:
   app:
     name: Build and end-to-end tests (iOS Simulator)
     needs: [e2e]
-    if: always()
+    if: always() && github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
