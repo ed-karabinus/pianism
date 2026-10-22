@@ -45,6 +45,7 @@ struct SessionEditorModelTests {
         let editor = SessionEditorModel(session: try endedSession(), history: FlakyHistory(), now: clock.now)
 
         #expect(!editor.isReadOnly)
+        editor.note = "Coda"
         #expect(!editor.save())
         #expect(editor.isShowingError)
     }
@@ -128,6 +129,59 @@ struct SessionEditorModelTests {
         editor.start = clock.now
 
         #expect(!editor.hasChanges)
+    }
+
+    @Test("SYN-1: saving an unchanged edit writes nothing, so a change synced since it opened stays")
+    func unchangedSaveKeepsSyncedChange() throws {
+        let history = InMemorySessionHistory()
+        let session = try endedSession()
+        history.save(session)
+        let editor = SessionEditorModel(session: session, history: history, now: clock.now + 600)
+        try history.edit(noted(session, "From the iPhone"))
+
+        #expect(editor.save())
+        #expect(history.sessions().map(\.note) == ["From the iPhone"])
+    }
+
+    @Test("SYN-1: saving writes only what was edited, over a change synced since it opened to the same thing")
+    func saveWritesOnlyEdits() throws {
+        let history = InMemorySessionHistory()
+        let session = try endedSession()
+        history.save(session)
+        let editor = SessionEditorModel(session: session, history: history, now: clock.now + 600)
+        editor.setTags(["ballade"])
+        editor.start = clock.now + 60
+        var synced = try noted(session, "From the iPhone")
+        try synced.editTags([BuiltInSkill.scales.rawValue])
+        try history.edit(synced)
+
+        #expect(editor.save())
+        let saved = try #require(history.sessions().first)
+        #expect(saved.note == "From the iPhone")
+        #expect(saved.tagIDs == ["ballade"])
+        #expect(saved.startedAt == clock.now + 60)
+    }
+
+    @Test("SYN-1: saving only a note keeps the times and tags another device set after the editor opened")
+    func noteOnlySaveKeepsSyncedTimesAndTags() throws {
+        let history = InMemorySessionHistory()
+        let session = try endedSession()
+        history.save(session)
+        let editor = SessionEditorModel(session: session, history: history, now: clock.now + 600)
+        editor.note = "Coda"
+        var synced = session
+        try synced.editTimes(start: clock.now + 120, end: clock.now + 600)
+        try synced.editTags([BuiltInSkill.scales.rawValue])
+        try history.edit(synced)
+
+        #expect(editor.save())
+        #expect(history.sessions() == [try noted(synced, "Coda")])
+    }
+
+    private func noted(_ session: PracticeSession, _ note: String) throws -> PracticeSession {
+        var noted = session
+        try noted.editNote(note)
+        return noted
     }
 
     private func endedSession() throws -> PracticeSession {

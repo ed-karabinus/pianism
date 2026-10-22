@@ -166,6 +166,19 @@ struct TagPickerModelTests {
     }
 
     @Test(
+        "SYN-1: saving one detail keeps the other as another device set it after the details opened",
+        arguments: [("Chopin", nil, "", "72"), ("", 72, "Chopin", "")] as [(String, Int?, String, String)])
+    func savingOneDetailKeepsTheOther(syncedComposer: String, syncedTempo: Int?, composer: String, tempo: String) throws
+    {
+        let library = InMemoryTagLibrary([ballade])
+        let model = TagPickerModel(practice: practice, library: library)
+        try library.setDetails(composer: syncedComposer, targetTempo: syncedTempo, id: ballade.id)
+
+        model.setDetails(ballade, composer: composer, tempo: tempo)
+        #expect(library.tags().map { "\($0.composer) \($0.targetTempo ?? 0)" } == ["Chopin 72"])
+    }
+
+    @Test(
         "TAG-3: a piece's details read as one line, with only what it has",
         arguments: [
             ("Chopin", 72, "Chopin, 72 BPM"), ("Chopin", nil, "Chopin"), ("", 72, "72 BPM"), ("", nil, nil),
