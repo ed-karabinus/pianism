@@ -30,12 +30,13 @@ public final class UserNotificationNudges: NSObject, PracticeNudges, UNUserNotif
         self.opened = opened
         super.init()
         let center = UNUserNotificationCenter.current()
-        center.setNotificationCategories([Self.answers])
-        center.delegate = self
+        center.setNotificationCategories([Self.answers])  // mutate:ignore - needs an app
+        center.delegate = self  // mutate:ignore - as above
     }
 
     public func canAskPermission() async -> Bool {
-        await UNUserNotificationCenter.current().notificationSettings().authorizationStatus == .notDetermined
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        return settings.authorizationStatus == .notDetermined  // mutate:ignore - as above
     }
 
     public func requestPermission() async {
@@ -52,8 +53,8 @@ public final class UserNotificationNudges: NSObject, PracticeNudges, UNUserNotif
     /// Also takes a delivered notification out of Notification Center, as the app now shows what it asked.
     public func cancel() {
         let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [Self.category])
-        center.removeDeliveredNotifications(withIdentifiers: [Self.category])
+        center.removePendingNotificationRequests(withIdentifiers: [Self.category])  // mutate:ignore - needs an app
+        center.removeDeliveredNotifications(withIdentifiers: [Self.category])  // mutate:ignore - as above
     }
 
     /// The notification's buttons. "I stopped earlier" opens the app, where the end is picked.
@@ -110,6 +111,6 @@ public final class UserNotificationNudges: NSObject, PracticeNudges, UNUserNotif
                 }
             }
         }
-        completionHandler()
+        completionHandler()  // mutate:ignore - needs an app
     }
 }
