@@ -39,9 +39,11 @@ enum HistorySchemaV1: VersionedSchema {
         var id: String = ""
         /// `piece` or `skill`; an unknown value reads as `piece`.
         var kind: String = "piece"
-        var name: String = ""
+        /// Encrypted in iCloud, as the user's own words, like a session's note.
+        @Attribute(.allowsCloudEncryption) var name: String = ""
         var isArchived: Bool = false
-        var composer: String = ""
+        /// Encrypted in iCloud, like `name`.
+        @Attribute(.allowsCloudEncryption) var composer: String = ""
         /// In beats per minute.
         var targetTempo: Int?
         /// The ID of the tag this one was merged into; empty if none.

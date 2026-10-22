@@ -43,14 +43,17 @@ Option 2.
   1. The snapshot test in `HistoryStoreFormatTests` is green on main. It lists every attribute as
      CloudKit will see it, and checks that `docs/cloudkit/schema-v1-fields.txt` names each one.
   2. Development lists only `Users`, or is reset (`xcrun cktool reset-schema`).
-  3. A Debug build launched with `PIANISM_INIT_CLOUDKIT_SCHEMA=1` on a simulator signed into iCloud
-     creates the schema (`initializeCloudKitSchema()`, as Apple's sample does). If iCloud takes over
-     30 seconds, Core Data gives up (error 134060) and the app stops; launching it again is safe.
+  3. A Debug build launched with `PIANISM_INIT_CLOUDKIT_SCHEMA=1` on a device signed into iCloud
+     creates the schema (`initializeCloudKitSchema()`, as Apple's sample does). Not a simulator:
+     simulators keep the account's keychain in files that other programs can read, and they hit
+     Apple's "Failed user key sync" bug. If iCloud takes over 30 seconds, Core Data gives up (error
+     134060) and the app stops; launching it again is safe.
   4. `xcrun cktool export-schema` of Development, reduced by `scripts/cloudkit-fields.sh`, matches the
      fields file. Each difference is explained on #15, and a reviewer signs off. Core Data adds
      `CD_moveReceipt` (and its `_ckAsset`) to every mirrored record type, so the file lists it
      though no attribute maps to it.
-  5. Two signed-in simulators sync real records, with every field set, and the export still matches.
+  5. Two devices signed into the same iCloud account sync real records, with every field set, and the
+     export still matches.
   6. The owner deploys in CloudKit Console. Production's export must equal Development's, and is kept
      as `docs/cloudkit/schema-v1.ckdb`.
 - **Development holds nothing experimental before any deploy.** A spike uses another container, or
@@ -60,7 +63,7 @@ Option 2.
 
 - After the deploy, the schema can only gain fields. The snapshot test fails on any change to the
   model, so none happens by accident.
-- With `note` encrypted (ADR 0006), resetting a person's encrypted iCloud data, which people do after
+- With `note`, tag names and composers encrypted (ADR 0006), resetting a person's encrypted iCloud data, which people do after
   losing every device and passcode, may delete all of Pianism's synced history, not only the notes.
   This is unverified. The owner accepts it: losing data is that reset's purpose, and a device that
   still has Pianism should upload its copy again.
