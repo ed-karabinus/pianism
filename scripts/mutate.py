@@ -54,6 +54,9 @@ def passes(command, cwd, timeout=300):
     try:
         return subprocess.run(command, cwd=cwd, capture_output=True, timeout=timeout).returncode == 0
     except subprocess.TimeoutExpired:
+        # `swift test` runs the tests in a helper with a process group of its own, which outlives it: after a
+        # mutant that loops forever, it would go on running at full speed.
+        subprocess.run(["pkill", "-f", f"swiftpm-testing-helper.*{WORK}"])
         return False
 
 
@@ -62,6 +65,9 @@ def main(packages):
     # Mirrors the sources, keeping each package's .build so rebuilds stay incremental.
     subprocess.run(["rsync", "-a", "--delete", "--exclude=.build", f"{ROOT}/Packages/", f"{WORK}/Packages/"],
                    check=True)
+    # The persistence tests check the schema against its CloudKit export, which lives outside the packages.
+    (WORK / "docs").mkdir(exist_ok=True)
+    subprocess.run(["rsync", "-a", "--delete", f"{ROOT}/docs/cloudkit/", f"{WORK}/docs/cloudkit/"], check=True)
     counts = {"caught": 0, "survived": 0, "didn't compile": 0}
     survivors = []
     started = time.time()
