@@ -354,6 +354,47 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "History, tagged and untagged")
     }
 
+    /// TAG-3: a piece is given a composer and a target tempo from the tag picker. A tempo out of range can't be
+    /// saved, and the details are still there after a relaunch.
+    @MainActor
+    func testPieceDetails() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        tap(app, "practice.tags")
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("Ballade No. 1")
+        tap(app, "tags.add-piece")
+        revealSwipeActions(app.buttons["Ballade No. 1"])
+        attachScreenshot(of: app, named: "Tag picker, piece swiped")
+        tap(app, "tags.details")
+        let composer = app.textFields["details.composer"]
+        XCTAssertTrue(composer.waitForExistence(timeout: 5), "The details didn't open")
+        composer.tap()
+        composer.typeText("Chopin")
+        let tempo = app.textFields["details.tempo"]
+        tempo.tap()
+        tempo.typeText("400")
+        let save = app.buttons["details.save"]
+        XCTAssertTrue(save.wait(for: \.isEnabled, toEqual: false, timeout: 5), "A tempo out of range could be saved")
+        attachScreenshot(of: app, named: "Piece details, tempo out of range")
+        tempo.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 3) + "72")
+        XCTAssertTrue(save.wait(for: \.isEnabled, toEqual: true, timeout: 5), "72 couldn't be saved")
+        attachScreenshot(of: app, named: "Piece details")
+        save.tap()
+        XCTAssertTrue(composer.waitForNonExistence(timeout: 5), "The details didn't close")
+        app.terminate()
+
+        app = launch(at: start + 60)
+        tap(app, "practice.tags")
+        revealSwipeActions(app.buttons["Ballade No. 1"])
+        tap(app, "tags.details")
+        XCTAssertTrue(app.textFields["details.composer"].waitForExistence(timeout: 5), "The details didn't open")
+        XCTAssertEqual(app.textFields["details.composer"].value as? String, "Chopin")
+        XCTAssertEqual(app.textFields["details.tempo"].value as? String, "72")
+    }
+
     /// SYN-1: what iCloud brings from another device shows while the app is open, with no relaunch: a piece in
     /// the open tag picker, then a session tagged with it in the open History. A Debug switch saves them through a
     /// second store on the same file, as an iCloud import does, 25 and 50 seconds after launch, which leaves a slow
@@ -798,14 +839,19 @@ final class PracticeTests: UITestCase {
         let sessions = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertTrue(sessions.firstMatch.waitForExistence(timeout: 5), "No session to delete")
         let count = sessions.count
-        // A press, then a drag halfway across, which shows Delete without a full swipe. A busy simulator
-        // can read swipeLeft as a tap, which opens the editor instead.
-        let row = sessions.firstMatch
-        row.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
-            .press(forDuration: 0.1, thenDragTo: row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
+        revealSwipeActions(sessions.firstMatch)
         tap(app, "history.delete")
         confirmDelete(app)
         XCTAssertTrue(sessions.element(boundBy: count - 1).waitForNonExistence(timeout: 5))
+    }
+
+    /// Shows `row`'s swipe actions with a press, then a drag halfway across, rather than a full swipe. A busy
+    /// simulator can read swipeLeft as a tap, which would open or toggle the row instead.
+    @MainActor
+    private func revealSwipeActions(_ row: XCUIElement) {
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "No row to swipe")
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
+            .press(forDuration: 0.1, thenDragTo: row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
     }
 
     /// Sets the editor's end minute with the end picker's wheels: hours, then minutes. With no minute, it opens

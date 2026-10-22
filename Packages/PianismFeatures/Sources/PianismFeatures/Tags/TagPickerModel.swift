@@ -102,6 +102,29 @@ public final class TagPickerModel {
         perform { try library.rename(id: tag.id, to: Self.trimmed(name)) }
     }
 
+    /// The target tempos a piece can be given, in beats per minute (TAG-3): every real one, but not typos.
+    static let targetTempos = 20...300
+
+    /// Whether `tag` can be given a composer and a target tempo: a piece the user added (TAG-3).
+    func canHaveDetails(_ tag: Tag) -> Bool {
+        tag.kind == .piece && !tag.isReadOnly
+    }
+
+    /// Whether `tempo` can be a target tempo: empty for none, or a whole number in ``targetTempos``.
+    func canSetDetails(tempo: String) -> Bool {
+        let tempo = Self.trimmed(tempo)
+        return tempo.isEmpty || Int(tempo).map(Self.targetTempos.contains) == true
+    }
+
+    /// Saves only a change, as a save makes this the latest copy, over an older change from another device.
+    func setDetails(_ tag: Tag, composer: String, tempo: String) {
+        guard canSetDetails(tempo: tempo) else { return }
+        let composer = Self.trimmed(composer)
+        let targetTempo = Int(Self.trimmed(tempo))
+        guard composer != tag.composer || targetTempo != tag.targetTempo else { return }
+        perform { try library.setDetails(composer: composer, targetTempo: targetTempo, id: tag.id) }
+    }
+
     /// Stops offering `tag`. Sessions keep it (TAG-1).
     func archive(_ tag: Tag) {
         perform { try library.setArchived(true, id: tag.id) }

@@ -7,6 +7,9 @@
     "A newer version of Pianism changed this session. Update Pianism to change it." : {
 
     },
+    "A target tempo is a whole number from %lld to %lld." : {
+
+    },
     "Add piece “%@”" : {
 
     },
@@ -27,6 +30,9 @@
     },
     "Arpeggios" : {
       "comment" : "A built-in skill"
+    },
+    "Composer" : {
+
     },
     "Couldn't change your tags" : {
 
@@ -50,6 +56,9 @@
 
     },
     "Delete this session?" : {
+
+    },
+    "Details" : {
 
     },
     "Discard" : {
@@ -92,6 +101,9 @@
 
     },
     "%@, not saved yet" : {
+
+    },
+    "None" : {
 
     },
     "Note" : {
@@ -176,6 +188,9 @@
 
     },
     "Tags" : {
+
+    },
+    "Target tempo (BPM)" : {
 
     },
     "Technique" : {

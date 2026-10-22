@@ -18,12 +18,17 @@ public struct Tag: Sendable, Hashable, Identifiable {
     public let mergedInto: Tag.ID?
     /// Decides which tag survives when two devices merged a pair in opposite directions (ADR 0004).
     public let createdAt: Date
-    /// Built-in skills, and tags a newer version wrote (ADR 0006), can't be renamed or archived.
+    /// Built-in skills, and tags a newer version wrote (ADR 0006), can't be renamed, archived or given
+    /// details.
     public let isReadOnly: Bool
+    /// A piece's composer; empty if none (TAG-3).
+    public internal(set) var composer: String
+    /// The tempo a piece is being worked up to, in beats per minute (TAG-3).
+    public internal(set) var targetTempo: Int?
 
     public init(
         id: String, kind: Kind, name: String, isArchived: Bool, mergedInto: Tag.ID? = nil,
-        createdAt: Date = .distantPast, isReadOnly: Bool = false
+        createdAt: Date = .distantPast, isReadOnly: Bool = false, composer: String = "", targetTempo: Int? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -32,6 +37,8 @@ public struct Tag: Sendable, Hashable, Identifiable {
         self.mergedInto = mergedInto
         self.createdAt = createdAt
         self.isReadOnly = isReadOnly
+        self.composer = composer
+        self.targetTempo = targetTempo
     }
 
     /// The tag of `kind` among `tags` whose name is `name`, ignoring case, accents and surrounding
