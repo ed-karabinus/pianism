@@ -10,7 +10,7 @@ sync across your devices through iCloud. MIDI auto-start comes in M2. Not on the
 
 | Practice | Tags | History | Edit session |
 | --- | --- | --- | --- |
-| <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-68/iphone-practicing-tagged.png?raw=true" width="180" alt="Practice, a session running with tags"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-68/iphone-tag-picker.png?raw=true" width="180" alt="The tag picker"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-77/iphone-history-added.png?raw=true" width="180" alt="History, with a session added after the fact"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-76/iphone-edit-session.png?raw=true" width="180" alt="Editing a finished session"> |
+| <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-68/iphone-practicing-tagged.png?raw=true" width="180" alt="Practice, a session running with tags"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-103/iphone-with-details.png?raw=true" width="180" alt="The tag picker, with a piece's composer and tempo"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-77/iphone-history-added.png?raw=true" width="180" alt="History, with a session added after the fact"> | <img src="https://github.com/ed-karabinus/pianism/blob/evidence/pr-76/iphone-edit-session.png?raw=true" width="180" alt="Editing a finished session"> |
 
 The screenshots come from the end-to-end tests, on the iPhone 17 simulator.
 
@@ -36,6 +36,7 @@ Requirements: Xcode 26 or later (developed on Xcode 27), iOS 26+ iPhone and iPad
 
 ```sh
 make test-core   # core unit tests, a few seconds
+make test-features   # view-model unit tests on the Mac, seconds
 make test-adapters   # adapter integration tests on macOS, against real files
 make test-app    # build the app and run end-to-end tests on iPhone and iPad simulators
 make test-app DEVICES=iPhone   # just one, when iterating
@@ -45,14 +46,15 @@ make mutate      # mutation testing of the core and adapters; minutes, run befor
 ```
 
 Open `Pianism.xcodeproj` in Xcode to run the app. To run on a device, create
-`Config/Local.xcconfig` containing `DEVELOPMENT_TEAM = <your team ID>` (it is git-ignored).
+`Config/Local.xcconfig` containing `DEVELOPMENT_TEAM = <your team ID>` (it is git-ignored). The iCloud
+container and App Group in `Config/Pianism.entitlements` are the owner's; use your own identifiers.
 
 ## Testing
 
 | Layer | Runs |
 | --- | --- |
-| Unit (Swift Testing, core logic, injected clock) | Every PR, on Linux |
-| Integration (adapters against real files on macOS; later SwiftData, StoreKit) | Every PR |
+| Unit (Swift Testing: core logic, injected clock, on Linux; view models, on macOS) | Every PR |
+| Integration (adapters on macOS, against real files and SwiftData; later StoreKit) | Every PR |
 | End-to-end (XCUITest in the simulator) | Every PR |
 | Exploratory QA by an agent driving the simulator | Each milestone |
 | Device checks with a real piano ([checklist](docs/device-checklist.md)) | Each milestone, by the owner |
