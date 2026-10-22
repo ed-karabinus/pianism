@@ -4,6 +4,9 @@
     "%@, %@" : {
 
     },
+    "%lld BPM" : {
+      "comment" : "A target tempo"
+    },
     "A newer version of Pianism changed this session. Update Pianism to change it." : {
 
     },

@@ -354,8 +354,8 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "History, tagged and untagged")
     }
 
-    /// TAG-3: a piece is given a composer and a target tempo from the tag picker. A tempo out of range can't be
-    /// saved, and the details are still there after a relaunch.
+    /// TAG-3: a piece is given a composer and a target tempo from the tag picker, which shows them under its
+    /// name. A tempo out of range can't be saved, and the details are still there after a relaunch.
     @MainActor
     func testPieceDetails() throws {
         var app = launch(at: start, reset: true)
@@ -366,6 +366,7 @@ final class PracticeTests: UITestCase {
         search.tap()
         search.typeText("Ballade No. 1")
         tap(app, "tags.add-piece")
+        attachScreenshot(of: app, named: "Tag picker, piece added")
         revealSwipeActions(app.buttons["Ballade No. 1"])
         attachScreenshot(of: app, named: "Tag picker, piece swiped")
         tap(app, "tags.details")
@@ -384,11 +385,17 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "Piece details")
         save.tap()
         XCTAssertTrue(composer.waitForNonExistence(timeout: 5), "The details didn't close")
+        let withDetails = NSPredicate(format: "label BEGINSWITH 'Ballade No. 1' AND label CONTAINS 'Chopin, 72 BPM'")
+        var ballade = app.buttons.matching(withDetails).firstMatch
+        XCTAssertTrue(ballade.waitForExistence(timeout: 5), "No details under the name")
+        attachScreenshot(of: app, named: "Tag picker, piece with details")
         app.terminate()
 
         app = launch(at: start + 60)
         tap(app, "practice.tags")
-        revealSwipeActions(app.buttons["Ballade No. 1"])
+        ballade = app.buttons.matching(withDetails).firstMatch
+        XCTAssertTrue(ballade.waitForExistence(timeout: 5), "No details after a relaunch")
+        revealSwipeActions(ballade)
         tap(app, "tags.details")
         XCTAssertTrue(app.textFields["details.composer"].waitForExistence(timeout: 5), "The details didn't open")
         XCTAssertEqual(app.textFields["details.composer"].value as? String, "Chopin")

@@ -165,6 +165,19 @@ struct TagPickerModelTests {
         #expect(model.shown(.piece).map(\.name) == ["Ballade No. 1"])
     }
 
+    @Test(
+        "TAG-3: a piece's details read as one line, with only what it has",
+        arguments: [
+            ("Chopin", 72, "Chopin, 72 BPM"), ("Chopin", nil, "Chopin"), ("", 72, "72 BPM"), ("", nil, nil),
+        ] as [(String, Int?, String?)])
+    func detailsLine(composer: String, tempo: Int?, line: String?) {
+        let tag = PianismCore.Tag(
+            id: "ballade", kind: .piece, name: "Ballade No. 1", isArchived: false, composer: composer,
+            targetTempo: tempo)
+
+        #expect(tag.details == line)
+    }
+
     @Test("TAG-3: only pieces the user added take details, not skills or read-only tags")
     func onlyOwnPiecesTakeDetails() {
         let model = TagPickerModel(practice: practice, library: library)

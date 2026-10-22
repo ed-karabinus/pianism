@@ -165,6 +165,16 @@ extension TagLibrary {
     }
 }
 
+extension Tag {
+    /// A piece's composer and target tempo as a line, such as "Chopin, 72 BPM", or `nil` if it has neither
+    /// (TAG-3).
+    var details: String? {
+        let tempo = targetTempo.map { String(localized: "\($0) BPM", bundle: .module, comment: "A target tempo") }
+        let details = [composer.isEmpty ? nil : composer, tempo].compactMap(\.self)
+        return details.isEmpty ? nil : details.formatted(.list(type: .and, width: .narrow))
+    }
+}
+
 extension BuiltInSkill {
     /// The skill as a tag, which can't be renamed or archived: there's no record to change.
     var tag: Tag {
