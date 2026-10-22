@@ -83,12 +83,21 @@ struct TagPickerView: View {
             model.toggle(tag)
         } label: {
             HStack {
-                // `Color.primary`, since `.primary` inside a button is its tint.
-                Text(tag.name)
-                    .foregroundStyle(Color.primary)
-                if tag.isArchived {
-                    Text("Archived", bundle: .module)
-                        .foregroundStyle(.secondary)
+                // `Color.primary` and `Color.secondary`, as `.primary` and `.secondary` in a button are its tint.
+                VStack(alignment: .leading) {
+                    HStack {
+                        Text(tag.name)
+                            .foregroundStyle(Color.primary)
+                        if tag.isArchived {
+                            Text("Archived", bundle: .module)
+                                .foregroundStyle(Color.secondary)
+                        }
+                    }
+                    if let details = tag.details {
+                        Text(details)
+                            .font(.subheadline)
+                            .foregroundStyle(Color.secondary)
+                    }
                 }
                 Spacer()
                 if isSelected {
@@ -145,12 +154,13 @@ extension Text {
     }
 }
 
-#Preview("Tagged") {
+// Tagged, so the largest text shows a piece's details under its name.
+#Preview("Tagged, dark, AX5") {
     TagPickerView(model: .preview())
-}
-
-#Preview("Adding, dark, AX5") {
-    TagPickerView(model: .preview(query: "Nocturne"))
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("Adding") {
+    TagPickerView(model: .preview(query: "Nocturne"))
 }
