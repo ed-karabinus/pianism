@@ -32,8 +32,8 @@ struct PianismApp: App {
         // Finished sessions wait here while history can't save them (ADR 0007). Only the app moves
         // sessions into history, so this stays out of the App Group.
         let outboxURL = URL.applicationSupportDirectory.appending(path: "Outbox")
-        // Sync stays off in Release until the schema is deployed to CloudKit's Production environment (SYN-1).
-        var cloudKitContainer: String?
+        // Release syncs with iCloud's Production environment, where schema v1 is deployed (SYN-1, ADR 0008).
+        var cloudKitContainer: String? = Self.iCloudContainer
         #if DEBUG
             // End-to-end tests fix the time with PIANISM_NOW (seconds since 1970), shorten the nudge and the cap
             // with PIANISM_NUDGE_SECONDS and PIANISM_CAP_SECONDS, start with no running session, history, outbox
@@ -61,8 +61,9 @@ struct PianismApp: App {
             if environment["PIANISM_BREAK_HISTORY"] == "1" {
                 historyURL = URL(filePath: "/dev/null/History.store")
             }
-            if environment["PIANISM_SYNC"] == "1" {
-                cloudKitContainer = Self.iCloudContainer
+            // Debug builds sync only when asked, so tests never touch iCloud.
+            if environment["PIANISM_SYNC"] != "1" {
+                cloudKitContainer = nil
             }
             if environment["PIANISM_INIT_CLOUDKIT_SCHEMA"] == "1" {
                 do {
