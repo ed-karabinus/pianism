@@ -779,6 +779,10 @@ final class PracticeTests: UITestCase {
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
         // work as before, with no sign-in prompt (SYN-1).
         app.launchEnvironment["PIANISM_SYNC"] = "1"
+        // Stops Xcode mirroring the app's unified log to stderr (it stays readable with `log show`). Each UI query makes
+        // the accessibility runtime log dozens of lines, and when stderr drains slowly, queries time out ("Timed out
+        // while evaluating UI query").
+        app.launchEnvironment["OS_ACTIVITY_DT_MODE"] = "NO"
         if largestText {
             app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         }

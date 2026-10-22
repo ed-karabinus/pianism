@@ -116,13 +116,19 @@ public final class TagPickerModel {
         return tempo.isEmpty || Int(tempo).map(Self.targetTempos.contains) == true
     }
 
-    /// Saves only a change, as a save makes this the latest copy, over an older change from another device.
+    /// Saves only what changed from `tag`, as opened, since a save makes this the latest copy: a change synced from
+    /// another device since then, to the other detail, stays (SYN-1).
     func setDetails(_ tag: Tag, composer: String, tempo: String) {
         guard canSetDetails(tempo: tempo) else { return }
         let composer = Self.trimmed(composer)
         let targetTempo = Int(Self.trimmed(tempo))
         guard composer != tag.composer || targetTempo != tag.targetTempo else { return }
-        perform { try library.setDetails(composer: composer, targetTempo: targetTempo, id: tag.id) }
+        perform {
+            let latest = try library.tags().first { $0.id == tag.id } ?? tag
+            try library.setDetails(
+                composer: composer != tag.composer ? composer : latest.composer,
+                targetTempo: targetTempo != tag.targetTempo ? targetTempo : latest.targetTempo, id: tag.id)
+        }
     }
 
     /// Stops offering `tag`. Sessions keep it (TAG-1).

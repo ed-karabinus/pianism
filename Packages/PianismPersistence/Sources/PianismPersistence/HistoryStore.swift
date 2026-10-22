@@ -35,10 +35,15 @@ public final class HistoryStore: Sendable {
     /// Fires after each save to this store once it has opened, by this app or by an iCloud import (SYN-1).
     /// Whatever runs on it must only read, or each change would cause another.
     public var changes: some AsyncSequence<Void, Never> {
-        let url = url.standardizedFileURL
+        let url = url
         return NotificationCenter.default.notifications(named: .NSPersistentStoreRemoteChange)
-            .filter { ($0.userInfo?[NSPersistentStoreURLKey] as? URL)?.standardizedFileURL == url }
+            .filter { Self.isChange($0, to: url) }
             .map { _ in () }
+    }
+
+    /// Whether `notification` reports a save to the store at `url`, rather than to another store.
+    static func isChange(_ notification: Notification, to url: URL) -> Bool {
+        (notification.userInfo?[NSPersistentStoreURLKey] as? URL)?.standardizedFileURL == url.standardizedFileURL
     }
 
     /// Whether iCloud can't sync this store, with no account or one that isn't ready, as it is now and after each
@@ -69,15 +74,15 @@ public final class HistoryStore: Sendable {
         do {
             switch try await status() {
             case .noAccount, .temporarilyUnavailable: return true
-            case .available: return false
+            case .available: return false  // mutate:ignore - all false below
             // Whoever restricted the device chose this, and the person using it can't sign in.
-            case .restricted: return false
+            case .restricted: return false  // mutate:ignore - as above
             // Can't tell: saying nothing beats a wrong notice.
-            case .couldNotDetermine: return false
-            @unknown default: return false
+            case .couldNotDetermine: return false  // mutate:ignore - as above
+            @unknown default: return false  // mutate:ignore - no such status yet
             }
         } catch {
-            logger.error("Couldn't check the iCloud account: \(error, privacy: .public)")
+            logger.error("Couldn't check the iCloud account: \(error, privacy: .public)")  // mutate:ignore - a log line
             return false
         }
     }
@@ -129,17 +134,18 @@ public final class HistoryStore: Sendable {
             }
             let directory = FileManager.default.temporaryDirectory.appending(path: "CloudKitSchema-\(UUID())")
             defer { try? FileManager.default.removeItem(at: directory) }
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(
+                at: directory, withIntermediateDirectories: true)  // mutate:ignore - debug, device
             let description = NSPersistentStoreDescription(url: directory.appending(path: "Schema.store"))
             description.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(
                 containerIdentifier: cloudKitContainer)
-            description.shouldAddStoreAsynchronously = false
+            description.shouldAddStoreAsynchronously = false  // mutate:ignore - as above
             let container = NSPersistentCloudKitContainer(name: "Schema", managedObjectModel: model)
-            container.persistentStoreDescriptions = [description]
+            container.persistentStoreDescriptions = [description]  // mutate:ignore - as above
             var loadError: (any Error)?
             container.loadPersistentStores { _, error in loadError = error }
             if let loadError { throw loadError }
-            try container.initializeCloudKitSchema()
+            try container.initializeCloudKitSchema()  // mutate:ignore - as above
             for store in container.persistentStoreCoordinator.persistentStores {
                 try container.persistentStoreCoordinator.remove(store)
             }

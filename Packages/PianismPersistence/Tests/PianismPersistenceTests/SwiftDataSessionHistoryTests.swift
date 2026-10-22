@@ -1,3 +1,4 @@
+import CoreData
 import Foundation
 import PianismCore
 import PianismCoreTestSupport
@@ -56,6 +57,19 @@ final class SwiftDataSessionHistoryTests {
         try SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock).save(session)
 
         #expect(await changes.next(isolation: #isolation) != nil)
+    }
+
+    // The test above can't show this: tests run side by side, so other stores' saves arrive too.
+    @Test("SYN-1: only a save to this store is reported as its change, however its path is written")
+    func onlyThisStoresSavesAreChanges() {
+        let saved = { (url: URL?) in
+            Notification(
+                name: .NSPersistentStoreRemoteChange, object: nil, userInfo: url.map { [NSPersistentStoreURLKey: $0] })
+        }
+
+        #expect(HistoryStore.isChange(saved(directory.appending(path: "Other/../History/History.store")), to: storeURL))
+        #expect(!HistoryStore.isChange(saved(directory.appending(path: "Other/History.store")), to: storeURL))
+        #expect(!HistoryStore.isChange(saved(nil), to: storeURL))
     }
 
     @Test("ADR 0006: a session stopped while paused comes back exactly, even at a fraction of a second")
@@ -190,6 +204,8 @@ final class SwiftDataSessionHistoryTests {
 
         #expect(try history.sessions().isEmpty)
         #expect(try history.unshowableCount() == 2)
+        let records = try ModelContext(store.container()).fetch(FetchDescriptor<SessionRecord>())
+        #expect(records.allSatisfy { $0.version > HistoryStore.recordVersion })
     }
 
     @Test("ADR 0006: pauses are stored as the JSON the ADR fixes, and the time zone by its identifier")

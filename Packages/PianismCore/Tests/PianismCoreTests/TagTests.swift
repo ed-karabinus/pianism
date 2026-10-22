@@ -29,6 +29,13 @@ struct TagTests {
         #expect(Tag.existing(named: "Für Elise", kind: .piece, in: both) == current)
     }
 
+    @Test("TAG-3: a piece loaded with its composer and target tempo keeps them")
+    func keepsDetails() {
+        let piece = Tag(id: "4", kind: .piece, name: "Ballade", isArchived: false, composer: "Chopin", targetTempo: 72)
+
+        #expect(piece.composer == "Chopin" && piece.targetTempo == 72)
+    }
+
     @Test("TAG-1: built-in skills keep their IDs forever, because sessions store them")
     func builtInSkillIDsAreFixed() {
         #expect(

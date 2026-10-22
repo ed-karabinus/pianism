@@ -101,12 +101,17 @@ final class SessionEditorModel: TagTarget {
     }
 
     /// Saves the edit, and returns whether it was saved, so the editor closes only then.
+    ///
+    /// Saves only what changed, as a save makes this the latest copy: a change synced from another device since
+    /// the editor opened, to anything not edited here, stays (SYN-1).
     func save() -> Bool {
+        guard isNew || hasChanges else { return true }
         do {
             if isNew {
                 try history.save(session)
             } else {
-                try history.edit(session)
+                let stored = try history.sessions().first { $0.id == session.id } ?? session
+                try history.edit(edited(stored))
             }
             return true
         } catch {
@@ -114,6 +119,21 @@ final class SessionEditorModel: TagTarget {
             isShowingError = true
             return false
         }
+    }
+
+    /// `latest`, the stored copy, with this edit's changes: the times as one, the tags and the note.
+    private func edited(_ latest: PracticeSession) throws -> PracticeSession {
+        var latest = latest
+        if session.startedAt != original.startedAt || session.endedAt != original.endedAt {
+            try latest.editTimes(start: start, end: end)
+        }
+        if session.tagIDs != original.tagIDs {
+            try latest.editTags(session.tagIDs)
+        }
+        if session.note != original.note {
+            try latest.editNote(session.note)
+        }
+        return latest
     }
 }
 
