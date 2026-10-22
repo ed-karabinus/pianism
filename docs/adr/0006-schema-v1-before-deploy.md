@@ -55,6 +55,7 @@ Option 2 for both, plus the changes below.
 | `SessionRecord` | specify | `pauses` | `Data`, empty | JSON, `{"pauses": [...]}`, dates in `Date`'s own encoding (seconds since 2001), which round-trips exactly. An object, so it can gain keys. Empty means no pauses |
 | `SessionRecord` | specify | `note` | `String`, `""` | Encrypted in iCloud (`.allowsCloudEncryption`). See "Before the CloudKit deploy" |
 | `TagRecord` | add | `deletedAt` | `Date?`, `nil` | See "Before the CloudKit deploy" |
+| `TagRecord` | specify | `name`, `composer` | `String`, `""` | Encrypted in iCloud, as `note` is. See "Before the CloudKit deploy" |
 | `SessionRecord` | change | `tagIDs` | `Data`, empty | A JSON array of strings, such as `["skill.scales"]`. Empty means none. See "Before the CloudKit deploy" |
 
 Corrected 2026-10-15 by the first store code: the `pauses` row first said `.secondsSince1970`. That
@@ -68,6 +69,10 @@ record type and field, so four changes come first:
 
 - `note` is encrypted in iCloud, as the only field holding the user's own words. A field's encryption
   can't change once deployed, either way. Tag names and composers stay plain.
+  Amended 2026-10-21 by the owner (#15): tag names and composers are encrypted too. People type
+  anything into them, and only encrypted fields and assets become end-to-end under Advanced Data
+  Protection.
+  IDs, kinds, dates and tag IDs stay plain, so CloudKit Console can still show what synced.
 - `TagRecord` gains `deletedAt`, under the same rule as sessions: an ID with any deleted copy doesn't
   show. Tags are only archived today; with the field there now, a version that deletes them won't
   leave nameless tags showing in this one. A session keeps a deleted tag's ID, as it keeps one this

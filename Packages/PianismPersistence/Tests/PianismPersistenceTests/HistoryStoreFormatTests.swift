@@ -117,7 +117,7 @@ final class HistoryStoreFormatTests {
                 "SessionRecord.tagIDs binary default",
                 "SessionRecord.timeZoneID string default",
                 "SessionRecord.version integer64 default",
-                "TagRecord.composer string default",
+                "TagRecord.composer string default encrypted",
                 "TagRecord.createdAt date default",
                 "TagRecord.deletedAt date optional",
                 "TagRecord.id string default",
@@ -125,7 +125,7 @@ final class HistoryStoreFormatTests {
                 "TagRecord.kind string default",
                 "TagRecord.mergedInto string default",
                 "TagRecord.modifiedAt date default",
-                "TagRecord.name string default",
+                "TagRecord.name string default encrypted",
                 "TagRecord.targetTempo integer64 optional",
                 "TagRecord.version integer64 default",
             ])
@@ -135,8 +135,12 @@ final class HistoryStoreFormatTests {
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         let expected = try String(
             contentsOf: repository.appending(path: "docs/cloudkit/schema-v1-fields.txt"), encoding: .utf8)
+        // Encryption too, as a field's can't change after the deploy.
         for (entity, property) in properties {
-            #expect(expected.contains("CD_\(entity).CD_\(property.name) "), "\(entity).\(property.name)")
+            let field = "CD_\(entity).CD_\(property.name) "
+            let encrypted = (property as? NSAttributeDescription)?.allowsCloudEncryption == true
+            #expect(expected.contains(field), "\(entity).\(property.name)")
+            #expect(expected.contains(field + "ENCRYPTED ") == encrypted, "\(entity).\(property.name) encryption")
         }
     }
 
