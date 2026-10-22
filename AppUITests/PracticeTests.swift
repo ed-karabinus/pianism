@@ -25,7 +25,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.pause")
         XCTAssertEqual(text(app, "practice.status"), "Paused")
         attachScreenshot(of: app, named: "Paused")
-        // Side by side when they fit (testCommandsFitAtTheLargestTextSize).
+        // Side by side when they fit (testCommandsFitAtEveryTextSize).
         XCTAssertEqual(
             element(app, "practice.resume").frame.midY, element(app, "practice.stop").frame.midY, accuracy: 1)
 
@@ -256,7 +256,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.start")
         app.terminate()
 
-        app = launch(at: start + 95 * 60, largestText: true)
+        app = launch(at: start + 95 * 60, textSize: "AccessibilityXXXL")
         tap(app, "practice.stopped-earlier")
         XCTAssertTrue(app.datePickers["practice.stopped-at"].waitForExistence(timeout: 5), "No end to pick")
         attachScreenshot(of: app, named: "I stopped earlier, largest text")
@@ -266,18 +266,21 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(text(app, "practice.status"), "Paused")
     }
 
-    /// SES-1, SES-2: at the largest text size, Pause or Resume and Stop stack where side by side would break their
-    /// names mid-word, as on iPhone, and stay above the tab bar.
+    /// SES-1, SES-2: at every text size, Pause or Resume and Stop stack where side by side would break their names
+    /// mid-word, and stay above the tab bar.
     @MainActor
-    func testCommandsFitAtTheLargestTextSize() throws {
-        let app = launch(at: start, reset: true, largestText: true)
-        tap(app, "practice.start")
-        assertCommandsFit(app, beside: "practice.pause")
-        attachScreenshot(of: app, named: "Practicing, largest text")
-
-        tap(app, "practice.pause")
-        assertCommandsFit(app, beside: "practice.resume")
-        attachScreenshot(of: app, named: "Paused, largest text")
+    func testCommandsFitAtEveryTextSize() throws {
+        continueAfterFailure = true  // So one run reports every size that fails.
+        let accessibilitySizes = ["M", "L", "XL", "XXL", "XXXL"].map { "Accessibility\($0)" }
+        for size in ["L", "XL", "XXL", "XXXL"] + accessibilitySizes {
+            let app = launch(at: start, reset: true, textSize: size)
+            tap(app, "practice.start")
+            assertCommandsFit(app, beside: "practice.pause", at: size)
+            tap(app, "practice.pause")
+            assertCommandsFit(app, beside: "practice.resume", at: size)
+            attachScreenshot(of: app, named: "Paused, text size \(size)")
+            app.terminate()
+        }
     }
 
     /// SES-3, SES-4: with the app open, Practice asks "Still practicing?" at the nudge, then ends the session at
@@ -683,7 +686,7 @@ final class PracticeTests: UITestCase {
     /// the tab bar on iPhone, or the bottom of the screen on iPad, whose tab bar is at the top.
     @MainActor
     func testNotSyncingNoticeScrollsAtLargestText() throws {
-        let app = launch(at: start, reset: true, largestText: true)
+        let app = launch(at: start, reset: true, textSize: "AccessibilityXXXL")
         openHistory(app)
         let notice = element(app, "history.not-syncing")
         XCTAssertTrue(notice.waitForExistence(timeout: 10), "No notice")
@@ -783,16 +786,16 @@ final class PracticeTests: UITestCase {
     /// Asserts Stop is below the button `identifier` names, or beside it at the same height, as a name broken onto a
     /// second line makes its button taller, and that both are above the tab bar.
     @MainActor
-    private func assertCommandsFit(_ app: XCUIApplication, beside identifier: String) {
+    private func assertCommandsFit(_ app: XCUIApplication, beside identifier: String, at size: String) {
         let other = element(app, identifier).frame
         let stop = element(app, "practice.stop").frame
         if stop.minY < other.maxY {
-            XCTAssertEqual(stop.height, other.height, accuracy: 1, "A name broke beside Stop")
+            XCTAssertEqual(stop.height, other.height, accuracy: 1, "A name broke beside Stop at \(size)")
         }
         let tabBar = app.tabBars.firstMatch
         let screen = app.windows.firstMatch.frame
         let bottom = tabBar.exists && tabBar.frame.minY > screen.midY ? tabBar.frame.minY : screen.maxY
-        XCTAssertLessThanOrEqual(max(stop.maxY, other.maxY), bottom, "A button is under the tab bar")
+        XCTAssertLessThanOrEqual(max(stop.maxY, other.maxY), bottom, "A button is under the tab bar at \(size)")
     }
 
     @MainActor
@@ -805,7 +808,7 @@ final class PracticeTests: UITestCase {
     private func launch(
         at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, unshowableSessions: Int? = nil,
         undoSeconds: Int? = nil, nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false,
-        largestText: Bool = false, syncArrivesSeconds: Int? = nil
+        textSize: String? = nil, syncArrivesSeconds: Int? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -815,8 +818,8 @@ final class PracticeTests: UITestCase {
         // the accessibility runtime log dozens of lines, and when stderr drains slowly, queries time out ("Timed out
         // while evaluating UI query").
         app.launchEnvironment["OS_ACTIVITY_DT_MODE"] = "NO"
-        if largestText {
-            app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        if let textSize {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategory\(textSize)"]
         }
         if let now {
             app.launchEnvironment["PIANISM_NOW"] = String(now)
