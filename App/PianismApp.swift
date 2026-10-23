@@ -28,10 +28,17 @@ struct PianismApp: App {
         // ends itself, in case it was left running (SES-4).
         var nudge: TimeInterval = 90 * 60
         var cap: TimeInterval = 4 * 60 * 60
-        var historyURL = URL.applicationSupportDirectory.appending(path: "History/History.store")
+        // Debug keeps its own history and outbox, so a Release build on the same device never uploads a
+        // Debug run's sessions to Production (ADR 0008).
+        #if DEBUG
+            let dataDirectory = URL.applicationSupportDirectory.appending(path: "Debug")
+        #else
+            let dataDirectory = URL.applicationSupportDirectory
+        #endif
+        var historyURL = dataDirectory.appending(path: "History/History.store")
         // Finished sessions wait here while history can't save them (ADR 0007). Only the app moves
         // sessions into history, so this stays out of the App Group.
-        let outboxURL = URL.applicationSupportDirectory.appending(path: "Outbox")
+        let outboxURL = dataDirectory.appending(path: "Outbox")
         // Release syncs with iCloud's Production environment, where schema v1 is deployed (SYN-1, ADR 0008).
         var cloudKitContainer: String? = Self.iCloudContainer
         #if DEBUG
@@ -54,8 +61,7 @@ struct PianismApp: App {
             }
             if environment["PIANISM_RESET"] == "1" {
                 try? store.update { $0 = nil }
-                try? FileManager.default.removeItem(at: historyURL.deletingLastPathComponent())
-                try? FileManager.default.removeItem(at: outboxURL)
+                try? FileManager.default.removeItem(at: dataDirectory)
                 UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier ?? "")
             }
             if environment["PIANISM_BREAK_HISTORY"] == "1" {

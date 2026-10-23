@@ -29,9 +29,11 @@ Option 2.
 
 - **Environments.** `com.apple.developer.icloud-container-environment` comes from the xcconfigs:
   Debug uses `Development` and Release uses `Production`, even when Xcode installs a Release build.
-  Debug syncs only when launched with `PIANISM_SYNC=1`, as the end-to-end tests are.
-- **The owner's iPhone runs Release builds only.** Pianism is deleted and installed again before its
-  first syncing build, so no store moves between environments.
+  Debug syncs only when launched with `PIANISM_SYNC=1`, as the end-to-end tests are. Debug keeps its
+  history and outbox under `Application Support/Debug`, so a Release build on the same device never
+  uploads a Debug run's sessions to Production, as one did on the Mac on 2026-10-22 (#118).
+- **Each configuration keeps its own store,** so no store moves between environments. Until #118 the
+  owner's iPhone ran Release builds only, for the same reason.
 - **Pushes.** The `remote-notification` background mode is Pianism's only one (NFR-9, as amended), so
   changes from other devices arrive within seconds.
 - **Signing out.** When a device signs out of iCloud, or turns iCloud off for Pianism, Apple's sync
