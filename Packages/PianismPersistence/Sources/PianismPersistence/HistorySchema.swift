@@ -21,7 +21,7 @@ enum HistorySchemaV1: VersionedSchema {
         var tagIDs: Data = Data()
         /// Encrypted in iCloud, as the user's own words; a field's encryption can't change after SYN-1 deploys it.
         @Attribute(.allowsCloudEncryption) var note: String = ""
-        // periphery:ignore - schema v1; manual entries (SES-5) and MIDI (MIDI-1) set it
+        /// A `PracticeSession.Source`; MIDI-1 adds `midi`.
         var source: String = "timer"
         /// Such as `America/Los_Angeles`; empty if unknown.
         var timeZoneID: String = ""

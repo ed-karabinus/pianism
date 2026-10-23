@@ -133,6 +133,8 @@ extension SessionRecord {
         timeZoneID = session.timeZone?.identifier ?? timeZoneID
         tagIDs = session.tagIDs.isEmpty ? Data() : try JSONEncoder().encode(session.tagIDs)
         note = session.note
+        // An unknown source, from a newer version, reads as `timer`; an edit must keep it (ADR 0006).
+        if PracticeSession.Source(rawValue: source) != nil { source = session.source.rawValue }
         let stored = session.pauses.map { StoredPauses.Pause(start: $0.start, end: $0.end ?? ended) }
         pauses = stored.isEmpty ? Data() : try JSONEncoder().encode(StoredPauses(pauses: stored))
     }
@@ -140,7 +142,9 @@ extension SessionRecord {
     /// The session this record holds, rebuilt through the steps that made it, so it obeys the same
     /// rules as any other session.
     fileprivate func session() throws -> PracticeSession {
-        var session = PracticeSession(id: id, startedAt: startedAt, timeZone: TimeZone(identifier: timeZoneID))
+        var session = PracticeSession(
+            id: id, startedAt: startedAt, timeZone: TimeZone(identifier: timeZoneID),
+            source: PracticeSession.Source(rawValue: source) ?? .timer)
         try session.setTags(tagIDs.isEmpty ? [] : try JSONDecoder().decode([String].self, from: tagIDs))
         // iCloud keeps `startedAt` and `endedAt` to the millisecond but `pauses` exactly, so a synced
         // pause can stick out of the session by less than that (ADR 0006).

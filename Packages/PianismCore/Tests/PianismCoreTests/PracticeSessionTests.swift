@@ -277,6 +277,19 @@ struct PracticeSessionTests {
         #expect(restored.state == .paused)
         #expect(restored.elapsed(at: clock.now) == 200)
     }
+
+    @Test(
+        "SES-5: a session is timed unless it was added after the fact, which survives an encode and decode round trip")
+    func sourceSurvivesRoundTrip() throws {
+        var added = PracticeSession(startedAt: clock.now, source: .manual)
+        try added.stop(at: clock.now + 600)
+
+        let restored = try JSONDecoder().decode(PracticeSession.self, from: JSONEncoder().encode(added))
+
+        #expect(PracticeSession(startedAt: clock.now).source == .timer)
+        #expect(restored.source == .manual)
+        #expect(restored == added)
+    }
 }
 
 /// A change attempted in a state that doesn't allow it, and the error it must produce.

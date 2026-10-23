@@ -315,6 +315,26 @@ final class SwiftDataSessionHistoryTests {
         #expect(records.map(\.modifiedAt) == [clock.now])
     }
 
+    @Test("SES-5: an added session is stored as manual and a timed one as timer, through an edit and reopening")
+    func sourceIsStored() throws {
+        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
+        var timed = PracticeSession(startedAt: clock.now)
+        try timed.stop(at: clock.now + 600)
+        var added = PracticeSession(startedAt: clock.now + 1_200, source: .manual)
+        try added.stop(at: clock.now + 1_800)
+        try history.save(timed)
+        try history.save(added)
+        try added.editNote("Scales first")
+
+        try history.edit(added)
+
+        let reopened = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
+        #expect(Set(try reopened.sessions()) == [timed, added])
+        let records = try ModelContext(reopened.store.container())
+            .fetch(FetchDescriptor<SessionRecord>(sortBy: [SortDescriptor(\.startedAt)]))
+        #expect(records.map(\.source) == ["timer", "manual"])
+    }
+
     @Test(
         "ADR 0006: an edit keeps the note it didn't change, and what this version doesn't show: the source and an unknown time zone"
     )

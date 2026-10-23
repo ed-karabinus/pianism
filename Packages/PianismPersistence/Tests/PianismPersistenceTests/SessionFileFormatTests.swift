@@ -67,6 +67,22 @@ final class SessionFileFormatTests {
         #expect(try waitingSessions(from: written) == [expected])
     }
 
+    @Test(
+        "SES-5, ADR 0007: a session added after the fact, as written since sources were recorded, still reads in both places"
+    )
+    func addedSessionReads() throws {
+        let written =
+            #"{"recordedAs":"manual","pauses":[],"endedAt":820456200.875,"#
+            + #""startedAt":820454400.25,"id":"3F2B8C1E-7A4D-4E9B-8C2F-1D5A6B7C8E90","#
+            + #""timeZone":{"identifier":"Europe\/Vienna"}}"#
+        var expected = PracticeSession(
+            id: try #require(id), startedAt: date(820_454_400.25), timeZone: vienna, source: .manual)
+        try expected.stop(at: date(820_456_200.875))
+
+        #expect(try runningSession(from: written) == expected)
+        #expect(try waitingSessions(from: written) == [expected])
+    }
+
     /// Reads `json` as the running-session file.
     private func runningSession(from json: String) throws -> PracticeSession? {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
