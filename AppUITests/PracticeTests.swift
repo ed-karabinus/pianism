@@ -189,7 +189,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         tap(app, "practice.start")
         tap(app, "practice.pause")
-        XCUIDevice.shared.press(.home)
+        goHome()
         XCTAssertFalse(notification.waitForExistence(timeout: 30), "It nudged a paused session")
         app.activate()
         tap(app, "practice.resume")
@@ -651,8 +651,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(sessions.firstMatch.waitForExistence(timeout: 5))
         XCTAssertEqual(sessions.count, 1, "Leaving History didn't save the deletion")
         deleteBySwipe(app)
-        XCUIDevice.shared.press(.home)
-        XCTAssertTrue(app.wait(for: .runningBackground, timeout: 5))
+        goHome()
         app.terminate()
 
         app = launch(at: start + 53 * 60)
@@ -764,11 +763,28 @@ final class PracticeTests: UITestCase {
             .matching(NSPredicate(format: "label CONTAINS 'Pianism is still timing your session.'")).firstMatch
     }
 
+    /// Goes to the Home Screen and checks the app left the screen. iPhone swipes up from the bottom edge, as a person
+    /// does: on the iPhone Duo simulator (iOS 27.1), XCUIDevice's Home button press takes 5 s and leaves the app in
+    /// front. iPad presses Home, as a swipe there can open the app switcher instead. The swipe assumes a Face ID
+    /// iPhone: on one with a Home button, it would open Control Center.
+    @MainActor
+    private func goHome() {
+        let app = XCUIApplication()
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            XCUIDevice.shared.press(.home)
+        } else {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.999)).press(
+                forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)),
+                withVelocity: .fast, thenHoldForDuration: 0)
+        }
+        XCTAssertTrue(app.wait(for: .runningBackground, timeout: 5), "The app stayed in front after leaving it")
+    }
+
     /// Leaves the app and answers its "Still practicing?" notification with the button titled `answer`. The system
     /// shows no notification for the app in front, and takes up to about 20 s to show it after the nudge.
     @MainActor
     private func answerNotification(with answer: String) {
-        XCUIDevice.shared.press(.home)
+        goHome()
         XCTAssertTrue(notification.waitForExistence(timeout: 40), "No notification")
         let button = springboard.buttons[answer]
         if UIDevice.current.userInterfaceIdiom == .pad {
