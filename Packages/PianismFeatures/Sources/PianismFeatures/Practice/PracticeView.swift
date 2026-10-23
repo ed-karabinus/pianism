@@ -245,11 +245,11 @@ struct PracticeView: View {
         }
     }
 
-    /// Side by side whenever they fit the width, and stacked otherwise, as at the largest text sizes, where side by
-    /// side broke their names mid-word.
+    /// Side by side whenever each name fits its half of the width, and stacked otherwise, as at the larger text
+    /// sizes, where side by side broke them mid-word.
     private func commandPair(@ViewBuilder _ buttons: () -> some View) -> some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: 16, content: buttons)
+            EqualWidthRow(spacing: 16) { buttons() }
             VStack(spacing: 16, content: buttons)
         }
     }
@@ -281,6 +281,32 @@ extension View {
         alert(title, isPresented: isPresented) {
         } message: {
             Text("Pianism couldn't reach its storage. Try again in a moment.", bundle: .module)
+        }
+    }
+}
+
+/// Views side by side in equal widths that fill the row. Its ideal width gives each the widest one's, unlike
+/// `HStack`, whose ideal width is the sum, so `ViewThatFits` passes over it when a name would have to break to fit
+/// its share. Compare `MyEqualWidthHStack` in Apple's "Composing custom layouts with SwiftUI", which gives each the
+/// widest ideal width; this one fills the width it's given.
+private struct EqualWidthRow: Layout {
+    let spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let count = CGFloat(subviews.count)
+        let widest = subviews.map { $0.sizeThatFits(.unspecified).width }.max() ?? 0
+        let width = proposal.width ?? widest * count + spacing * (count - 1)
+        let share = ProposedViewSize(width: (width - spacing * (count - 1)) / count, height: proposal.height)
+        return CGSize(width: width, height: subviews.map { $0.sizeThatFits(share).height }.max() ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let share = (bounds.width - spacing * CGFloat(subviews.count - 1)) / CGFloat(subviews.count)
+        for (index, subview) in subviews.enumerated() {
+            let x = bounds.minX + CGFloat(index) * (share + spacing)
+            subview.place(
+                at: CGPoint(x: x, y: bounds.midY), anchor: .leading,
+                proposal: ProposedViewSize(width: share, height: bounds.height))
         }
     }
 }
