@@ -1,7 +1,8 @@
 # 4. Finished sessions and tags in SwiftData, mapped to core values and synced through CloudKit
 
 - Status: accepted; schema v1 and some rules amended by [ADR 0006](0006-schema-v1-before-deploy.md); sync
-  environments and the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md)
+  environments and the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md); a MIDI session's
+  note count by [ADR 0009](0009-what-a-midi-session-stores.md)
 - Date: 2026-10-13
 - Issue: #25
 
