@@ -1,7 +1,7 @@
 # 6. Schema v1 gains a record version, a time zone and a deleted mark before it ships
 
-- Status: accepted; the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md); when a new
-  `source` needs a `version` bump by [ADR 0009](0009-what-a-midi-session-stores.md)
+- Status: accepted; the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md); the
+  `version` rule's `source` example by [ADR 0009](0009-what-a-midi-session-stores.md)
 - Date: 2026-10-15
 - Amends: [ADR 0004](0004-synced-data-model.md)
 
@@ -98,8 +98,8 @@ values the ports return say whether they can be changed. An unknown value reads 
 display only. A tag ID this device can't resolve yet stays in the record and is left out only on
 screen.
 Amended 2026-10-23 by [ADR 0009](0009-what-a-midi-session-stores.md) (#120): the example "such as a
-new `source`" is removed. An older app's edit never loses a source, since v1 builds don't write it
-and later ones keep a value they don't know, so a new source needs no bump.
+new `source`" is removed. An older app's edit never loses a source: builds before #122 never write
+it, and builds since keep a value they don't know, so a new source needs no bump.
 
 Option 1 is rejected because every later version would have to carry every unknown field without
 loss, and no test can check a version that doesn't exist yet. Option 2 is one comparison.

@@ -8,9 +8,9 @@
 ## Context and problem statement
 
 MIDI-1 records sessions from a connected piano: a session starts at the threshold's first note,
-pauses after a silence, and ends 5 s after its last note. The spec's data model named figures
-that schema v1 doesn't hold: `pausedSeconds`, `playedSeconds` and `noteCount`, and its Pro tier sold "played vs.
-bench time, note counts".
+pauses after a silence, and ends 5 s after its last note. The spec's data model named figures that
+schema v1 doesn't hold: `pausedSeconds`, `playedSeconds` and `noteCount`, and its Pro tier sold
+"played vs. bench time, note counts".
 
 Schema v1 is deployed to CloudKit Production. Fields can be added, never renamed or removed, and
 each addition costs an ADR 0008 deploy before any Release build writes it, plus a fixture store.
@@ -46,8 +46,7 @@ in them for a musician" (owner, 2026-10-23). The spec no longer has them.
   `resume(at:)` to take them; `stop(at:)` already exists. MIDI-1's core plan specifies them.
 - **Schema v1 stays as it is.** `playedSeconds` isn't stored, and no note count is recorded, so
   MIDI-1 needs no deploy.
-- **`PracticeSession` gains `Source.midi`.** Running-session and outbox files written before still
-  decode (ADR 0003); the format change adds a sample to `SessionFileFormatTests`.
+- **`PracticeSession` gains `Source.midi`,** with a sample in `SessionFileFormatTests` (ADR 0003).
 - **Stored sources** are `timer`, `manual` and `midi`. The spec's old "manual" session is the code's
   `timer`, started and stopped by taps; the code's `manual` is a session added after the fact
   (SES-5).
@@ -56,7 +55,6 @@ in them for a musician" (owner, 2026-10-23). The spec no longer has them.
   split and doesn't use one of PRO-2's five free sessions.
 - **Stop on a MIDI session** ends it at the earlier of the tap and 5 s after the last note. A run
   with under a minute of played time is never saved.
-- **Edits keep the source.**
 - **`version` stays 1.** Builds since #122 keep a source they don't know, so an older app's edit
   can't lose `midi`. Only development builds on the owner's devices predate that, and their data
   may be wiped (owner, 2026-10-23).
@@ -66,8 +64,8 @@ in them for a musician" (owner, 2026-10-23). The spec no longer has them.
 
 ## Consequences
 
-- Good: MIDI-1 needs no CloudKit deploy, migration stage or second fixture store. HIS-4's played
-  and bench time and EXP-1's export come from fields v1 has.
+- Good: MIDI-1 needs no CloudKit deploy. HIS-4's played and bench time and EXP-1's export come from
+  fields v1 has.
 - Bad: if note counts come back, MIDI sessions recorded before their deploy never have one.
 - Bad: while a session is going, the on-screen timer keeps counting through a silence, then drops
   back by up to the pause timeout when the pause starts. MIDI-1's plan designs that moment,
