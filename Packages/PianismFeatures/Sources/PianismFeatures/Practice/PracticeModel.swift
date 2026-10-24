@@ -13,7 +13,7 @@ public final class PracticeModel: TagTarget {
     /// The running or paused session, or `nil` when ready to start. Also an ended session that neither
     /// history nor the outbox could take, which shows as ready to start.
     private(set) var session: PracticeSession?
-    /// The session that just ended, shown until the next one starts.
+    /// The session that just ended and was kept, shown until the next one starts.
     private(set) var lastSession: PracticeSession?
     /// How many finished sessions are waiting to move into history, which couldn't save them yet.
     private(set) var waitingCount = 0
