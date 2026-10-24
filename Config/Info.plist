@@ -8,5 +8,9 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<!-- Pianism uses only the system's encryption, such as HTTPS and iCloud's, so App Store Connect
+	     asks no export questions on upload (NFR-9). -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
