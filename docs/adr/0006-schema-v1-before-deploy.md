@@ -1,6 +1,7 @@
 # 6. Schema v1 gains a record version, a time zone and a deleted mark before it ships
 
-- Status: accepted; the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md)
+- Status: accepted; the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md); the
+  `version` rule's `source` example by [ADR 0009](0009-what-a-midi-session-stores.md)
 - Date: 2026-10-15
 - Amends: [ADR 0004](0004-synced-data-model.md)
 
@@ -90,12 +91,15 @@ record type and field, so four changes come first:
   "Round-trips exactly" holds on one device only.
 
 **Records from newer versions.** `version` starts at 1. A release raises it when it adds a field, or
-a stored value such as a new `source`, that an older app would lose by saving, whether or not the
-schema changes. Every save writes the app's own `version`. An app edits, deletes, archives or merges
-only records whose `version` is at most its own. It shows the others read-only and asks the user to
-update, so the values the ports return say whether they can be changed. An unknown value reads as
-the default, for display only. A tag ID this device can't resolve yet stays in the record and is
-left out only on screen.
+a stored value, that an older app would lose by saving, whether or not the schema changes. Every
+save writes the app's own `version`. An app edits, deletes, archives or merges only records whose
+`version` is at most its own. It shows the others read-only and asks the user to update, so the
+values the ports return say whether they can be changed. An unknown value reads as the default, for
+display only. A tag ID this device can't resolve yet stays in the record and is left out only on
+screen.
+Amended 2026-10-23 by [ADR 0009](0009-what-a-midi-session-stores.md) (#120): the example "such as a
+new `source`" is removed. An older app's edit never loses a source: builds before #122 never write
+it, and builds since keep a value they don't know, so a new source needs no bump.
 
 Option 1 is rejected because every later version would have to carry every unknown field without
 loss, and no test can check a version that doesn't exist yet. Option 2 is one comparison.
