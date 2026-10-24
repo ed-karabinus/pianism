@@ -156,6 +156,27 @@ struct SessionRecorderTests {
         #expect(throws: Never.self) { try recorder.start() }
     }
 
+    @Test(
+        "SES-1: a session with under 10 s of practice, pauses left out, is dropped quietly; 10 s is kept",
+        arguments: [(practice: 9.0, paused: 0.0), (10, 0), (5, 25)])
+    func archiveDropsShortSession(practice: TimeInterval, paused: TimeInterval) throws {
+        let history = InMemorySessionHistory()
+        try recorder.start()
+        clock.advance(by: practice)
+        try recorder.pause()
+        clock.advance(by: paused)
+        let ended = try recorder.stop()
+        let kept = practice >= 10
+
+        let archived = try recorder.archive(to: history, or: outbox)
+
+        #expect(archived == (kept ? ended : nil))
+        #expect(history.sessions() == (kept ? [ended] : []))
+        #expect(outbox.sessions().isEmpty)
+        #expect(store.current() == nil)
+        #expect(throws: Never.self) { try recorder.start() }
+    }
+
     @Test("Archiving leaves a running or paused session alone", arguments: [false, true])
     func archiveIgnoresUnfinishedSession(paused: Bool) throws {
         let history = InMemorySessionHistory()
