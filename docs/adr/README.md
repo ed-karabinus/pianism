@@ -17,4 +17,4 @@ changed and why; git history keeps the original. Each record's status is in its 
 | [6](0006-schema-v1-before-deploy.md) | Schema v1 gains a record version, a time zone and a deleted mark before it ships |
 | [7](0007-outbox-when-history-cant-save.md) | Finished sessions wait in an outbox when history can't save them |
 | [8](0008-icloud-sync-environments-and-deploy.md) | History syncs through CloudKit, with Debug and Release builds kept apart, and one checked deploy |
-| [9](0009-what-a-midi-session-stores.md) | A MIDI session stores its note count, added in one deploy; its played time comes from its pauses |
+| [9](0009-what-a-midi-session-stores.md) | A MIDI session stores nothing new; its played time comes from its pauses |

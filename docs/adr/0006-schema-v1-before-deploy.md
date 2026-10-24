@@ -1,7 +1,7 @@
 # 6. Schema v1 gains a record version, a time zone and a deleted mark before it ships
 
-- Status: accepted; the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md); schema v2's
-  `noteCount` without a `version` bump by [ADR 0009](0009-what-a-midi-session-stores.md)
+- Status: accepted; the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md); when a new
+  `source` needs a `version` bump by [ADR 0009](0009-what-a-midi-session-stores.md)
 - Date: 2026-10-15
 - Amends: [ADR 0004](0004-synced-data-model.md)
 
