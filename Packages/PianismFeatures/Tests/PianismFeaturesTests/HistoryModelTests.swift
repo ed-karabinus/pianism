@@ -91,7 +91,9 @@ struct HistoryModelTests {
         #expect(!model.loadFailed)
     }
 
-    @Test("SES-5: an added session ends when it's added, lasts 30 minutes, and reaches history only when saved")
+    @Test(
+        "SES-5: an added session ends when it's added, lasts 30 minutes, is marked as added, and reaches history only when saved"
+    )
     func addedSessionReachesHistoryOnSave() throws {
         let history = InMemorySessionHistory()
         let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
@@ -101,6 +103,7 @@ struct HistoryModelTests {
 
         #expect([editor.session.startedAt, editor.session.endedAt] == [clock.now - 30 * 60, clock.now])
         #expect(editor.session.timeZone == .current)
+        #expect(editor.session.source == .manual)
         #expect(!editor.isReadOnly && !editor.hasChanges)
         #expect(history.sessions().isEmpty)
         #expect(editor.save())

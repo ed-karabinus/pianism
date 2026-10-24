@@ -147,7 +147,7 @@ public final class HistoryModel {
         for other in others where other.startedAt < end && (other.endedAt ?? end) > end - length {
             end = other.startedAt
         }
-        var session = PracticeSession(startedAt: end - length, timeZone: .current)
+        var session = PracticeSession(startedAt: end - length, timeZone: .current, source: .manual)
         // Can't fail: the session is running, and ends after it started.
         try? session.stop(at: end)
         editing = SessionEdit(

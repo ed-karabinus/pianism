@@ -19,6 +19,14 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         case ended
     }
 
+    /// How a session was recorded (SES-5).
+    public enum Source: String, Sendable, Hashable, Codable {
+        /// Timed as it happened, from Start to Stop.
+        case timer
+        /// Added after the fact, from History.
+        case manual
+    }
+
     public let id: UUID
     public private(set) var startedAt: Date
     /// Where the session started, kept so the day it was practiced can be recovered wherever it's
@@ -36,12 +44,17 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
     public var note: String { notes ?? "" }
     /// Optional and `nil` when empty, for the same reasons as `tags`.
     private var notes: String?
+    /// Timed, unless the session was added after the fact.
+    public var source: Source { recordedAs ?? .timer }
+    /// Optional and `nil` for a timed session, for the same reasons as `tags`.
+    private let recordedAs: Source?
 
-    /// Starts a new, running session (SES-1).
-    public init(id: UUID = UUID(), startedAt: Date, timeZone: TimeZone? = nil) {
+    /// Starts a new, running session (SES-1); `source` records how it is being made (SES-5).
+    public init(id: UUID = UUID(), startedAt: Date, timeZone: TimeZone? = nil, source: Source = .timer) {
         self.id = id
         self.startedAt = startedAt
         self.timeZone = timeZone
+        recordedAs = source == .timer ? nil : source
     }
 
     public var state: State {
