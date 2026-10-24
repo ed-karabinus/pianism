@@ -35,12 +35,17 @@ public final class HistoryModel {
     private let history: any SessionHistory
     private let tags: any TagLibrary
     private let outbox: any SessionOutbox
+    private let running: any RunningSessionStore
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
 
-    public init(history: any SessionHistory, tags: any TagLibrary, outbox: any SessionOutbox, clock: any WallClock) {
+    public init(
+        history: any SessionHistory, tags: any TagLibrary, outbox: any SessionOutbox, running: any RunningSessionStore,
+        clock: any WallClock
+    ) {
         self.history = history
         self.tags = tags
         self.outbox = outbox
+        self.running = running
         self.clock = clock
         self.now = clock.now
     }
@@ -122,8 +127,9 @@ public final class HistoryModel {
     /// Starts editing `session`, unless it's still waiting to be saved (ADR 0007).
     func edit(_ session: PracticeSession) {
         guard !waitingIDs.contains(session.id) else { return }
+        let now = clock.now
         editing = SessionEdit(
-            session: session, others: days.flatMap(\.sessions), history: history, library: tags, now: clock.now)
+            session: session, others: otherSessions(at: now), history: history, library: tags, now: now)
     }
 
     /// Starts editing the session with `id` as history has it now, for the cap banner, whose copy may be out of
@@ -141,9 +147,9 @@ public final class HistoryModel {
     func add() {
         let now = clock.now
         let length: TimeInterval = 30 * 60
-        let others = days.flatMap(\.sessions)
+        let others = otherSessions(at: now)
         var end = now
-        // Newest first, as days list them, so each overlapping session moves the end back past it in turn.
+        // Newest first, as otherSessions lists them, so each overlapping session moves the end back past it in turn.
         for other in others where other.startedAt < end && (other.endedAt ?? end) > end - length {
             end = other.startedAt
         }
@@ -152,5 +158,15 @@ public final class HistoryModel {
         try? session.stop(at: end)
         editing = SessionEdit(
             session: session, isNew: true, others: others, history: history, library: tags, now: now)
+    }
+
+    /// The sessions a session being edited or added keeps clear of: the running one, as if it ended at `now`, then
+    /// the shown ones, newest first (SES-5). The running session's store isn't changed.
+    private func otherSessions(at now: Date) -> [PracticeSession] {
+        // A store that can't be read is reported by Practice.
+        guard var current = try? running.current() else { return days.flatMap(\.sessions) }
+        // No earlier than its last change, so a clock set back still ends the copy, and the warning still names it.
+        if current.state != .ended { try? current.stop(at: max(now, current.latestEvent)) }
+        return [current] + days.flatMap(\.sessions)
     }
 }
