@@ -387,7 +387,10 @@ final class PracticeTests: UITestCase {
         search.typeText("Ballade No. 1")
         tap(app, "tags.add-piece")
         // Untagged, so archiving takes it off the list.
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
         tap(app, "Ballade No. 1")
+        XCTAssertTrue(
+            app.buttons["Ballade No. 1"].wait(for: \.isSelected, toEqual: false, timeout: 5), "It stayed tagged")
         revealSwipeActions(app.buttons["Ballade No. 1"])
         tap(app, "Archive")
         XCTAssertTrue(app.buttons["Ballade No. 1"].waitForNonExistence(timeout: 5), "Archiving didn't hide it")

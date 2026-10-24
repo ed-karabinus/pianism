@@ -83,6 +83,9 @@ struct TagPickerModelTests {
 
         #expect(model.shown(.piece) == [opus, nocturne])
         #expect(model.newName(.piece) == "noct")
+        model.query = "Nocturne in E minor"
+        #expect(model.shown(.piece) == [ballade])
+        #expect(model.newName(.piece) == nil)
     }
 
     @Test("TAG-2: choosing a selected tag again removes it, with any tag merged into it, and leaves the rest")

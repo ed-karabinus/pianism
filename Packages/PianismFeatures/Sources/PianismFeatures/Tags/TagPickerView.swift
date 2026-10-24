@@ -52,8 +52,8 @@ struct TagPickerView: View {
         .storageAlert(Text("Couldn't change your tags", bundle: .module), isPresented: $model.isShowingError)
     }
 
-    /// The tags of `kind`, then a button that adds the query as a new one when no tag has its name. It comes
-    /// last, so a tag the search finds, archived or not, is offered before a near-duplicate (TAG-1).
+    /// The tags of `kind`, then a button that adds the query as a new one when no tag has its name, so a tag
+    /// the search finds, archived or not, is offered before a near-duplicate (TAG-1).
     private func section(_ kind: Tag.Kind, title: Text) -> some View {
         Section {
             ForEach(model.shown(kind)) { tag in
