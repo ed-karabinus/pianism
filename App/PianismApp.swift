@@ -128,7 +128,7 @@ struct PianismApp: App {
         answering.practice = practice
         self.practice = practice
         tags = TagPickerModel(practice: practice, library: library)
-        let history = HistoryModel(history: sessions, tags: library, outbox: outbox, clock: clock)
+        let history = HistoryModel(history: sessions, tags: library, outbox: outbox, running: store, clock: clock)
         #if DEBUG
             // End-to-end tests lengthen Undo with PIANISM_UNDO_SECONDS. Release builds ignore it.
             if let seconds = ProcessInfo.processInfo.environment["PIANISM_UNDO_SECONDS"].flatMap(Int.init) {
