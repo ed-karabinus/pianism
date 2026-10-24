@@ -38,6 +38,9 @@ build: ## Build the app as it ships (Release) for the simulator; the tests build
 	$(NO_WARNINGS) xcodebuild build -project $(PROJECT) -scheme $(SCHEME) -configuration Release \
 		-destination 'generic/platform=iOS Simulator' \
 		$(XCODE_FLAGS)
+	@app="$$(xcodebuild -showBuildSettings -project $(PROJECT) -scheme $(SCHEME) -configuration Release \
+		-destination 'generic/platform=iOS Simulator' 2>/dev/null | awk '$$1 == "CODESIGNING_FOLDER_PATH" {print $$3}')"; \
+		plutil -lint -s "$$app/PrivacyInfo.xcprivacy" || { echo "The app has no valid privacy manifest (NFR-2)."; exit 1; }
 
 # Builds once, then tests each device without rebuilding. One simulator at a time, each shut down
 # after its tests: two booted simulators overload an 8 GB Mac, and iOS's launch watchdog then kills apps.
