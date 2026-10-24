@@ -6,6 +6,9 @@ import Foundation
 /// Because every change is stored as it happens, restoring a session after the app was killed is
 /// just reading ``current()``: its elapsed time comes from the stored timestamps.
 public struct SessionRecorder: Sendable {
+    /// Practice time below which an ended session is a mis-tap, not practice, so it's dropped quietly (SES-1).
+    private static let minimumPractice: TimeInterval = 10
+
     private let store: any RunningSessionStore
     private let clock: any WallClock
     private let makeID: @Sendable () -> UUID
@@ -57,7 +60,8 @@ public struct SessionRecorder: Sendable {
         try change { session, now in try session.resume(at: now) }
     }
 
-    /// Ends the session now (SES-1). It stays in the store, ended, until it moves to history.
+    /// Ends the session now (SES-1). It stays in the store, ended, until ``archive(to:or:)`` moves it to history
+    /// or drops it.
     @discardableResult
     public func stop() throws -> PracticeSession {
         try change { session, now in try session.stop(at: now) }
@@ -93,8 +97,9 @@ public struct SessionRecorder: Sendable {
     }
 
     /// Moves an ended session out of the store, so a new one can start: into `history`, or into
-    /// `outbox` if history can't save it (ADR 0007). Then moves any waiting sessions into history.
-    /// Returns the ended session, or `nil` if none had ended.
+    /// `outbox` if history can't save it (ADR 0007), unless it has under 10 s of practice,
+    /// which drops it. Then moves any waiting sessions into history. Returns the ended session it kept,
+    /// or `nil` if none had ended or it was dropped.
     ///
     /// Throws only if the ended session could go nowhere; it then stays in the store. Safe to repeat
     /// after a crash at any step: history saves each ID once, the outbox replaces by ID, and the
@@ -102,19 +107,22 @@ public struct SessionRecorder: Sendable {
     @discardableResult
     public func archive(to history: any SessionHistory, or outbox: any SessionOutbox) throws -> PracticeSession? {
         let ended = try store.current().flatMap { $0.state == .ended ? $0 : nil }
-        if let ended {
+        let kept = ended.flatMap { $0.elapsed(at: clock.now) >= Self.minimumPractice ? $0 : nil }
+        if let kept {
             do {
-                try history.save(ended)
+                try history.save(kept)
             } catch {
-                try outbox.add(ended)
+                try outbox.add(kept)
             }
+        }
+        if let ended {
             try store.update { stored in
                 if stored?.id == ended.id { stored = nil }
             }
         }
         // History may still be failing; whatever it doesn't take waits for the next archive.
         _ = try? moveWaiting(from: outbox, to: history)
-        return ended
+        return kept
     }
 
     /// Stops at the first failure, as when the store can't open, so an outage costs one failed save

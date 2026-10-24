@@ -35,6 +35,10 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
         XCTAssertTrue(app.buttons["practice.start"].exists)
+        // The clock is fixed, so it had no practice: under 10 s, it's dropped quietly (SES-1).
+        XCTAssertFalse(app.staticTexts["practice.last-session"].exists, "A session under 10 s was kept")
+        openHistory(app)
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A session under 10 s was kept")
     }
 
     /// SES-6: killed while running and while paused, the session comes back with the right time,
@@ -94,18 +98,18 @@ final class PracticeTests: UITestCase {
     }
 
     /// SES-4: with the app left open, as on a music stand, the session ends itself when it reaches the cap,
-    /// shortened to 3 seconds on the real clock. Nothing is checked while it runs, so a slow simulator can't
-    /// miss it.
+    /// shortened to 12 seconds on the real clock, over the 10 s a session needs to be kept (SES-1). Nothing is
+    /// checked while it runs, so a slow simulator can't miss it.
     @MainActor
     func testSessionStopsAtTheCapWhileOpen() throws {
-        let app = launch(at: nil, reset: true, capSeconds: 3)
+        let app = launch(at: nil, reset: true, capSeconds: 12)
         tap(app, "practice.start")
 
         XCTAssertTrue(app.staticTexts["practice.capped"].waitForExistence(timeout: 30), "It didn't stop at the cap")
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
         XCTAssertEqual(
             text(app, "practice.capped"),
-            "Pianism stopped your session at 3 seconds of practice, in case the timer was left running.")
+            "Pianism stopped your session at 12 seconds of practice, in case the timer was left running.")
     }
 
     /// SES-3: once a running session passes 90 minutes of practice, Practice asks "Still practicing?".
@@ -364,6 +368,10 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(element(app, "practice.tags").value as? String, "Ballade No. 1, Scales")
         tap(app, "practice.stop")
         tap(app, "practice.start")
+        app.terminate()
+
+        // A minute later, so the untagged session is long enough to keep (SES-1).
+        app = launch(at: start + 26 * 60)
         tap(app, "practice.stop")
         openHistory(app)
         XCTAssertTrue(element(app, "history.day").waitForExistence(timeout: 5))
@@ -664,7 +672,7 @@ final class PracticeTests: UITestCase {
     /// (docs/device-checklist.md).
     @MainActor
     func testHistorySaysWhenICloudIsntSyncing() throws {
-        let app = launch(at: start, reset: true)
+        var app = launch(at: start, reset: true)
         openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
         let notice = element(app, "history.not-syncing")
@@ -680,10 +688,16 @@ final class PracticeTests: UITestCase {
 
         app.buttons["Practice"].firstMatch.tap()
         tap(app, "practice.start")
+        app.terminate()
+
+        // A minute later, so the session is long enough to keep (SES-1).
+        app = launch(at: start + 60)
         tap(app, "practice.stop")
         openHistory(app)
         XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5))
-        XCTAssertTrue(element(app, "history.not-syncing").exists, "The notice went once there was practice")
+        XCTAssertTrue(
+            element(app, "history.not-syncing").waitForExistence(timeout: 10), "The notice went once there was practice"
+        )
         attachScreenshot(of: app, named: "History, one session, not syncing")
     }
 
@@ -728,8 +742,11 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
         XCTAssertFalse(element(app, "history.session").exists)
         app.buttons["Practice"].firstMatch.tap()
-        for _ in 1...2 {
+        // Each stopped a minute after it started, in a later launch, so it's long enough to keep (SES-1).
+        for minute in 1...2 {
             tap(app, "practice.start")
+            app.terminate()
+            app = launch(at: start + TimeInterval(minute * 60), breakHistory: true)
             tap(app, "practice.stop")
         }
         XCTAssertFalse(app.alerts.firstMatch.exists)
