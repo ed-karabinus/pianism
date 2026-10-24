@@ -52,9 +52,13 @@ struct TagPickerView: View {
         .storageAlert(Text("Couldn't change your tags", bundle: .module), isPresented: $model.isShowingError)
     }
 
-    /// The tags of `kind`, led by a button that adds the query as a new one when no tag has its name.
+    /// The tags of `kind`, then a button that adds the query as a new one when no tag has its name. It comes
+    /// last, so a tag the search finds, archived or not, is offered before a near-duplicate (TAG-1).
     private func section(_ kind: Tag.Kind, title: Text) -> some View {
         Section {
+            ForEach(model.shown(kind)) { tag in
+                row(tag)
+            }
             if let name = model.newName(kind) {
                 Button(
                     kind == .piece
@@ -68,9 +72,6 @@ struct TagPickerView: View {
                     isSearching = false
                 }
                 .accessibilityIdentifier(kind == .piece ? AccessibilityID.tagsAddPiece : AccessibilityID.tagsAddSkill)
-            }
-            ForEach(model.shown(kind)) { tag in
-                row(tag)
             }
         } header: {
             title

@@ -374,6 +374,35 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "History, tagged and untagged")
     }
 
+    /// TAG-1: part of an archived piece's name finds it, marked Archived, above the button that would add a
+    /// near-duplicate.
+    @MainActor
+    func testAnArchivedPieceIsFoundByPartOfItsName() throws {
+        let app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        tap(app, "practice.tags")
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("Ballade No. 1")
+        tap(app, "tags.add-piece")
+        // Untagged, so archiving takes it off the list.
+        tap(app, "Ballade No. 1")
+        revealSwipeActions(app.buttons["Ballade No. 1"])
+        tap(app, "Archive")
+        XCTAssertTrue(app.buttons["Ballade No. 1"].waitForNonExistence(timeout: 5), "Archiving didn't hide it")
+
+        search.tap()
+        search.typeText("Ballade")
+        let archived = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH 'Ballade No. 1' AND label CONTAINS 'Archived'")
+        )
+        .firstMatch
+        XCTAssertTrue(archived.waitForExistence(timeout: 5), "Part of its name didn't find it")
+        XCTAssertLessThan(archived.frame.maxY, element(app, "tags.add-piece").frame.minY, "It wasn't above Add")
+        attachScreenshot(of: app, named: "Tag picker, archived piece found")
+    }
+
     /// TAG-3: a piece is given a composer and a target tempo from the tag picker, which shows them under its
     /// name. A tempo out of range can't be saved, and the details are still there after a relaunch.
     @MainActor
