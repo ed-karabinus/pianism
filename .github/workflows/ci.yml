@@ -10,6 +10,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Runs the nightly's jobs by hand, after a runner image changes or to check a change to them.
+  workflow_dispatch:
   schedule:
     # 10:17 UTC: about 3 AM in California, 2 AM in winter. Off the hour, which GitHub delays most.
     - cron: "17 10 * * *"
@@ -86,7 +88,7 @@ jobs:
   # as it saved. The scheme has XCTest capture screenshots, not video: these runners have no hardware
   # video encoder, and while recording an iPad's screen the simulator's renderer grew to 3.7 GB of
   # their 7 GB and XCTest lost track of the app. This repository is public, so the runners cost
-  # nothing; GitHub Free runs at most 5 macOS jobs at once, so of a CI run's 6, one waits a minute or
+  # nothing; GitHub Free runs at most 5 macOS jobs at once, so of a pull request's 6, one waits a minute or
   # two for a short one to finish. The time limit allows for the `xcode-27` image, whose runners take
   # about 6 minutes to build and 20 to test, plus any retries.
   e2e:
@@ -100,12 +102,14 @@ jobs:
       matrix:
         device: [iPhone, iPad]
         ios: [26, 27]
+        # Nightly and manual runs add a standard iPhone on 27.0: 27.1 runs only on the near-iPad-sized Duo.
+        include: ${{ github.event_name != 'pull_request' && fromJSON('[{"device":"iPhone","ios":"27.0"}]') || fromJSON('[]') }}
     steps:
       - uses: actions/checkout@v5
       - name: Select the newest stable Xcode
         run: scripts/select-xcode.sh
       - name: End-to-end tests
-        run: make test-app DEVICES=${{ matrix.device }} QUIET=
+        run: make test-app DEVICES=${{ matrix.device }} IOS=${{ matrix.ios }} QUIET=
       - name: Export screenshots
         if: always()
         run: make evidence DEVICES=${{ matrix.device }}

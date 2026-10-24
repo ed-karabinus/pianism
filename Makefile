@@ -15,6 +15,8 @@ XCODE_FLAGS := SWIFT_SUPPRESS_WARNINGS=NO $(QUIET)
 # Fails a build or test on any compiler warning, including the few warnings-as-errors misses (#24).
 NO_WARNINGS := scripts/fail-on-warnings.sh
 DEVICES     ?= iPhone iPad
+# The iOS version to test on, such as 26 or 27.0; empty means the newest installed.
+IOS         ?=
 
 .PHONY: help test test-core test-features test-adapters test-app build evidence lint unused mutate format clean
 
@@ -46,15 +48,15 @@ build: ## Build the app as it ships (Release) for the simulator; the tests build
 # The app is installed before the simulator boots for the tests: on a fresh iOS 27 simulator, an app
 # installed while the system's notification service is still starting up never gets registered with it,
 # so the system drops every notification the app schedules until the next boot.
-test-app: ## Build the app once, then run its end-to-end tests on each simulator in DEVICES (default: iPhone iPad)
+test-app: ## Build the app once, then run its end-to-end tests on each simulator in DEVICES (default: iPhone iPad), on iOS IOS (such as 27.0; default: newest)
 	$(NO_WARNINGS) xcodebuild build-for-testing -project $(PROJECT) -scheme $(SCHEME) \
-		-destination "$$(scripts/simulator-destination.sh $(firstword $(DEVICES)))" $(XCODE_FLAGS)
+		-destination "$$(scripts/simulator-destination.sh $(firstword $(DEVICES)) $(IOS))" $(XCODE_FLAGS)
 	@app="$$(xcodebuild -showBuildSettings -project $(PROJECT) -scheme $(SCHEME) \
 		-destination 'generic/platform=iOS Simulator' 2>/dev/null | awk '$$1 == "CODESIGNING_FOLDER_PATH" {print $$3}')"; \
 	for device in $(DEVICES); do \
 		echo "== End-to-end tests on $$device"; \
 		rm -rf $(RESULTS)/app-$$device.xcresult; \
-		destination="$$(scripts/simulator-destination.sh $$device)" || exit 1; \
+		destination="$$(scripts/simulator-destination.sh $$device $(IOS))" || exit 1; \
 		udid="$${destination##*id=}"; \
 		xcrun simctl bootstatus "$$udid" -b >/dev/null && xcrun simctl install "$$udid" "$$app" && \
 			xcrun simctl shutdown "$$udid" && xcrun simctl bootstatus "$$udid" -b >/dev/null || exit 1; \
