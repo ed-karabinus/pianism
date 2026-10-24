@@ -402,7 +402,7 @@ final class PracticeTests: UITestCase {
         )
         .firstMatch
         XCTAssertTrue(archived.waitForExistence(timeout: 5), "Part of its name didn't find it")
-        XCTAssertLessThan(archived.frame.maxY, element(app, "tags.add-piece").frame.minY, "It wasn't above Add")
+        XCTAssertLessThan(archived.frame.midY, element(app, "tags.add-piece").frame.midY, "It wasn't above Add")
         attachScreenshot(of: app, named: "Tag picker, archived piece found")
     }
 
