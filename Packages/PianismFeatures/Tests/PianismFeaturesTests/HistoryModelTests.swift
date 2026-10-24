@@ -9,6 +9,7 @@ import Testing
 struct HistoryModelTests {
     let clock = ManualClock()
     let outbox = InMemorySessionHistory()
+    let running = InMemoryRunningSessionStore()
 
     @Test("ADR 0007: a session both saved and waiting shows once, as saved; one only waiting is marked")
     func savedAndWaitingShowOnce() throws {
@@ -18,7 +19,8 @@ struct HistoryModelTests {
         history.save(both)
         outbox.add(both)
         outbox.add(waiting)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
 
         model.refresh()
 
@@ -35,7 +37,7 @@ struct HistoryModelTests {
         try session.stop(at: clock.now + 600)
         let history = InMemorySessionHistory()
         history.save(session)
-        let model = HistoryModel(history: history, tags: library, outbox: outbox, clock: clock)
+        let model = HistoryModel(history: history, tags: library, outbox: outbox, running: running, clock: clock)
         model.refresh()
         model.edit(session)
 
@@ -50,7 +52,8 @@ struct HistoryModelTests {
         let history = FlakyHistory()
         let waiting = try endedSession(startingAfter: 0)
         outbox.add(waiting)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
 
         model.refresh()
 
@@ -69,7 +72,8 @@ struct HistoryModelTests {
         let history = InMemorySessionHistory(unshowable: 2)
         let session = try endedSession(startingAfter: 0)
         history.save(session)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
 
         model.refresh()
 
@@ -83,7 +87,7 @@ struct HistoryModelTests {
         let saved = try endedSession(startingAfter: 0)
         history.save(saved)
         let model = HistoryModel(
-            history: history, tags: InMemoryTagLibrary(), outbox: UnavailableOutbox(), clock: clock)
+            history: history, tags: InMemoryTagLibrary(), outbox: UnavailableOutbox(), running: running, clock: clock)
 
         model.refresh()
 
@@ -96,7 +100,8 @@ struct HistoryModelTests {
     )
     func addedSessionReachesHistoryOnSave() throws {
         let history = InMemorySessionHistory()
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
 
         model.add()
         let editor = try #require(model.editing?.editor)
@@ -122,7 +127,7 @@ struct HistoryModelTests {
             Tag(id: "old", kind: .piece, name: "Ballade", isArchived: true, mergedInto: "ballade"),
             Tag(id: "ballade", kind: .piece, name: "Ballade No. 1", isArchived: false),
         ])
-        let model = HistoryModel(history: history, tags: tags, outbox: outbox, clock: clock)
+        let model = HistoryModel(history: history, tags: tags, outbox: outbox, running: running, clock: clock)
 
         model.refresh()
 
@@ -132,7 +137,8 @@ struct HistoryModelTests {
     @Test("HIS-1: each refresh moves today along, so a screen left open past midnight catches up")
     func refreshMovesToday() {
         let model = HistoryModel(
-            history: InMemorySessionHistory(), tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+            history: InMemorySessionHistory(), tags: InMemoryTagLibrary(), outbox: outbox, running: running,
+            clock: clock)
         clock.advance(by: 86_400)
         #expect(model.now != clock.now)
 
@@ -148,7 +154,8 @@ struct HistoryModelTests {
         let waiting = try endedSession(startingAfter: 3_600)
         history.save(saved)
         outbox.add(waiting)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
 
         model.edit(waiting)
@@ -172,7 +179,8 @@ struct HistoryModelTests {
         var edited = capped
         try edited.editNote("Fell asleep")
         try history.edit(edited)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
 
         model.edit(id: capped.id)
 
@@ -193,13 +201,43 @@ struct HistoryModelTests {
         for seconds in [-600.0, -2_700, -5_100] {
             history.save(try endedSession(startingAfter: seconds))
         }
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
 
         model.add()
         let editor = try #require(model.editing?.editor)
 
         #expect([editor.start, editor.end] == [clock.now - 4_500, clock.now - 2_700])
+    }
+
+    @Test(
+        "SES-5: a session added or edited keeps clear of the running one, as if it ended now, its pauses left out",
+        arguments: [false, true])
+    func editorsCountTheRunningSession(paused: Bool) throws {
+        let history = InMemorySessionHistory()
+        let saved = try endedSession(startingAfter: -5_000)
+        history.save(saved)
+        var session = PracticeSession(startedAt: clock.now - 3_600)
+        if paused { try session.pause(at: clock.now - 1_800) }
+        let current = session
+        try running.update { $0 = current }
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
+        model.refresh()
+
+        model.add()
+        let added = try #require(model.editing?.editor)
+        #expect([added.start, added.end] == [clock.now - 6_800, clock.now - 5_000])
+        added.end = clock.now
+        #expect(added.overlap?.session.id == current.id)
+        #expect(added.overlap?.shared == (paused ? 1_800 : 3_600))
+        model.edit(saved)
+        let editor = try #require(model.editing?.editor)
+        editor.end = clock.now
+
+        #expect(editor.overlap?.session.id == current.id)
+        #expect(running.current() == current)
     }
 
     @Test(
@@ -212,7 +250,8 @@ struct HistoryModelTests {
         let later = try endedSession(startingAfter: 3_601)
         outbox.add(waiting)
         history.save(later)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
 
         model.add()
@@ -240,7 +279,8 @@ struct HistoryModelTests {
         let deleted = try endedSession(startingAfter: 3_600)
         history.save(kept)
         history.save(deleted)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
 
         model.delete(deleted)
@@ -261,7 +301,8 @@ struct HistoryModelTests {
         let history = InMemorySessionHistory()
         let session = try endedSession(startingAfter: 0)
         history.save(session)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
 
         model.delete(session)
@@ -280,7 +321,8 @@ struct HistoryModelTests {
         let second = try endedSession(startingAfter: 3_600)
         history.save(first)
         history.save(second)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
 
         model.delete(first)
@@ -296,7 +338,8 @@ struct HistoryModelTests {
         let history = InMemorySessionHistory()
         let session = try endedSession(startingAfter: 0)
         history.save(session)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
         model.edit(session)
 
@@ -310,7 +353,8 @@ struct HistoryModelTests {
         let session = try endedSession(startingAfter: 0)
         let history = InMemorySessionHistory(readOnlyIDs: [session.id])
         history.save(session)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
 
         model.delete(session)
@@ -328,7 +372,8 @@ struct HistoryModelTests {
         let leftover = try endedSession(startingAfter: 0)
         history.save(leftover)
         outbox.add(leftover)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
 
         model.delete(leftover)
@@ -347,7 +392,8 @@ struct HistoryModelTests {
         let history = InMemorySessionHistory()
         let waiting = try endedSession(startingAfter: 0)
         outbox.add(waiting)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
 
         #expect(model.canDelete(waiting))
@@ -366,7 +412,8 @@ struct HistoryModelTests {
     func waitingDeletesWhileHistoryDown() throws {
         let waiting = try endedSession(startingAfter: 0)
         outbox.add(waiting)
-        let model = HistoryModel(history: FlakyHistory(), tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: FlakyHistory(), tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
 
         model.delete(waiting)
@@ -385,7 +432,8 @@ struct HistoryModelTests {
         let history = FlakyHistory()
         history.saved.save(session)
         outbox.add(session)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
 
         model.delete(session)
@@ -403,7 +451,7 @@ struct HistoryModelTests {
         let session = try endedSession(startingAfter: 0)
         history.save(session)
         let model = HistoryModel(
-            history: history, tags: InMemoryTagLibrary(), outbox: UnavailableOutbox(), clock: clock)
+            history: history, tags: InMemoryTagLibrary(), outbox: UnavailableOutbox(), running: running, clock: clock)
         model.refresh()
 
         model.delete(session)
@@ -420,7 +468,8 @@ struct HistoryModelTests {
         let session = try endedSession(startingAfter: 0)
         history.saved.save(session)
         outbox.add(session)
-        let model = HistoryModel(history: history, tags: InMemoryTagLibrary(), outbox: outbox, clock: clock)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
 
         model.delete(session)

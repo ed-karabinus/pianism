@@ -89,7 +89,7 @@ extension HistoryModel {
         let outbox = waiting ? sessions : InMemorySessionHistory()
         let model = HistoryModel(
             history: history, tags: InMemoryTagLibrary(previewTags), outbox: outbox,
-            clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)))
+            running: PreviewStore(nil), clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)))
         model.isNotSyncing = notSyncing
         if deleting {
             model.refresh()
