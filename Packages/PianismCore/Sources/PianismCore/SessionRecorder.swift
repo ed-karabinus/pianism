@@ -7,7 +7,7 @@ import Foundation
 /// just reading ``current()``: its elapsed time comes from the stored timestamps.
 public struct SessionRecorder: Sendable {
     /// Practice time below which an ended session is a mis-tap, not practice, so it's dropped quietly (SES-1).
-    public static let minimumPractice: TimeInterval = 10
+    private static let minimumPractice: TimeInterval = 10
 
     private let store: any RunningSessionStore
     private let clock: any WallClock
@@ -60,7 +60,8 @@ public struct SessionRecorder: Sendable {
         try change { session, now in try session.resume(at: now) }
     }
 
-    /// Ends the session now (SES-1). It stays in the store, ended, until it moves to history.
+    /// Ends the session now (SES-1). It stays in the store, ended, until ``archive(to:or:)`` moves it to history
+    /// or drops it.
     @discardableResult
     public func stop() throws -> PracticeSession {
         try change { session, now in try session.stop(at: now) }
@@ -96,7 +97,7 @@ public struct SessionRecorder: Sendable {
     }
 
     /// Moves an ended session out of the store, so a new one can start: into `history`, or into
-    /// `outbox` if history can't save it (ADR 0007), unless it has under ``minimumPractice`` of practice,
+    /// `outbox` if history can't save it (ADR 0007), unless it has under 10 s of practice,
     /// which drops it. Then moves any waiting sessions into history. Returns the ended session it kept,
     /// or `nil` if none had ended or it was dropped.
     ///
