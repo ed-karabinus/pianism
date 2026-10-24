@@ -216,7 +216,7 @@ struct HistoryModelTests {
         arguments: [false, true])
     func editorsCountTheRunningSession(paused: Bool) throws {
         let history = InMemorySessionHistory()
-        let saved = try endedSession(startingAfter: -7_200)
+        let saved = try endedSession(startingAfter: -5_000)
         history.save(saved)
         var session = PracticeSession(startedAt: clock.now - 3_600)
         if paused { try session.pause(at: clock.now - 1_800) }
@@ -228,7 +228,7 @@ struct HistoryModelTests {
 
         model.add()
         let added = try #require(model.editing?.editor)
-        #expect([added.start, added.end] == [clock.now - 5_400, clock.now - 3_600])
+        #expect([added.start, added.end] == [clock.now - 6_800, clock.now - 5_000])
         added.end = clock.now
         #expect(added.overlap?.session.id == current.id)
         #expect(added.overlap?.shared == (paused ? 1_800 : 3_600))
