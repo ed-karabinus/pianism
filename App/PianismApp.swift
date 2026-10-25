@@ -5,6 +5,10 @@ import PianismPersistence
 import PianismSystem
 import SwiftUI
 
+#if DEBUG
+    import notify
+#endif
+
 /// The composition root: the only place that wires concrete adapters into the core.
 @main
 struct PianismApp: App {
@@ -78,6 +82,11 @@ struct PianismApp: App {
                     fatalError("Couldn't create the CloudKit schema: \(error)")
                 }
             }
+            // End-to-end tests kill the app with this notification (UITestCase.kill). _exit ends it at once with no
+            // warning, as SES-6 needs. On a background queue, so a busy main thread can't delay it, and @Sendable, as
+            // Swift 6 infers a closure made in this main-actor init as main-actor, and traps when it runs there.
+            var token: Int32 = 0
+            notify_register_dispatch("com.edkarabinus.Pianism.kill", &token, .global()) { @Sendable _ in _exit(0) }
         #endif
         // One store for both, so sessions and the tags they name are kept, and later synced, together.
         let historyStore = HistoryStore(url: historyURL, cloudKitContainer: cloudKitContainer)

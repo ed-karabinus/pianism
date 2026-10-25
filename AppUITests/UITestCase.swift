@@ -1,9 +1,31 @@
 import XCTest
+import notify
 
 /// A UI test that keeps the screen and the app's UI tree as they were when it failed, so a failure
-/// on CI can be diagnosed from its results without rerunning it.
+/// on CI can be diagnosed from its results without rerunning it. It kills the app (`kill(_:)`) when it ends,
+/// so the next test's launch has no app to terminate.
 class UITestCase: XCTestCase {
     private var isRecordingDiagnostics = false
+
+    @MainActor
+    override func tearDown() async throws {
+        kill(XCUIApplication())
+        try await super.tearDown()
+    }
+
+    /// Kills the app without warning, as SES-6 needs. `XCUIApplication.terminate()` gives up after 60 s if the app
+    /// hasn't exited, as does `launch()` when it terminates an app still running, and on CI a freshly booted iOS 27
+    /// simulator sometimes takes longer. So a Debug build exits on this Darwin notification (`PianismApp`), and the
+    /// test waits longer.
+    @MainActor
+    func kill(_ app: XCUIApplication) {
+        let state = app.state
+        guard state != .notRunning else { return }
+        // A background app may already be suspended, and a suspended app can't hear the notification.
+        if state != .runningForeground { app.activate() }
+        notify_post("com.edkarabinus.Pianism.kill")
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 180), "The app didn't exit")
+    }
 
     override func record(_ issue: XCTIssue) {
         // A failure while taking the diagnostics is dropped: recording it would stop the test

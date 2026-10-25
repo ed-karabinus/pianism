@@ -47,20 +47,20 @@ final class PracticeTests: UITestCase {
     func testSessionSurvivesBeingKilled() throws {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 25 * 60 + 3)
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
         XCTAssertEqual(elapsed(app), "25 minutes, 3 seconds")
         attachScreenshot(of: app, named: "Restored after being killed")
         tap(app, "practice.pause")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 40 * 60)
         XCTAssertEqual(text(app, "practice.status"), "Paused")
         XCTAssertEqual(elapsed(app), "25 minutes, 3 seconds")
         tap(app, "practice.resume")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 50 * 60)
         XCTAssertEqual(elapsed(app), "35 minutes, 3 seconds")
@@ -76,7 +76,7 @@ final class PracticeTests: UITestCase {
     func testSessionLeftRunningStopsAtTheCap() throws {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 9 * 60 * 60)
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
@@ -120,7 +120,7 @@ final class PracticeTests: UITestCase {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
         XCTAssertFalse(app.staticTexts["practice.still-practicing"].exists, "It asked too soon")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 95 * 60)
         XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 5), "It didn't ask")
@@ -133,7 +133,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.still-practicing-yes")
         XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForNonExistence(timeout: 5))
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 100 * 60)
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
@@ -145,7 +145,7 @@ final class PracticeTests: UITestCase {
     func testPauseAnswersStillPracticing() throws {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 95 * 60)
         XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 5), "It didn't ask")
@@ -232,7 +232,7 @@ final class PracticeTests: UITestCase {
         // Started 17 s into a minute, and picked 45 s into one: the wheels keep those 45 s hidden.
         var app = launch(at: start + 17, reset: true)
         tap(app, "practice.start")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 2 * 60 * 60 + 40 * 60 + 45)
         tap(app, "practice.stopped-earlier")
@@ -258,7 +258,7 @@ final class PracticeTests: UITestCase {
     func testStoppedEarlierAtTheLargestTextSize() throws {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 95 * 60, textSize: "AccessibilityXXXL")
         tap(app, "practice.stopped-earlier")
@@ -283,7 +283,7 @@ final class PracticeTests: UITestCase {
             tap(app, "practice.pause")
             assertCommandsFit(app, beside: "practice.resume", at: size)
             attachScreenshot(of: app, named: "Paused, text size \(size)")
-            app.terminate()
+            kill(app)
         }
     }
 
@@ -307,7 +307,7 @@ final class PracticeTests: UITestCase {
     func testFinishedSessionAppearsInHistory() throws {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 25 * 60 + 3)
         openHistory(app)
@@ -331,7 +331,7 @@ final class PracticeTests: UITestCase {
         let editor = app.navigationBars["Edit session"]
         XCTAssertTrue(editor.waitForNonExistence(timeout: 5), "Cancel asked to discard a change")
         XCTAssertEqual(session.value as? String, "25 minutes, 3 seconds")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 60 * 60)
         openHistory(app)
@@ -362,13 +362,13 @@ final class PracticeTests: UITestCase {
         tap(app, "tags.done")
         XCTAssertEqual(element(app, "practice.tags").value as? String, "Ballade No. 1, Scales")
         attachScreenshot(of: app, named: "Practicing, tagged")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 25 * 60)
         XCTAssertEqual(element(app, "practice.tags").value as? String, "Ballade No. 1, Scales")
         tap(app, "practice.stop")
         tap(app, "practice.start")
-        app.terminate()
+        kill(app)
 
         // A minute later, so the untagged session is long enough to keep (SES-1).
         app = launch(at: start + 26 * 60)
@@ -417,7 +417,7 @@ final class PracticeTests: UITestCase {
         var ballade = app.buttons.matching(withDetails).firstMatch
         XCTAssertTrue(ballade.waitForExistence(timeout: 5), "No details under the name")
         attachScreenshot(of: app, named: "Tag picker, piece with details")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 60)
         tap(app, "practice.tags")
@@ -465,7 +465,7 @@ final class PracticeTests: UITestCase {
     func testEditAFinishedSession() throws {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
-        app.terminate()
+        kill(app)
         app = launch(at: start + 25 * 60)
         tap(app, "practice.stop")
         openHistory(app)
@@ -490,7 +490,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(tagged.firstMatch.waitForExistence(timeout: 5), session.label)
         XCTAssertEqual(tagged.firstMatch.value as? String, "20 minutes")
         attachScreenshot(of: app, named: "History, edited")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 60 * 60)
         openHistory(app)
@@ -558,7 +558,7 @@ final class PracticeTests: UITestCase {
     func testOverlapWarningCanBeTurnedOff() throws {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
-        app.terminate()
+        kill(app)
         app = launch(at: start + 25 * 60)
         tap(app, "practice.stop")
         openHistory(app)
@@ -574,7 +574,7 @@ final class PracticeTests: UITestCase {
         tap(app, "editor.save")
         XCTAssertTrue(app.buttons["editor.save"].waitForNonExistence(timeout: 5))
         XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "history.session").count, 2)
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 30 * 60)
         openHistory(app)
@@ -593,7 +593,7 @@ final class PracticeTests: UITestCase {
     func testDeleteASessionWithUndo() throws {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
-        app.terminate()
+        kill(app)
         // A long Undo, so a slow simulator's checks and screenshots can't outlast it.
         app = launch(at: start + 25 * 60, undoSeconds: 60)
         tap(app, "practice.stop")
@@ -613,14 +613,14 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(session.waitForNonExistence(timeout: 5))
         tap(app, "history.undo")
         XCTAssertTrue(session.waitForExistence(timeout: 5))
-        app.terminate()
+        kill(app)
 
         // The real 5 seconds.
         app = launch(at: start + 30 * 60)
         openHistory(app)
         deleteBySwipe(app)
         XCTAssertTrue(app.buttons["history.undo"].waitForNonExistence(timeout: 15), "Undo outlasted its 5 seconds")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 31 * 60)
         openHistory(app)
@@ -633,17 +633,17 @@ final class PracticeTests: UITestCase {
     func testDeletionWaitsForUndoToEnd() throws {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
-        app.terminate()
+        kill(app)
         app = launch(at: start + 25 * 60)
         tap(app, "practice.stop")
         tap(app, "practice.start")
-        app.terminate()
+        kill(app)
         // A long Undo, so only a kill, leaving History or leaving the app can end it.
         app = launch(at: start + 50 * 60, undoSeconds: 60)
         tap(app, "practice.stop")
         openHistory(app)
         deleteBySwipe(app)
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 51 * 60, undoSeconds: 60)
         openHistory(app)
@@ -651,7 +651,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(sessions.element(boundBy: 1).waitForExistence(timeout: 5), "A kill didn't keep the session")
         deleteBySwipe(app)
         app.buttons["Practice"].firstMatch.tap()
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 52 * 60, undoSeconds: 60)
         openHistory(app)
@@ -660,7 +660,7 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(sessions.count, 1, "Leaving History didn't save the deletion")
         deleteBySwipe(app)
         goHome()
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 53 * 60)
         openHistory(app)
@@ -688,7 +688,7 @@ final class PracticeTests: UITestCase {
 
         app.buttons["Practice"].firstMatch.tap()
         tap(app, "practice.start")
-        app.terminate()
+        kill(app)
 
         // A minute later, so the session is long enough to keep (SES-1).
         app = launch(at: start + 60)
@@ -745,7 +745,7 @@ final class PracticeTests: UITestCase {
         // Each stopped a minute after it started, in a later launch, so it's long enough to keep (SES-1).
         for minute in 1...2 {
             tap(app, "practice.start")
-            app.terminate()
+            kill(app)
             app = launch(at: start + TimeInterval(minute * 60), breakHistory: true)
             tap(app, "practice.stop")
         }
@@ -760,7 +760,7 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(waiting.count, 2)
         XCTAssertEqual(waiting.matching(notSavedYet).count, 2)
         attachScreenshot(of: app, named: "History, sessions waiting")
-        app.terminate()
+        kill(app)
 
         app = launch(at: start + 60 * 60)
         XCTAssertFalse(app.staticTexts["practice.waiting"].exists)
