@@ -60,7 +60,7 @@ final class HistoryStoreFormatTests {
                 [gMinor, "piece", "Chopin G minor", true, "", nil, ballade, start - 172_680, start - 7_080, 2, nil],
             ])
 
-        var session = PracticeSession(id: live, startedAt: start, timeZone: vienna)
+        var session = PracticeSession(id: live, startedAt: start, timeZone: vienna, source: .midi)
         try session.setTags(tagIDs)
         try session.pause(at: start + 300.25)
         try session.resume(at: start + 360.5)
