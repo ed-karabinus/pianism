@@ -16,8 +16,8 @@ owner runs them each milestone, as the README's Testing table says. Each row giv
 | 7 | **Auto power-off:** leave the piano idle until it switches itself off, and note the time and anything sent | Not run (2026-10-17): the owner doesn't expect this piano to switch itself off. |
 
 **Why these are manual:** they depend on the piano and on Apple's MIDI and Bluetooth stacks, which
-no simulator or CI runner has. The recordings from rows 1, 4 and 5 are kept on the owner's Mac.
-Once MIDI-1 (#43) lands, they become fixtures for its detector tests, covering the messages.
+no simulator or CI runner has. The recordings from rows 1, 4 and 5 are fixtures for MIDI-1's
+detector tests (`Packages/PianismCore/Tests/PianismCoreTests/Fixtures`), covering the messages.
 Pairing, prompts, device names, the Bluetooth and USB switch, and power-off stay manual.
 
 ## iCloud sync (SYN-1, issue #15)

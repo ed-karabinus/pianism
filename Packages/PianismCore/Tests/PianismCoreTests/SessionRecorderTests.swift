@@ -309,6 +309,63 @@ struct SessionRecorderTests {
         #expect(store.current() == stopped)
     }
 
+    // MARK: MIDI-1: changes dated by the piano's notes
+
+    @Test("MIDI-1: starting at a date stores a running MIDI session that starts then, in the current time zone")
+    func startAtADateRecordsAMIDISessionThere() throws {
+        let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
+        let recorder = SessionRecorder(store: store, clock: clock, timeZone: { tokyo })
+        let firstNote = clock.now
+        clock.advance(by: 0.6)
+
+        let session = try recorder.start(at: firstNote)
+
+        #expect(session.state == .running)
+        #expect(session.source == .midi)
+        #expect(session.startedAt == firstNote)
+        #expect(session.timeZone == tokyo)
+        #expect(store.current() == session)
+        #expect(throws: RecorderError.alreadyStarted) { try recorder.start(at: clock.now) }
+    }
+
+    @Test(
+        "MIDI-1: ending after the last note pauses there and stops at the end; a session already paused just stops",
+        arguments: [false, true])
+    func endAfterTheLastNotePausesThereThenStops(paused: Bool) throws {
+        let start = clock.now
+        try recorder.start(at: start)
+        clock.advance(by: 100)
+        if paused { try recorder.pause() }
+        clock.advance(by: 100)
+
+        let ended = try recorder.end(afterLastNote: start + 100, at: start + 105)
+
+        #expect(ended.endedAt == start + 105)
+        #expect(ended.pauses.map { [$0.start, $0.end] } == [[start + 100, start + 105]])
+        #expect(ended.elapsed(at: clock.now) == 100)
+        #expect(store.current() == ended)
+    }
+
+    @Test(
+        "MIDI-1: a MIDI session under a minute of played time is dropped, and a minute is kept; a timer session needs 10 s",
+        arguments: [
+            (source: PracticeSession.Source.midi, practice: 59.9, kept: false), (.midi, 60, true), (.timer, 30, true),
+        ])
+    func archiveDropsAMIDISessionUnderAMinute(source: PracticeSession.Source, practice: TimeInterval, kept: Bool)
+        throws
+    {
+        let history = InMemorySessionHistory()
+        if source == .midi { try recorder.start(at: clock.now) } else { try recorder.start() }
+        clock.advance(by: practice)
+        let ended = try recorder.stop()
+
+        let archived = try recorder.archive(to: history, or: outbox)
+
+        #expect(archived == (kept ? ended : nil))
+        #expect(history.sessions() == (kept ? [ended] : []))
+        #expect(store.current() == nil)
+    }
+
     // MARK: SES-4: automatic cap
 
     @Test("SES-4: a session left running ends when its practice reached the cap, pauses left out, and is stored")

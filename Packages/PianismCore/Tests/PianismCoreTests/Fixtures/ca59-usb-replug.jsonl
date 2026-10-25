@@ -1,0 +1,17 @@
+{"t": 190.7029, "source": "CoreMIDI", "event": "notification 4"}
+{"t": 190.7210, "source": "MIDI KEYBOARD", "event": "connected"}
+{"t": 190.7210, "source": "CoreMIDI", "event": "notification 2"}
+{"t": 190.7211, "source": "CoreMIDI", "event": "notification 2"}
+{"t": 190.7212, "source": "CoreMIDI", "event": "notification 1"}
+{"t": 228.0409, "source": "CoreMIDI", "event": "notification 4"}
+{"t": 228.0414, "source": "MIDI KEYBOARD", "event": "disconnected"}
+{"t": 228.0415, "source": "CoreMIDI", "event": "notification 3"}
+{"t": 228.0415, "source": "CoreMIDI", "event": "notification 3"}
+{"t": 228.0415, "source": "CoreMIDI", "event": "notification 1"}
+{"t": 234.0816, "source": "CoreMIDI", "event": "notification 4"}
+{"t": 234.0823, "source": "MIDI KEYBOARD", "event": "connected"}
+{"t": 234.0823, "source": "CoreMIDI", "event": "notification 2"}
+{"t": 234.0824, "source": "CoreMIDI", "event": "notification 2"}
+{"t": 234.0826, "source": "CoreMIDI", "event": "notification 1"}
+{"t": 250.9344, "source": "MIDI KEYBOARD", "bytes": "90 2b 5c"}
+{"t": 251.7199, "source": "MIDI KEYBOARD", "bytes": "80 2b 71"}

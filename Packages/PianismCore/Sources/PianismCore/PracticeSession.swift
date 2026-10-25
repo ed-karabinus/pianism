@@ -25,6 +25,8 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         case timer
         /// Added after the fact, from History.
         case manual
+        /// Started by a connected piano's notes (MIDI-1).
+        case midi
     }
 
     public let id: UUID

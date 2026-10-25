@@ -7,9 +7,9 @@
 ## Context and problem statement
 
 A finished session moves from the running-session file (ADR 0003) into history (one with under 10 s
-of practice is dropped instead, SES-1). Only one session fits in that file, and `start` refuses
-while an ended one waits there, so it never overwrites practice. So if history can't save, practice
-stops: every Start is refused until it can.
+of practice, or 1 min for a MIDI session, is dropped instead, SES-1, MIDI-1). Only one session fits
+in that file, and `start` refuses while an ended one waits there, so it never overwrites practice.
+So if history can't save, practice stops: every Start is refused until it can.
 
 History may fail to open after a bad schema migration, a full disk or a corrupted file. A bad
 migration hits every user at once, until a fix passes App Review, which can take days. Refusing
