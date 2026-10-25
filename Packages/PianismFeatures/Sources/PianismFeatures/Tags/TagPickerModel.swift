@@ -44,9 +44,9 @@ public final class TagPickerModel {
         index.tags(for: target.tagIDs)
     }
 
-    /// The tags of `kind` to offer, by name: unarchived ones and the session's own, narrowed to names
-    /// containing the query, plus the tag the query names, archived or not, so it can come back
-    /// (TAG-1). A merged tag's name offers the tag it was merged into.
+    /// The tags of `kind` to offer: unarchived ones and the session's own or, while searching, every tag
+    /// whose name contains the query, archived ones too, so they can come back (TAG-1). Unarchived tags
+    /// come first, each group by name. A merged tag's name offers the tag it was merged into.
     func shown(_ kind: Tag.Kind) -> [Tag] {
         let search = Self.trimmed(query)
         let named = Tag.existing(named: search, kind: kind, in: tags).flatMap { index[$0.id] }
@@ -54,10 +54,13 @@ public final class TagPickerModel {
         return tags.filter { tag in
             guard tag.kind == kind else { return false }
             if tag.id == named?.id { return true }
-            return (!tag.isArchived || selectedIDs.contains(tag.id))
-                && (search.isEmpty || tag.name.localizedStandardContains(search))
+            if !search.isEmpty { return tag.mergedInto == nil && tag.name.localizedStandardContains(search) }
+            return !tag.isArchived || selectedIDs.contains(tag.id)
         }
-        .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        .sorted {
+            $0.isArchived != $1.isArchived
+                ? !$0.isArchived : $0.name.localizedStandardCompare($1.name) == .orderedAscending
+        }
     }
 
     /// The query as a new tag of `kind`, or `nil` if it's empty or a tag of that kind has the name.

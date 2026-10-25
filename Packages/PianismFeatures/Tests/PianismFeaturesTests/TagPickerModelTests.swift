@@ -59,7 +59,7 @@ struct TagPickerModelTests {
         #expect(model.newName(.piece) == "SCALES")
     }
 
-    @Test("TAG-1: an archived tag shows only when named, and choosing it brings it back and tags the session")
+    @Test("TAG-1: an archived tag shows only when searched for, and choosing it brings it back and tags the session")
     func archivedTagComesBack() throws {
         let model = TagPickerModel(practice: practice, library: library)
         #expect(model.shown(.piece) == [ballade])
@@ -71,6 +71,23 @@ struct TagPickerModelTests {
 
         #expect(library.tags().first { $0.id == nocturne.id }?.isArchived == false)
         #expect(practice.session?.tagIDs == [nocturne.id])
+    }
+
+    @Test("TAG-1: part of a name finds archived tags too, after unarchived ones, but never a merged tag's old name")
+    func searchFindsArchivedTags() {
+        let opus = PianismCore.Tag(id: "opus", kind: .piece, name: "Nocturne Op. 9", isArchived: false)
+        let merged = PianismCore.Tag(
+            id: "old", kind: .piece, name: "Nocturne in E minor", isArchived: true, mergedInto: "ballade")
+        let model = TagPickerModel(practice: practice, library: InMemoryTagLibrary([ballade, nocturne, opus, merged]))
+        model.query = "noct"
+
+        #expect(model.shown(.piece) == [opus, nocturne])
+        #expect(model.newName(.piece) == "noct")
+        model.query = "turne"
+        #expect(model.shown(.piece) == [opus, nocturne])
+        model.query = "Nocturne in E minor"
+        #expect(model.shown(.piece) == [ballade])
+        #expect(model.newName(.piece) == nil)
     }
 
     @Test("TAG-2: choosing a selected tag again removes it, with any tag merged into it, and leaves the rest")
