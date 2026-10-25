@@ -83,6 +83,8 @@ struct TagPickerModelTests {
 
         #expect(model.shown(.piece) == [opus, nocturne])
         #expect(model.newName(.piece) == "noct")
+        model.query = "turne"
+        #expect(model.shown(.piece) == [opus, nocturne])
         model.query = "Nocturne in E minor"
         #expect(model.shown(.piece) == [ballade])
         #expect(model.newName(.piece) == nil)
