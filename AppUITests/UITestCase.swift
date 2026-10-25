@@ -7,10 +7,13 @@ import notify
 class UITestCase: XCTestCase {
     private var isRecordingDiagnostics = false
 
-    @MainActor
-    override func tearDown() async throws {
-        kill(XCUIApplication())
-        try await super.tearDown()
+    override func tearDown() {
+        // Not async: with an async tearDown, XCTest stops a failing test (continueAfterFailure = false) by
+        // restarting the test runner, which loses the test's retry. UI tests run on the main thread, as in record(_:).
+        if Thread.isMainThread {
+            XCTAssertTrue(MainActor.assumeIsolated { Self.kill(XCUIApplication()) }, "The app didn't exit")
+        }
+        super.tearDown()
     }
 
     /// Kills the app without warning, as SES-6 needs. `XCUIApplication.terminate()` gives up after 60 s if the app
@@ -19,12 +22,18 @@ class UITestCase: XCTestCase {
     /// test waits longer.
     @MainActor
     func kill(_ app: XCUIApplication) {
+        XCTAssertTrue(Self.kill(app), "The app didn't exit")
+    }
+
+    /// Whether the app, if it was running, has exited.
+    @MainActor
+    private static func kill(_ app: XCUIApplication) -> Bool {
         let state = app.state
-        guard state != .notRunning else { return }
+        guard state != .notRunning else { return true }
         // A background app may already be suspended, and a suspended app can't hear the notification.
         if state != .runningForeground { app.activate() }
         notify_post("com.edkarabinus.Pianism.kill")
-        XCTAssertTrue(app.wait(for: .notRunning, timeout: 180), "The app didn't exit")
+        return app.wait(for: .notRunning, timeout: 180)
     }
 
     override func record(_ issue: XCTIssue) {
