@@ -20,6 +20,21 @@ no simulator or CI runner has. The recordings from rows 1, 4 and 5 are fixtures 
 detector tests (`Packages/PianismCore/Tests/PianismCoreTests/Fixtures`), covering the messages.
 Pairing, prompts, device names, the Bluetooth and USB switch, and power-off stay manual.
 
+## MIDI-1 (issue #43)
+
+Run a Debug build on the iPhone, and watch the log with
+`log stream --level info --predicate 'subsystem == "com.edkarabinus.Pianism"'` (without `--level info`, the
+latency line doesn't show).
+
+| # | Check | Last result |
+| --- | --- | --- |
+| M1 | **USB, connected before launch:** piano on and plugged in, open Pianism, play three notes. Practice shows "Practicing" within a second, and the log line "MIDI session started … ms after its third note" reads under 250 ms (NFR-5). The adapter test `aSourceThatExistedBeforeTheAdapterIsHeard` covers the connection on the Mac; the latency needs the device | Not run yet. |
+| M2 | **Bluetooth, with no pairing screen in Pianism:** pair the piano in GarageBand, quit it, open Pianism and play; then switch the piano off and on, and play again. Notes arrive both times. If the second fails, note it on #44, which adds pairing | Not run yet. |
+| M3 | **Unplug and replug mid-piece, USB, at the piano's end:** the notes after the replug reach the same session. The adapter tests `aSourceThatAppearsAfterLaunchIsHeard` and `aRemovedSourceStopsNothingElse` cover it with virtual sources; this checks a real piano's endpoint | Not run yet. |
+
+**Why these are manual:** the simulator has no MIDI, and the Mac's virtual sources stand in for a
+piano only in software. Bluetooth pairing and a real cable stay manual.
+
 ## iCloud sync (SYN-1, issue #15)
 
 | # | Check | Last result |

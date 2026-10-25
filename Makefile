@@ -4,7 +4,7 @@ PROJECT     := Pianism.xcodeproj
 SCHEME      := Pianism
 CORE        := Packages/PianismCore
 FEATURES    := Packages/PianismFeatures
-ADAPTERS    := Packages/PianismPersistence Packages/PianismSystem
+ADAPTERS    := Packages/PianismPersistence Packages/PianismSystem Packages/PianismMIDI
 SWIFT_DIRS  := App AppUITests Packages scripts
 RESULTS     := build/results
 # Xcode 26 compiles package dependencies with -suppress-warnings, which clashes with the packages'

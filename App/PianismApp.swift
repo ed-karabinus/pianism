@@ -1,6 +1,7 @@
 import Foundation
 import PianismCore
 import PianismFeatures
+import PianismMIDI
 import PianismPersistence
 import PianismSystem
 import SwiftUI
@@ -21,6 +22,7 @@ struct PianismApp: App {
     @State private var tags: TagPickerModel
     @State private var history: HistoryModel
     private let historyStore: HistoryStore
+    private let midi: CoreMIDINotes?
 
     init() {
         guard let store = FileRunningSessionStore(appGroup: Self.appGroup) else {
@@ -152,6 +154,13 @@ struct PianismApp: App {
                 }
             }
         #endif
+        // Hears every piano connected over USB or Bluetooth (MIDI-1); the simulator has none. A scripted end-to-end
+        // test hears only its script.
+        #if DEBUG
+            midi = environment["PIANISM_MIDI_NOTES"] == nil ? CoreMIDINotes(clock: clock) : nil
+        #else
+            midi = CoreMIDINotes(clock: clock)
+        #endif
         tags = TagPickerModel(practice: practice, library: library)
         let history = HistoryModel(history: sessions, tags: library, outbox: outbox, running: store, clock: clock)
         #if DEBUG
@@ -178,6 +187,12 @@ struct PianismApp: App {
                 .task {
                     for await notSyncing in historyStore.notSyncing {
                         history.isNotSyncing = notSyncing
+                    }
+                }
+                .task {
+                    guard let midi else { return }
+                    for await date in midi.notes {
+                        practice.noteOn(at: date)
                     }
                 }
         }

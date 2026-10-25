@@ -34,8 +34,10 @@ Run `make lint unused build test` before every push. CI runs the same commands.
 - `Packages/PianismFeatures` — SwiftUI screens and view models.
 - `Packages/PianismPersistence` — storage adapters, such as the running-session file (ADR 0003).
   Tested on macOS with `make test-adapters`.
-- More adapter packages (MIDI, Purchases, System) arrive as needed; each implements a port defined in
-  the core. Add each new one to `ADAPTERS` in the `Makefile`.
+- `Packages/PianismSystem` (notifications) and `Packages/PianismMIDI` (CoreMIDI) — more adapters, also
+  tested by `make test-adapters`.
+- More adapter packages (Purchases) arrive as needed; each implements a port defined in the core, unless
+  only the app calls it, as with `PianismMIDI`. Add each new one to `ADAPTERS` in the `Makefile`.
 - `Config/*.xcconfig` — all build settings. Change settings there, not in the project file.
 - `docs/adr/` — architecture decision records.
 
