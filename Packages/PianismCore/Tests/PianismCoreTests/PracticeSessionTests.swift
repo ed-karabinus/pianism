@@ -260,6 +260,24 @@ struct PracticeSessionTests {
 
     // MARK: SES-6: restoring a session
 
+    @Test("MIDI-1: a MIDI session keeps its last note's time until it ends, and survives a round trip with it")
+    func aMIDISessionKeepsItsLastNoteUntilItEnds() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start, source: .midi)
+        try session.pause(at: start + 30)
+        try session.resume(at: start + 40)
+        #expect(throws: SessionError.timeWentBackwards) { try session.noteLastPlayed(at: start + 35) }
+
+        try session.noteLastPlayed(at: start + 70)
+        let decoded = try JSONDecoder().decode(PracticeSession.self, from: JSONEncoder().encode(session))
+
+        #expect(decoded.lastNoteAt == start + 70)
+        #expect(decoded == session)
+        try session.stop(at: start + 75)
+        #expect(session.lastNoteAt == nil)
+        #expect(throws: SessionError.alreadyEnded) { try session.noteLastPlayed(at: start + 80) }
+    }
+
     @Test("SES-6: a session paused mid-practice survives an encode and decode round trip")
     func codableRoundTrip() throws {
         var session = PracticeSession(startedAt: clock.now, timeZone: TimeZone(identifier: "Asia/Tokyo"))

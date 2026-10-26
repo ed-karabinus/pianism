@@ -84,3 +84,8 @@ save timeout (10 minutes) ends the session 5 s after the tap. Practice says "Pau
 only when a silence made the pause; a tapped Pause says "Paused". The screen stays on from a MIDI
 session's start to its end, pauses included, so it can be read from the bench. The drop-back above
 stays: when the silence pause starts, the timer drops back to the last note.
+
+Amended 2026-10-26 by MIDI-1's last note: the running-session file gains `lastNoteAt`, the time of a
+running MIDI session's last note, written as the app leaves the screen. If the app is killed while
+away, it reopens with the silence counted from that note, not from the session's last change. It's
+cleared when the session ends, so history and the outbox never have it, and schema v1 is unchanged.

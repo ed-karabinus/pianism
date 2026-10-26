@@ -15,7 +15,7 @@ separate processes:
 | Practice screen | App | start, pause, resume, stop |
 | Live Activity buttons (GLN-1) | App, launched in the background | pause, stop |
 | Small widget's Start button (GLN-2) | Widget extension | start |
-| MIDI detector (M2) | App, foreground only | start, pause, resume, stop |
+| MIDI detector (M2) | App, foreground only | start, pause, resume, stop, and the last note's time on leaving the screen |
 | Nudge and cap (SES-3, SES-4) | App | stop, end-time correction |
 
 Finished sessions live in SwiftData, mirrored to the user's private iCloud database (SYN-1).

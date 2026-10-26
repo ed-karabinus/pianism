@@ -81,19 +81,24 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(element(app, "history.session").value as? String, "3 seconds")
     }
 
-    /// MIDI-R3: a MIDI session killed while playing and opened after a minute's silence opens paused at its last
-    /// change, here its start, with no time counted for the silence.
+    /// MIDI-1, MIDI-R3: a MIDI session killed while the app is away, and opened after a minute's silence, opens
+    /// paused at its last note, which the app stored as it left the screen, with no time counted for the silence.
     @MainActor
-    func testASilentMIDISessionPausesAtItsLastNoteOnRelaunch() throws {
+    func testAKillWhileAwayKeepsTheLastNote() throws {
         var app = launch(at: start, reset: true, midiNotes: "0,0,0")
         XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
         kill(app)
+        // A note 30 s in changes nothing stored until the app leaves the screen.
+        app = launch(at: start + 30, midiNotes: "0")
+        XCTAssertEqual(text(app, "practice.status"), "Practicing")
+        goHome()
+        kill(app)
 
-        app = launch(at: start + 61)
+        app = launch(at: start + 91)
 
         XCTAssertEqual(text(app, "practice.status"), "Paused at your last note")
-        XCTAssertEqual(elapsed(app), "0 seconds")
-        attachScreenshot(of: app, named: "Paused at its last note after a relaunch")
+        XCTAssertEqual(elapsed(app), "30 seconds")
+        attachScreenshot(of: app, named: "Paused at its last note after a kill while away")
     }
 
     /// SES-6: killed while running and while paused, the session comes back with the right time,

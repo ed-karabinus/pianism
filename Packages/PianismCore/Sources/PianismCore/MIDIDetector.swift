@@ -56,6 +56,11 @@ public struct MIDIDetector: Sendable {
         }
     }
 
+    /// The last note of the session being played, if it's playing.
+    public var lastNote: Date? {
+        if case .playing(let last) = state { last } else { nil }
+    }
+
     /// Whether the session paused itself after a silence, rather than at a tap.
     public var isPausedBySilence: Bool {
         if case .paused(_, true) = state { true } else { false }
@@ -122,8 +127,9 @@ public struct MIDIDetector: Sendable {
     }
 
     /// Follows the stored session. A paused MIDI session is paused since its last change, which a tapped Pause
-    /// made unless this detector paused it. A running one is playing from its last change or the last note heard,
-    /// whichever is later, which keeps the notes since a pause the store refused. Anything else is idle: an ended
+    /// made unless this detector paused it. A running one is playing from its last change, its stored last note or
+    /// the last note heard, whichever is latest, which keeps the notes since a pause the store refused, or since
+    /// the last change before the app was killed while away. Anything else is idle: an ended
     /// MIDI session, which history couldn't take, too, as nothing can change it.
     public mutating func sync(with session: PracticeSession?) {
         guard let session, session.source == .midi, session.state != .ended else {
@@ -131,15 +137,16 @@ public struct MIDIDetector: Sendable {
             state = .idle(recent: [])
             return
         }
+        let stored = max(session.latestEvent, session.lastNoteAt ?? .distantPast)
         switch (state, session.state) {
         case (.paused(let since, let bySilence), .paused):
             state = .paused(since: session.latestEvent, bySilence: bySilence && since == session.latestEvent)
         case (_, .paused):
             state = .paused(since: session.latestEvent, bySilence: false)
         case (.playing(let last), _), (.paused(let last, _), _):
-            state = .playing(lastNote: max(last, session.latestEvent))
+            state = .playing(lastNote: max(last, stored))
         case (.idle, _):
-            state = .playing(lastNote: session.latestEvent)
+            state = .playing(lastNote: stored)
         }
     }
 }

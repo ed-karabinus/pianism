@@ -98,6 +98,18 @@ final class SessionFileFormatTests {
         #expect(try waitingSessions(from: written) == [expected])
     }
 
+    @Test("MIDI-1: a running MIDI session with its last note, as written since the last note was kept, still reads")
+    func aRunningMIDISessionWithItsLastNoteReadsBack() throws {
+        let written =
+            #"{"recordedAs":"midi","pauses":[],"lastNoteAt":820454470.5,"startedAt":820454400.25,"#
+            + #""id":"3F2B8C1E-7A4D-4E9B-8C2F-1D5A6B7C8E90","timeZone":{"identifier":"Europe\/Vienna"}}"#
+        var expected = PracticeSession(
+            id: try #require(id), startedAt: date(820_454_400.25), timeZone: vienna, source: .midi)
+        try expected.noteLastPlayed(at: date(820_454_470.5))
+
+        #expect(try runningSession(from: written) == expected)
+    }
+
     /// Reads `json` as the running-session file.
     private func runningSession(from json: String) throws -> PracticeSession? {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

@@ -36,6 +36,7 @@ latency line doesn't show).
 | M6 | **The screen stays on:** set Auto-Lock to 30 seconds, play, then leave the iPhone alone for 11 minutes. The screen stays on through the pause, and locks about 30 s after the session saves itself. A session started by tapping Start still locks at 30 s | Not run yet. |
 | M7 | **Battery:** a 30-minute MIDI session with the screen on. Note the battery percentage before and after | Not run yet. |
 | M8 | **The piano playing itself:** connected, play the piano's demo song or a recording on the piano. Note whether its notes reach Pianism and start a session | Not run yet. |
+| M9 | **Swiped away mid-piece:** play, open the app switcher, swipe Pianism away, wait two minutes and open it. Practice shows "Paused at your last note" with the time up to the last note. The end-to-end test `testAKillWhileAwayKeepsTheLastNote` covers going to the Home Screen. The switcher gesture isn't scripted: it's flaky, and the simulator may not kill the app the way a device does | Not run yet. |
 
 **Why these are manual:** the simulator has no MIDI, and the Mac's virtual sources stand in for a
 piano only in software. Bluetooth pairing and a real cable stay manual.

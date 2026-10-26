@@ -384,6 +384,17 @@ struct SessionRecorderTests {
         #expect(store.current() == resumed)
     }
 
+    @Test("MIDI-1: the running MIDI session's last note is stored")
+    func noteLastPlayedIsStored() throws {
+        let start = clock.now
+        try recorder.start(at: start)
+
+        let session = try recorder.noteLastPlayed(at: start + 70)
+
+        #expect(session.lastNoteAt == start + 70)
+        #expect(store.current() == session)
+    }
+
     @Test("MIDI-1: the shortest MIDI session kept comes from the settings; a timer session still needs 10 s")
     func theMIDIMinimumComesFromTheSettings() throws {
         var settings = MIDISettings()
