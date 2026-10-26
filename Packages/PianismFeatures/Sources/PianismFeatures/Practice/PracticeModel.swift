@@ -83,7 +83,13 @@ public final class PracticeModel: TagTarget {
             answerIfPastNudge()
             return
         }
-        apply(detector.handle(.noteOn(date)))
+        let effects = detector.handle(.noteOn(date))
+        apply(effects)
+        if case .start = effects.first {
+            // NFR-5 allows 250 ms from the note that starts a session; a device run reads this line.
+            let latency = clock.now.timeIntervalSince(date) * 1000
+            logger.info("MIDI session started \(latency, format: .fixed(precision: 0)) ms after its third note")
+        }
     }
 
     func pause() {

@@ -70,3 +70,9 @@ in them for a musician" (owner, 2026-10-23). The spec no longer has them.
 - Bad: while a session is going, the on-screen timer keeps counting through a silence, then drops
   back by up to the pause timeout when the pause starts. MIDI-1's plan designs that moment,
   including the Live Activity's timer.
+
+Amended 2026-10-24 by MIDI-1: a note is dated by the app's clock when it reaches the app, not by
+CoreMIDI's timestamp. Bluetooth delivers notes about 10–30 ms late, which is nothing against the
+detector's 10 s, 60 s and 600 s, and one clock keeps notes in step with every other change, including
+the fixed clock of the end-to-end tests. If a device ever needs exact note times, the change stays
+inside `CoreMIDINotes`.

@@ -22,7 +22,7 @@ flowchart TB
     widget["Widget extension<br/>(M3)"] --> features
     features["PianismFeatures<br/>SwiftUI screens + view models"] --> core
     persistence["PianismPersistence<br/>running-session file, SwiftData + CloudKit"] --> core
-    midi["MIDI<br/>CoreMIDI adapter"] --> core
+    midi["PianismMIDI<br/>CoreMIDI, every connected piano"] --> core
     purchases["Purchases<br/>StoreKit 2"] --> core
     core["PianismCore<br/>pure Swift rules + ports"]
 ```
