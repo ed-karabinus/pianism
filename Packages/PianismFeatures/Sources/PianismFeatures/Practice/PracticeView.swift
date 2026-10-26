@@ -18,7 +18,6 @@ struct PracticeView: View {
 
     @ScaledMetric(relativeTo: .largeTitle) private var timeSize = 76
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         // When Practice doesn't fit, as with the end being picked (SES-3), the time shrinks first, then Practice
@@ -34,18 +33,7 @@ struct PracticeView: View {
                 .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
         }
         .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
-        // Asks "Still practicing?" and ends the session at the cap while Practice is on screen, as on an iPad on a
-        // music stand, and when Practice or the app next appears (SES-3, SES-4). Only while the app is in front:
-        // away, the notification asks, and a refresh at the nudge would cancel it as it arrives.
         .onAppear { model.refresh() }
-        .task(id: scenePhase == .active ? model.session : nil) {
-            guard scenePhase == .active else { return }
-            while let next = model.nextRefresh,
-                (try? await Task.sleep(for: .seconds(next.timeIntervalSince(model.clock.now)))) != nil
-            {
-                model.refresh()
-            }
-        }
         // The notification's "I stopped earlier" opens Practice with the end being picked (SES-3).
         .onChange(of: model.nudgeOpened, initial: true) { _, opened in
             guard let opened else { return }
@@ -270,7 +258,7 @@ struct PracticeView: View {
         switch model.session?.state {
         case nil, .ended: "Ready to practice"
         case .running: "Practicing"
-        case .paused: "Paused"
+        case .paused: model.isPausedAtLastNote ? "Paused at your last note" : "Paused"
         }
     }
 }
@@ -396,6 +384,18 @@ private struct CommandButton: View {
 
 #Preview("Too short to save, dark, AX5") {
     let model = PracticeModel.preview(.tooShort)
+    PracticeView(model: model, tags: .preview(for: model)) { _ in }
+        .preferredColorScheme(.dark)
+        .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("Paused at your last note") {
+    let model = PracticeModel.preview(.midiPaused)
+    PracticeView(model: model, tags: .preview(for: model)) { _ in }
+}
+
+#Preview("Paused at your last note, dark, AX5") {
+    let model = PracticeModel.preview(.midiPaused)
     PracticeView(model: model, tags: .preview(for: model)) { _ in }
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)

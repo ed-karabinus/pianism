@@ -34,6 +34,9 @@ struct PianismApp: App {
         // ends itself, in case it was left running (SES-4).
         var nudge: TimeInterval = 90 * 60
         var cap: TimeInterval = 4 * 60 * 60
+        // A MIDI session pauses after a minute of silence, ends after 10, and is dropped under a minute played
+        // (MIDI-1).
+        var midiSettings = MIDISettings()
         // Debug keeps its own history and outbox, so a Release build on the same device never uploads a
         // Debug run's sessions to Production (ADR 0008).
         #if DEBUG
@@ -64,6 +67,17 @@ struct PianismApp: App {
             }
             if let seconds = environment["PIANISM_CAP_SECONDS"].flatMap(TimeInterval.init) {
                 cap = seconds
+            }
+            // They shorten a MIDI session's timeouts too, with PIANISM_MIDI_PAUSE_SECONDS, PIANISM_MIDI_SAVE_SECONDS
+            // and PIANISM_MIDI_MINIMUM_SECONDS, which Release builds ignore as well.
+            if let seconds = environment["PIANISM_MIDI_PAUSE_SECONDS"].flatMap(TimeInterval.init) {
+                midiSettings.pauseAfter = seconds
+            }
+            if let seconds = environment["PIANISM_MIDI_SAVE_SECONDS"].flatMap(TimeInterval.init) {
+                midiSettings.saveAfter = seconds
+            }
+            if let seconds = environment["PIANISM_MIDI_MINIMUM_SECONDS"].flatMap(TimeInterval.init) {
+                midiSettings.minimumPlayed = seconds
             }
             if environment["PIANISM_RESET"] == "1" {
                 try? store.update { $0 = nil }
@@ -135,7 +149,7 @@ struct PianismApp: App {
         #endif
         let practice = PracticeModel(
             store: store, history: sessions, outbox: outbox, clock: clock, nudges: nudges, defaults: .standard,
-            nudge: nudge, cap: cap)
+            nudge: nudge, cap: cap, midi: midiSettings)
         answering.practice = practice
         self.practice = practice
         #if DEBUG

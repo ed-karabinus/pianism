@@ -344,8 +344,11 @@ struct PracticeModelTests {
         let model = makeModel()
         let start = clock.now
         for _ in 1...3 { model.noteOn(at: start) }
-        clock.advance(by: 70)
-        model.noteOn(at: clock.now)
+        // Notes under a minute apart, so no silence pauses the session first.
+        for _ in 1...2 {
+            clock.advance(by: 35)
+            model.noteOn(at: clock.now)
+        }
         clock.advance(by: tappedAfter)
 
         model.stop()
@@ -399,8 +402,11 @@ struct PracticeModelTests {
             store: InMemoryRunningSessionStore(), history: FlakyHistory(), outbox: UnavailableOutbox(), clock: clock,
             nudges: nudges, defaults: defaults, nudge: 5_400, cap: 14_400)
         for _ in 1...3 { model.noteOn(at: clock.now) }
-        clock.advance(by: 90)
-        model.noteOn(at: clock.now)
+        // Notes under a minute apart, so no silence pauses the session first.
+        for _ in 1...3 {
+            clock.advance(by: 30)
+            model.noteOn(at: clock.now)
+        }
 
         model.stop()
 
@@ -464,6 +470,174 @@ struct PracticeModelTests {
         clock.advance(by: 1)
         model.refresh()
         #expect(model.isAskingStillPracticing)
+    }
+
+    // MARK: MIDI-1: a silence pauses, a note resumes, a longer silence ends
+
+    @Test(
+        "MIDI-1: a minute's silence pauses the MIDI session at its last note, and Practice says so; a note resumes it")
+    func aSilencePausesTheSessionAtItsLastNote() {
+        let model = makeModel()
+        let start = clock.now
+        for _ in 1...3 { model.noteOn(at: start) }
+        clock.advance(by: 20)
+        model.noteOn(at: clock.now)
+        #expect(model.nextRefresh == start + 80)
+        clock.advance(by: 60)
+
+        model.tick()
+
+        #expect(model.session?.pauses.map(\.start) == [start + 20])
+        #expect(model.isPausedAtLastNote)
+        #expect(model.nextRefresh == start + 620)
+
+        clock.advance(by: 10)
+        model.noteOn(at: clock.now)
+        #expect(model.session?.state == .running)
+        #expect(model.session?.pauses.map { [$0.start, $0.end] } == [[start + 20, start + 90]])
+        #expect(!model.isPausedAtLastNote)
+    }
+
+    @Test("MIDI-1: a tapped Pause says just \"Paused\", and left alone 10 minutes ends the session 5 s after the tap")
+    func aTappedPauseEndsAfterTheSaveTimeout() {
+        let model = makeModel()
+        let start = clock.now
+        for _ in 1...3 { model.noteOn(at: start) }
+        for _ in 1...3 {
+            clock.advance(by: 30)
+            model.noteOn(at: clock.now)
+        }
+        clock.advance(by: 2)
+        model.pause()
+        #expect(!model.isPausedAtLastNote)
+        clock.advance(by: 600)
+
+        model.tick()
+
+        #expect(model.session == nil)
+        #expect(model.lastSession?.endedAt == start + 97)
+        #expect(model.lastSession?.elapsed(at: clock.now) == 92)
+    }
+
+    @Test(
+        "MIDI-R3: back after half an hour, a MIDI session has ended 5 s after its last note, whether a note or the tick comes first",
+        arguments: [false, true])
+    func aSessionLeftForHalfAnHourEndsAfterItsLastNote(noteFirst: Bool) {
+        let model = makeModel()
+        let start = clock.now
+        for _ in 1...3 { model.noteOn(at: start) }
+        for _ in 1...2 {
+            clock.advance(by: 30)
+            model.noteOn(at: clock.now)
+        }
+        clock.advance(by: 1_800)
+
+        // A note CoreMIDI delivers before the app's own tick can't fill the absence.
+        if noteFirst { model.noteOn(at: clock.now) }
+        model.tick()
+
+        #expect(model.session == nil)
+        #expect(model.lastSession?.endedAt == start + 65)
+        #expect(model.lastSession?.elapsed(at: clock.now) == 60)
+        #expect(!model.lastRunWasTooShort)
+    }
+
+    @Test("MIDI-R3: relaunched after a silence, Practice opens with the MIDI session paused at its last change")
+    func aRelaunchAppliesTheSilenceSince() {
+        let store = InMemoryRunningSessionStore()
+        let start = clock.now
+        let before = makeModel(over: store)
+        for _ in 1...3 { before.noteOn(at: start) }
+        clock.advance(by: 61)
+
+        let model = makeModel(over: store)
+
+        #expect(model.session?.pauses.map(\.start) == [start])
+        #expect(model.isPausedAtLastNote)
+    }
+
+    @Test("MIDI-1: a MIDI session that a silence ends with under a minute played isn't saved, and Practice says so")
+    func aShortRunEndedByTheTimeoutSaysTooShortToSave() {
+        let history = InMemorySessionHistory()
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
+            nudges: nudges, defaults: defaults, nudge: 5_400, cap: 14_400)
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        clock.advance(by: 600)
+
+        model.tick()
+
+        #expect(model.session == nil)
+        #expect(model.lastRunWasTooShort)
+        #expect(history.sessions().isEmpty)
+    }
+
+    @Test("MIDI-1: the timeouts and the shortest MIDI session kept come from the settings")
+    func theTimeoutsComeFromTheSettings() {
+        var settings = MIDISettings()
+        settings.pauseAfter = 10
+        settings.saveAfter = 20
+        settings.minimumPlayed = 2
+        let history = InMemorySessionHistory()
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
+            nudges: nudges, defaults: defaults, nudge: 5_400, cap: 14_400, midi: settings)
+        let start = clock.now
+        for _ in 1...3 { model.noteOn(at: start) }
+        clock.advance(by: 3)
+        model.noteOn(at: clock.now)
+        #expect(model.nextRefresh == start + 13)
+        clock.advance(by: 20)
+
+        model.tick()
+
+        #expect(model.session == nil)
+        #expect(history.sessions().map { $0.elapsed(at: clock.now) } == [3])
+    }
+
+    @Test("SES-3, SES-4: a MIDI session isn't asked \"Still practicing?\", by banner or notification, or capped")
+    func aMIDISessionIsntAskedStillPracticingOrCapped() {
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudges: nudges, defaults: defaults, nudge: 100, cap: 200)
+        let start = clock.now
+        for _ in 1...3 { model.noteOn(at: start) }
+        #expect(nudges.pending == nil)
+        for _ in 1...8 {
+            clock.advance(by: 30)
+            model.noteOn(at: clock.now)
+        }
+        clock.advance(by: 10)
+
+        model.tick()
+
+        #expect(model.session?.state == .running)
+        #expect(!model.isAskingStillPracticing)
+        #expect(nudges.pending == nil)
+        #expect(model.nextRefresh == start + 300)
+    }
+
+    @Test(
+        "MIDI-R5 (its first half): the screen stays on while a MIDI session lasts, pauses included, and not for a timer session"
+    )
+    func aMIDISessionKeepsTheScreenAwakeUntilItEnds() {
+        let model = makeModel()
+        #expect(!model.keepsScreenAwake)
+        model.start()
+        #expect(!model.keepsScreenAwake)
+        clock.advance(by: 60)
+        model.stop()
+
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        #expect(model.keepsScreenAwake)
+        clock.advance(by: 60)
+        model.tick()
+        #expect(model.session?.state == .paused)
+        #expect(model.keepsScreenAwake)
+        clock.advance(by: 600)
+        model.tick()
+        #expect(model.session == nil)
+        #expect(!model.keepsScreenAwake)
     }
 
     /// A model over `store`, with the app's nudge and cap.

@@ -366,7 +366,50 @@ struct SessionRecorderTests {
         #expect(store.current() == nil)
     }
 
+    @Test(
+        "MIDI-1: a MIDI session pauses at its last note and resumes at a note, each stored; a date before the last change is refused"
+    )
+    func pauseAndResumeAtADateAreStored() throws {
+        let start = clock.now
+        try recorder.start(at: start)
+        clock.advance(by: 100)
+
+        let paused = try recorder.pause(at: start + 30)
+        let resumed = try recorder.resume(at: start + 95)
+
+        #expect(paused.pauses.map(\.start) == [start + 30])
+        #expect(resumed.pauses.map { [$0.start, $0.end] } == [[start + 30, start + 95]])
+        #expect(store.current() == resumed)
+        #expect(throws: SessionError.timeWentBackwards) { try recorder.pause(at: start + 90) }
+        #expect(store.current() == resumed)
+    }
+
+    @Test("MIDI-1: the shortest MIDI session kept comes from the settings; a timer session still needs 10 s")
+    func theMIDIMinimumComesFromTheSettings() throws {
+        var settings = MIDISettings()
+        settings.minimumPlayed = 2
+        let recorder = SessionRecorder(store: store, clock: clock, midi: settings)
+        var kept: [Bool] = []
+        for (source, practice) in [(PracticeSession.Source.midi, 1.0), (.midi, 3), (.timer, 9)] {
+            if source == .midi { try recorder.start(at: clock.now) } else { try recorder.start() }
+            clock.advance(by: practice)
+            try recorder.stop()
+            kept.append(try recorder.archive(to: InMemorySessionHistory(), or: outbox) != nil)
+        }
+
+        #expect(kept == [false, true, false])
+    }
+
     // MARK: SES-4: automatic cap
+
+    @Test("SES-4: the cap leaves a MIDI session alone, as a silence ends it")
+    func theCapLeavesAMIDISessionAlone() throws {
+        let running = try recorder.start(at: clock.now)
+        clock.advance(by: 9_000)
+
+        #expect(try recorder.end(atCap: 600) == nil)
+        #expect(store.current() == running)
+    }
 
     @Test("SES-4: a session left running ends when its practice reached the cap, pauses left out, and is stored")
     func endsAtCap() throws {

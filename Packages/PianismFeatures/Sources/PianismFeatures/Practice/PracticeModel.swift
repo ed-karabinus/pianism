@@ -34,7 +34,7 @@ public final class PracticeModel: TagTarget {
     /// (MIDI-1).
     private(set) var lastRunWasTooShort = false
     /// Turns the piano's notes into MIDI sessions, following the stored session at each refresh (MIDI-1).
-    @ObservationIgnored private var detector = MIDIDetector()
+    @ObservationIgnored private var detector: MIDIDetector
 
     let clock: any WallClock
     /// The practice time after which Practice asks "Still practicing?" (SES-3).
@@ -52,9 +52,11 @@ public final class PracticeModel: TagTarget {
 
     public init(
         store: any RunningSessionStore, history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock,
-        nudges: any PracticeNudges, defaults: UserDefaults, nudge: TimeInterval, cap: TimeInterval
+        nudges: any PracticeNudges, defaults: UserDefaults, nudge: TimeInterval, cap: TimeInterval,
+        midi: MIDISettings = .init()
     ) {
-        self.recorder = SessionRecorder(store: store, clock: clock)
+        self.recorder = SessionRecorder(store: store, clock: clock, midi: midi)
+        self.detector = MIDIDetector(midi)
         self.history = history
         self.outbox = outbox
         self.clock = clock
@@ -63,8 +65,9 @@ public final class PracticeModel: TagTarget {
         self.nudge = nudge
         self.cap = cap
         answeredID = defaults.string(forKey: Self.answeredKey).flatMap(UUID.init(uuidString:))
-        // Loads the stored session now, so the first frame after a relaunch already shows it.
-        refresh()
+        // Loads the stored session now, so the first frame after a relaunch already shows it, with the silence
+        // since its last change applied.
+        tick()
     }
 
     func start() {
@@ -144,6 +147,13 @@ public final class PracticeModel: TagTarget {
         }
     }
 
+    /// Shows the stored session, then pauses or ends a MIDI session whose silence has lasted long enough, as when
+    /// the app comes back after half an hour (MIDI-R3). Call at launch, on becoming active and at `nextRefresh`.
+    func tick() {
+        refresh()
+        apply(detector.handle(.tick(clock.now)))
+    }
+
     /// Stores the detector's effects in one command, so a note refreshes once, and only if it changed something.
     /// A MIDI session ended with under a minute played is dropped in the refresh, which Practice then says.
     private func apply(_ effects: [MIDIDetector.Effect]) {
@@ -155,6 +165,10 @@ public final class PracticeModel: TagTarget {
                 case .start(let date):
                     try recorder.start(at: date)
                     lastRunWasTooShort = false
+                case .pause(let date):
+                    try recorder.pause(at: date)
+                case .resume(let date):
+                    try recorder.resume(at: date)
                 case .end(let lastNote, let date):
                     // A Stop dated before the last note, as after the clock steps back, ends the session at it.
                     endedID = try recorder.end(afterLastNote: lastNote, at: max(date, lastNote)).id
@@ -180,11 +194,24 @@ public final class PracticeModel: TagTarget {
         session.latestEvent...max(session.latestEvent, clock.now)
     }
 
-    /// When the running session reaches the nudge or the cap next, so Practice refreshes then (SES-3, SES-4).
+    /// When a timer session reaches the nudge or the cap next, or a MIDI session's silence pauses or ends it, so
+    /// Practice ticks then (SES-3, SES-4, MIDI-1).
     var nextRefresh: Date? {
         let now = clock.now
-        return [nudge, cap].compactMap { session?.whenPracticeReaches($0) }.filter { $0 > now }.min()
+        return ([nudge, cap].map { timerSession?.whenPracticeReaches($0) } + [detector.nextDeadline]).compactMap { $0 }
+            .filter { $0 > now }.min()
     }
+
+    /// The session, unless it's a MIDI session: the piano shows the user is there, and a silence ends it, so it
+    /// isn't asked "Still practicing?" or capped (SES-3, SES-4).
+    private var timerSession: PracticeSession? { session?.source == .midi ? nil : session }
+
+    /// Whether the screen stays on: while a MIDI session lasts, pauses included, as a locked phone can't hear the
+    /// note that resumes it (MIDI-R5).
+    var keepsScreenAwake: Bool { session.map { $0.source == .midi && $0.state != .ended } == true }
+
+    /// Whether the session paused itself at its last note after a silence, rather than at a tap (MIDI-1).
+    var isPausedAtLastNote: Bool { session?.state == .paused && detector.isPausedBySilence }
 
     /// Whether the last session ended itself at the cap, which a banner explains until the next start (SES-4).
     var lastSessionReachedCap: Bool { lastSession.map { $0.id == cappedID } == true }
@@ -227,10 +254,10 @@ public final class PracticeModel: TagTarget {
             isShowingStorageError = true
         }
         detector.sync(with: session)
-        isPastNudge = session?.whenPracticeReaches(nudge).map { $0 <= clock.now } ?? false
+        isPastNudge = timerSession?.whenPracticeReaches(nudge).map { $0 <= clock.now } ?? false
         // The notification waits for the running session to reach the nudge. A pause, a stop or a session already
         // past it cancels it, so it comes at most once per session.
-        if let session, let date = session.whenPracticeReaches(nudge), date > clock.now {
+        if let session = timerSession, let date = session.whenPracticeReaches(nudge), date > clock.now {
             nudges.schedule(after: date.timeIntervalSince(clock.now), sessionID: session.id)
         } else {
             nudges.cancel()
