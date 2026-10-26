@@ -302,6 +302,170 @@ struct PracticeModelTests {
         #expect(model.nudgeOpened == NudgeOpening(sessionID: id, pickingEnd: true))
     }
 
+    // MARK: MIDI-1: sessions from the piano
+
+    @Test("MIDI-1: three notes within 10 s start a MIDI session at the first of them")
+    func threeNotesStartAMIDISession() {
+        let model = makeModel()
+        let firstNote = clock.now
+        model.noteOn(at: firstNote)
+        clock.advance(by: 0.3)
+        model.noteOn(at: clock.now)
+        #expect(model.session == nil)
+
+        clock.advance(by: 0.3)
+        model.noteOn(at: clock.now)
+
+        #expect(model.session?.source == .midi)
+        #expect(model.session?.state == .running)
+        #expect(model.session?.startedAt == firstNote)
+    }
+
+    @Test("MIDI-R4: notes during a session started by tapping don't count toward a MIDI session, then or after it")
+    func notesDuringATimerSessionStartNoSecondSession() {
+        let model = makeModel()
+        model.start()
+        clock.advance(by: 600)
+        model.noteOn(at: clock.now)
+        model.noteOn(at: clock.now)
+        #expect(model.session?.source == .timer)
+
+        model.stop()
+        model.noteOn(at: clock.now)
+
+        #expect(model.session == nil)
+        #expect(model.lastSession?.source == .timer)
+    }
+
+    @Test(
+        "MIDI-R4: Stop on a MIDI session ends it at the earlier of the tap and 5 s after its last note",
+        arguments: [(tappedAfter: 2.0, endsAfter: 2.0), (30, 5)])
+    func stopOnAMIDISessionEndsAtTheEarlierMoment(tappedAfter: TimeInterval, endsAfter: TimeInterval) {
+        let model = makeModel()
+        let start = clock.now
+        for _ in 1...3 { model.noteOn(at: start) }
+        clock.advance(by: 70)
+        model.noteOn(at: clock.now)
+        clock.advance(by: tappedAfter)
+
+        model.stop()
+
+        #expect(model.session == nil)
+        #expect(model.lastSession?.endedAt == start + 70 + endsAfter)
+        #expect(model.lastSession?.elapsed(at: clock.now) == 70)
+        #expect(!model.lastRunWasTooShort)
+    }
+
+    @Test("MIDI-1: a Stop with under a minute of played time discards the MIDI session, and Practice says so")
+    func aShortMIDIStopSaysTooShortToSave() {
+        let history = InMemorySessionHistory()
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
+            nudges: nudges, defaults: defaults, nudge: 5_400, cap: 14_400)
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        clock.advance(by: 59)
+        model.noteOn(at: clock.now)
+        clock.advance(by: 30)
+
+        model.stop()
+
+        #expect(model.session == nil)
+        #expect(model.lastRunWasTooShort)
+        #expect(history.sessions().isEmpty)
+    }
+
+    @Test(
+        "MIDI-1: \"Too short to save\" shows until the next start, by tapping or by playing", arguments: [false, true])
+    func tooShortClearsOnTheNextStart(byPlaying: Bool) {
+        let model = makeModel()
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        model.stop()
+        #expect(model.lastRunWasTooShort)
+        clock.advance(by: 60)
+
+        if byPlaying {
+            for _ in 1...3 { model.noteOn(at: clock.now) }
+        } else {
+            model.start()
+        }
+
+        #expect(model.session?.state == .running)
+        #expect(!model.lastRunWasTooShort)
+    }
+
+    @Test("MIDI-1: a MIDI session that history and the outbox can't take isn't called too short; the error shows")
+    func aFailedArchiveIsntTooShort() {
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: FlakyHistory(), outbox: UnavailableOutbox(), clock: clock,
+            nudges: nudges, defaults: defaults, nudge: 5_400, cap: 14_400)
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        clock.advance(by: 90)
+        model.noteOn(at: clock.now)
+
+        model.stop()
+
+        #expect(model.session?.state == .ended)
+        #expect(model.isShowingStorageError)
+        #expect(!model.lastRunWasTooShort)
+    }
+
+    @Test("MIDI-1: a Stop dated before the last note, as after the clock steps back, ends the session at that note")
+    func aStopDatedBeforeTheLastNoteNeverThrows() {
+        let model = makeModel()
+        // A ManualClock can't step back, so the notes are dated later than it reads.
+        let lastNote = clock.now + 100
+        for _ in 1...3 { model.noteOn(at: lastNote) }
+        clock.advance(by: 2)
+
+        model.stop()
+
+        #expect(model.session == nil)
+        #expect(model.lastRunWasTooShort)
+    }
+
+    @Test("MIDI-R4: Stop after a tapped Pause ends the MIDI session at the tap, within 5 s of the pause")
+    func stopAfterATappedPauseEndsAtTheTap() {
+        let model = makeModel()
+        let start = clock.now
+        for _ in 1...3 { model.noteOn(at: start) }
+        clock.advance(by: 90)
+        model.pause()
+        clock.advance(by: 2)
+
+        model.stop()
+
+        #expect(model.lastSession?.endedAt == start + 92)
+        #expect(model.lastSession?.elapsed(at: clock.now) == 90)
+    }
+
+    @Test("SES-3, MIDI-R4: a note on a session started by tapping, past the nudge, answers \"Still practicing?\"")
+    func aNoteOnATimerSessionPastTheNudgeAnswersStillPracticing() {
+        let model = makeModel()
+        model.start()
+        clock.advance(by: 5_400)
+        model.refresh()
+        #expect(model.isAskingStillPracticing)
+
+        model.noteOn(at: clock.now)
+
+        #expect(!model.isAskingStillPracticing)
+        #expect(model.session?.source == .timer)
+    }
+
+    @Test("SES-3: a note before the nudge leaves the question to be asked")
+    func aNoteBeforeTheNudgeChangesNothing() {
+        let model = makeModel()
+        model.start()
+        clock.advance(by: 5_399)
+
+        model.noteOn(at: clock.now)
+
+        #expect(model.answeredID == nil)
+        clock.advance(by: 1)
+        model.refresh()
+        #expect(model.isAskingStillPracticing)
+    }
+
     /// A model over `store`, with the app's nudge and cap.
     private func makeModel(over store: InMemoryRunningSessionStore = InMemoryRunningSessionStore()) -> PracticeModel {
         PracticeModel(

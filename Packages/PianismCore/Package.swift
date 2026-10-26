@@ -30,6 +30,8 @@ let package = Package(
         .testTarget(
             name: "PianismCoreTests",
             dependencies: ["PianismCore", "PianismCoreTestSupport"],
+            // Recordings of a Kawai CA59, replayed into the MIDI detector.
+            resources: [.copy("Fixtures")],
             swiftSettings: strict
         ),
     ]

@@ -6,8 +6,11 @@ import Foundation
 /// Because every change is stored as it happens, restoring a session after the app was killed is
 /// just reading ``current()``: its elapsed time comes from the stored timestamps.
 public struct SessionRecorder: Sendable {
-    /// Practice time below which an ended session is a mis-tap, not practice, so it's dropped quietly (SES-1).
-    private static let minimumPractice: TimeInterval = 10
+    /// Practice time below which an ended session isn't practice, so it's dropped: a mis-tap under 10 s, quietly
+    /// (SES-1), or a few stray notes under a minute of a MIDI session's played time (MIDI-1).
+    private static func minimumPractice(for source: PracticeSession.Source) -> TimeInterval {
+        source == .midi ? 60 : 10
+    }
 
     private let store: any RunningSessionStore
     private let clock: any WallClock
@@ -38,11 +41,24 @@ public struct SessionRecorder: Sendable {
     /// history nor the outbox could take it, so starting never overwrites practice.
     @discardableResult
     public func start() throws -> PracticeSession {
+        try start(.timer, at: nil)
+    }
+
+    /// Starts a MIDI session at `date`, the first of the notes that started it, in the current time zone (MIDI-1).
+    /// Refuses as ``start()`` does.
+    @discardableResult
+    public func start(at date: Date) throws -> PracticeSession {
+        try start(.midi, at: date)
+    }
+
+    /// Starts a session at `date`, or now if it's `nil`.
+    private func start(_ source: PracticeSession.Source, at date: Date?) throws -> PracticeSession {
         try store.update { stored in
             if let stored {
                 throw stored.state == .ended ? RecorderError.previousSessionNotSaved : .alreadyStarted
             }
-            let session = PracticeSession(id: makeID(), startedAt: clock.now, timeZone: timeZone())
+            let session = PracticeSession(
+                id: makeID(), startedAt: date ?? clock.now, timeZone: timeZone(), source: source)
             stored = session
             return session
         }
@@ -74,6 +90,17 @@ public struct SessionRecorder: Sendable {
         try change { session, _ in try session.stop(at: date) }
     }
 
+    /// Ends a MIDI session at `date` (MIDI-1). If it's running, it first pauses at `lastNote`, so the time after the
+    /// last note is a closing pause, not played time (ADR 0009). One update, so a kill can't leave it paused but
+    /// not ended.
+    @discardableResult
+    public func end(afterLastNote lastNote: Date, at date: Date) throws -> PracticeSession {
+        try change { session, _ in
+            if session.state == .running { try session.pause(at: lastNote) }
+            try session.stop(at: date)
+        }
+    }
+
     /// Ends the running session at the moment its practice time reached `cap`, if it has by now, in case it
     /// was left running (SES-4). A paused session is left alone. Returns the ended session, or `nil`.
     public func end(atCap cap: TimeInterval) throws -> PracticeSession? {
@@ -97,9 +124,9 @@ public struct SessionRecorder: Sendable {
     }
 
     /// Moves an ended session out of the store, so a new one can start: into `history`, or into
-    /// `outbox` if history can't save it (ADR 0007), unless it has under 10 s of practice,
-    /// which drops it. Then moves any waiting sessions into history. Returns the ended session it kept,
-    /// or `nil` if none had ended or it was dropped.
+    /// `outbox` if history can't save it (ADR 0007), unless it has under 10 s of practice, or a minute
+    /// for a MIDI session, which drops it. Then moves any waiting sessions into history. Returns the
+    /// ended session it kept, or `nil` if none had ended or it was dropped.
     ///
     /// Throws only if the ended session could go nowhere; it then stays in the store. Safe to repeat
     /// after a crash at any step: history saves each ID once, the outbox replaces by ID, and the
@@ -107,7 +134,7 @@ public struct SessionRecorder: Sendable {
     @discardableResult
     public func archive(to history: any SessionHistory, or outbox: any SessionOutbox) throws -> PracticeSession? {
         let ended = try store.current().flatMap { $0.state == .ended ? $0 : nil }
-        let kept = ended.flatMap { $0.elapsed(at: clock.now) >= Self.minimumPractice ? $0 : nil }
+        let kept = ended.flatMap { $0.elapsed(at: clock.now) >= Self.minimumPractice(for: $0.source) ? $0 : nil }
         if let kept {
             do {
                 try history.save(kept)

@@ -49,10 +49,11 @@ Option 3.
   never interleave a read and a write, and writes the file atomically, so a crash never leaves
   half a file.
 - **Only the app moves sessions into SwiftData.** When a session stops in the app, history saves it
-  (or, with under 10 s of practice, drops it, SES-1) and then the file is cleared. Saving it again
-  is harmless (ADR 0004), and a session history can't take waits in the outbox (ADR 0007). When the
-  widget or a Live Activity stops one, it stays in the file, marked ended, and the app moves it on
-  its next launch or return to the foreground. Each store has exactly one writer.
+  (or, with under 10 s of practice, or 1 min for a MIDI session, drops it, SES-1, MIDI-1) and then
+  the file is cleared. Saving it again is harmless (ADR 0004), and a session history can't take
+  waits in the outbox (ADR 0007). When the widget or a Live Activity stops one, it stays in the
+  file, marked ended, and the app moves it on its next launch or return to the foreground. Each
+  store has exactly one writer.
 - Elapsed time is always derived from the stored timestamps, so there is no periodic save. Each
   change writes once.
 

@@ -343,7 +343,7 @@ final class SwiftDataSessionHistoryTests {
         try insertRecord(in: history, id: UUID(), endingAfter: 600, modifiedAfter: 0)
         let context = ModelContext(try history.store.container())
         let record = try #require(try context.fetch(FetchDescriptor<SessionRecord>()).first)
-        (record.note, record.source, record.timeZoneID) = ("Left hand alone", "midi", "Mars/Olympus_Mons")
+        (record.note, record.source, record.timeZoneID) = ("Left hand alone", "mic", "Mars/Olympus_Mons")
         try context.save()
         var edited = try #require(try history.sessions().first)
         try edited.editTags(["skill.scales"])
@@ -352,7 +352,7 @@ final class SwiftDataSessionHistoryTests {
 
         let stored = try #require(
             try ModelContext(history.store.container()).fetch(FetchDescriptor<SessionRecord>()).first)
-        #expect([stored.note, stored.source, stored.timeZoneID] == ["Left hand alone", "midi", "Mars/Olympus_Mons"])
+        #expect([stored.note, stored.source, stored.timeZoneID] == ["Left hand alone", "mic", "Mars/Olympus_Mons"])
         #expect(stored.tagIDs == Data(#"["skill.scales"]"#.utf8))
     }
 

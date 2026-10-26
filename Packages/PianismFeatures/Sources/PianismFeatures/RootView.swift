@@ -54,6 +54,7 @@ enum AccessibilityID {
     static let practiceStatus = "practice.status"
     static let practiceElapsed = "practice.elapsed"
     static let practiceLastSession = "practice.last-session"
+    static let practiceTooShort = "practice.too-short"
     static let practiceWaiting = "practice.waiting"
     static let practiceStart = "practice.start"
     static let practicePause = "practice.pause"

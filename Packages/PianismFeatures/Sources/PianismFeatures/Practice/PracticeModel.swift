@@ -30,6 +30,11 @@ public final class PracticeModel: TagTarget {
     var nudgeOpened: NudgeOpening?
     /// The session that ended itself at the cap, until the banner explaining it is acted on (SES-4).
     private var cappedID: UUID?
+    /// Whether the last MIDI session had under a minute of played time, so it wasn't saved, until the next start
+    /// (MIDI-1).
+    private(set) var lastRunWasTooShort = false
+    /// Turns the piano's notes into MIDI sessions, following the stored session at each refresh (MIDI-1).
+    @ObservationIgnored private var detector = MIDIDetector()
 
     let clock: any WallClock
     /// The practice time after which Practice asks "Still practicing?" (SES-3).
@@ -66,7 +71,19 @@ public final class PracticeModel: TagTarget {
         perform {
             try recorder.start()
             lastSession = nil
+            lastRunWasTooShort = false
         }
+    }
+
+    /// Counts a note played on a connected piano (MIDI-1). Three within 10 s start a MIDI session. On a session
+    /// started by tapping, notes only show the user is there, so past the nudge they answer "Still practicing?" as
+    /// a Pause does (MIDI-R4, SES-3).
+    public func noteOn(at date: Date) {
+        guard session?.source != .timer else {
+            answerIfPastNudge()
+            return
+        }
+        apply(detector.handle(.noteOn(date)))
     }
 
     func pause() {
@@ -91,7 +108,7 @@ public final class PracticeModel: TagTarget {
     /// A Pause or Resume once practice has passed the nudge shows the user is there, so it answers "Still
     /// practicing?" for the session (SES-3).
     private func answerIfPastNudge() {
-        if let session, session.elapsed(at: clock.now) >= nudge {
+        if let session, answeredID != session.id, session.elapsed(at: clock.now) >= nudge {
             answerStillPracticing(for: session.id)
         }
     }
@@ -112,8 +129,36 @@ public final class PracticeModel: TagTarget {
         await nudges.requestPermission()
     }
 
+    /// Ends the session now, or a MIDI session at the earlier of now and 5 s after its last note (MIDI-R4).
     func stop() {
-        perform { try recorder.stop() }
+        if session?.source == .midi {
+            apply(detector.handle(.stop(clock.now)))
+        } else {
+            perform { try recorder.stop() }
+        }
+    }
+
+    /// Stores the detector's effects in one command, so a note refreshes once, and only if it changed something.
+    /// A MIDI session ended with under a minute played is dropped in the refresh, which Practice then says.
+    private func apply(_ effects: [MIDIDetector.Effect]) {
+        guard !effects.isEmpty else { return }  // mutate:ignore - without it, a note only refreshes needlessly
+        var endedID: UUID?
+        perform {
+            for effect in effects {
+                switch effect {
+                case .start(let date):
+                    try recorder.start(at: date)
+                    lastRunWasTooShort = false
+                case .end(let lastNote, let date):
+                    // A Stop dated before the last note, as after the clock steps back, ends the session at it.
+                    endedID = try recorder.end(afterLastNote: lastNote, at: max(date, lastNote)).id
+                }
+            }
+        }
+        // Neither kept nor still stored, as one is when history and the outbox both fail, so it was dropped.
+        if let endedID {
+            lastRunWasTooShort = lastSession?.id != endedID && session?.id != endedID
+        }
     }
 
     /// Ends the session at `date`, when it ended before now (SES-3). A date before the last resume, as when the
@@ -175,6 +220,7 @@ public final class PracticeModel: TagTarget {
             logger.error("Couldn't load the running session: \(error, privacy: .public)")
             isShowingStorageError = true
         }
+        detector.sync(with: session)
         isPastNudge = session?.whenPracticeReaches(nudge).map { $0 <= clock.now } ?? false
         // The notification waits for the running session to reach the nudge. A pause, a stop or a session already
         // past it cancels it, so it comes at most once per session.

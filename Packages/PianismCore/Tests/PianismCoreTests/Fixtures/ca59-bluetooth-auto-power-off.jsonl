@@ -1,0 +1,23 @@
+{"t": 7.8627, "source": "CoreMIDI", "event": "notification 4"}
+{"t": 7.8737, "source": "CA59 Bluetooth", "event": "connected"}
+{"t": 7.8740, "source": "CoreMIDI", "event": "notification 4"}
+{"t": 7.8748, "source": "CoreMIDI", "event": "notification 1"}
+{"t": 8.1129, "source": "CoreMIDI", "event": "notification 4"}
+{"t": 8.1134, "source": "CoreMIDI", "event": "notification 2"}
+{"t": 8.1137, "source": "CoreMIDI", "event": "notification 2"}
+{"t": 8.1139, "source": "CoreMIDI", "event": "notification 1"}
+{"t": 12.3998, "source": "CA59 Bluetooth", "bytes": "90 30 55"}
+{"t": 12.6688, "source": "CA59 Bluetooth", "bytes": "80 30 6a"}
+{"t": 12.6698, "source": "CA59 Bluetooth", "bytes": "90 34 54"}
+{"t": 12.9178, "source": "CA59 Bluetooth", "bytes": "80 34 55"}
+{"t": 12.9248, "source": "CA59 Bluetooth", "bytes": "90 37 4c"}
+{"t": 13.1758, "source": "CA59 Bluetooth", "bytes": "80 37 5d"}
+{"t": 13.1828, "source": "CA59 Bluetooth", "bytes": "90 34 54"}
+{"t": 13.3958, "source": "CA59 Bluetooth", "bytes": "80 34 50"}
+{"t": 13.4248, "source": "CA59 Bluetooth", "bytes": "90 30 54"}
+{"t": 13.7198, "source": "CA59 Bluetooth", "bytes": "80 30 6e"}
+{"t": 917.7734, "source": "CoreMIDI", "event": "notification 4"}
+{"t": 917.7786, "source": "CA59 Bluetooth", "event": "disconnected"}
+{"t": 917.7787, "source": "CoreMIDI", "event": "notification 3"}
+{"t": 917.7787, "source": "CoreMIDI", "event": "notification 3"}
+{"t": 917.7787, "source": "CoreMIDI", "event": "notification 1"}

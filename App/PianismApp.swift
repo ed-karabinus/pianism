@@ -136,6 +136,22 @@ struct PianismApp: App {
             nudge: nudge, cap: cap)
         answering.practice = practice
         self.practice = practice
+        #if DEBUG
+            // End-to-end tests play notes with PIANISM_MIDI_NOTES, as seconds after launch separated by commas, as the
+            // simulator has no piano. Each is dated the clock's launch time plus its offset, so on a fixed clock
+            // "0,0,0" is a chord at that time, and on the real clock a slow simulator doesn't move the dates.
+            // Release builds ignore it.
+            if let notes = environment["PIANISM_MIDI_NOTES"] {
+                let launch = (date: clock.now, instant: ContinuousClock.now)
+                let offsets = notes.split(separator: ",").compactMap { TimeInterval($0) }
+                Task {
+                    for offset in offsets {
+                        try? await Task.sleep(until: launch.instant + .seconds(offset))
+                        practice.noteOn(at: launch.date + offset)
+                    }
+                }
+            }
+        #endif
         tags = TagPickerModel(practice: practice, library: library)
         let history = HistoryModel(history: sessions, tags: library, outbox: outbox, running: store, clock: clock)
         #if DEBUG

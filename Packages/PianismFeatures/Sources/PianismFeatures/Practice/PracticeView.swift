@@ -81,7 +81,12 @@ struct PracticeView: View {
             if let session = model.session, model.isAskingStillPracticing {
                 stillPracticingBanner(session)
             }
-            if model.session == nil, let last = model.lastSession {
+            if model.session == nil, model.lastRunWasTooShort {
+                Text("Too short to save", bundle: .module)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(AccessibilityID.practiceTooShort)
+            } else if model.session == nil, let last = model.lastSession {
                 if model.lastSessionReachedCap {
                     capBanner(last.id)
                 } else {
@@ -379,6 +384,18 @@ private struct CommandButton: View {
 
 #Preview("Still practicing?, dark, AX5") {
     let model = PracticeModel.preview(.pastNudge)
+    PracticeView(model: model, tags: .preview(for: model)) { _ in }
+        .preferredColorScheme(.dark)
+        .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("Too short to save") {
+    let model = PracticeModel.preview(.tooShort)
+    PracticeView(model: model, tags: .preview(for: model)) { _ in }
+}
+
+#Preview("Too short to save, dark, AX5") {
+    let model = PracticeModel.preview(.tooShort)
     PracticeView(model: model, tags: .preview(for: model)) { _ in }
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)

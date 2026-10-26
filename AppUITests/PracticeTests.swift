@@ -41,6 +41,24 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A session under 10 s was kept")
     }
 
+    /// MIDI-1: three notes start a session, and a Stop with under a minute of played time discards it and says so.
+    /// The simulator has no piano, so the app plays a chord at launch, on the fixed clock.
+    @MainActor
+    func testThreeNotesStartASessionAndAShortStopDiscardsIt() throws {
+        let app = launch(at: start, reset: true, midiNotes: "0,0,0")
+        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
+        XCTAssertEqual(text(app, "practice.status"), "Practicing")
+
+        tap(app, "practice.stop")
+
+        XCTAssertTrue(app.staticTexts["practice.too-short"].waitForExistence(timeout: 5), "It didn't say so")
+        XCTAssertEqual(text(app, "practice.too-short"), "Too short to save")
+        XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
+        attachScreenshot(of: app, named: "Too short to save")
+        openHistory(app)
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A MIDI session under 1 min was kept")
+    }
+
     /// SES-6: killed while running and while paused, the session comes back with the right time,
     /// and paused time never counts (SES-2).
     @MainActor
@@ -879,7 +897,7 @@ final class PracticeTests: UITestCase {
     private func launch(
         at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, unshowableSessions: Int? = nil,
         undoSeconds: Int? = nil, nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false,
-        textSize: String? = nil, syncArrivesSeconds: Int? = nil
+        textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -918,6 +936,9 @@ final class PracticeTests: UITestCase {
         }
         if let unshowableSessions {
             app.launchEnvironment["PIANISM_UNSHOWABLE_SESSIONS"] = String(unshowableSessions)
+        }
+        if let midiNotes {
+            app.launchEnvironment["PIANISM_MIDI_NOTES"] = midiNotes
         }
         app.launch()
         XCTAssertTrue(app.staticTexts["practice.status"].waitForExistence(timeout: 10))
