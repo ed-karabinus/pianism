@@ -9,12 +9,12 @@ private let previewNow = Date(timeIntervalSince1970: 1_798_761_600)
 
 extension PracticeModel {
     enum PreviewState {
-        case ready, running, paused, pastNudge, capped, tooShort
+        case ready, running, paused, pastNudge, capped, tooShort, midiPaused
     }
 
     /// A model over an in-memory store, 25 minutes into a session, 95 minutes into one past the 90-minute nudge,
-    /// or 5 hours into one that ends itself at the 4-hour cap, or just after a MIDI session too short to save, for
-    /// previews.
+    /// or 5 hours into one that ends itself at the 4-hour cap, just after a MIDI session too short to save, or with
+    /// a MIDI session paused by a silence, for previews.
     static func preview(_ state: PreviewState) -> PracticeModel {
         let minutesEarlier: TimeInterval =
             switch state {
@@ -24,7 +24,8 @@ extension PracticeModel {
             }
         let started = previewNow.addingTimeInterval(-minutesEarlier * 60)
         let store = PreviewStore(
-            state == .ready ? nil : PracticeSession(startedAt: started, source: state == .tooShort ? .midi : .timer))
+            state == .ready || state == .midiPaused
+                ? nil : PracticeSession(startedAt: started, source: state == .tooShort ? .midi : .timer))
         let clock = PreviewClock(now: previewNow.addingTimeInterval(25 * 60 + 3))
         let model = PracticeModel(
             store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
@@ -34,6 +35,10 @@ extension PracticeModel {
         } else if state == .tooShort {
             // Its notes were a chord at its start, so it ends 5 s later with nothing played.
             model.stop()
+        } else if state == .midiPaused {
+            // Played from 5 minutes ago to 90 seconds ago, so the silence since paused it at its last note.
+            for offset: TimeInterval in [-300, -300, -300, -90] { model.noteOn(at: clock.now + offset) }
+            model.tick()
         }
         return model
     }

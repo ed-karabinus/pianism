@@ -59,6 +59,43 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A MIDI session under 1 min was kept")
     }
 
+    /// MIDI-1: a silence pauses a MIDI session at its last note, and a longer one saves it 5 s after that note, with no
+    /// tap. On the real clock, with the timeouts shortened to 10 and 20 s and the shortest session kept to 2 s.
+    @MainActor
+    func testPlayingPausesAfterSilenceAndSavesItself() throws {
+        let app = launch(
+            at: nil, reset: true, midiNotes: "0.5,0.8,1.1,2.5,4", midiPauseSeconds: 10, midiSaveSeconds: 20,
+            midiMinimumSeconds: 2)
+        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
+
+        let paused = app.staticTexts["practice.status"].wait(
+            for: \.label, toEqual: "Paused at your last note", timeout: 30)
+        XCTAssertTrue(paused, "The silence didn't pause it")
+        attachScreenshot(of: app, named: "Paused at your last note")
+
+        // Played from the first note to the last, 3.5 s; the 5 s after the last note were a pause.
+        XCTAssertTrue(app.staticTexts["practice.last-session"].waitForExistence(timeout: 90), "It didn't save itself")
+        XCTAssertEqual(text(app, "practice.last-session"), "Last session: 0:03")
+        XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
+        openHistory(app)
+        XCTAssertEqual(element(app, "history.session").value as? String, "3 seconds")
+    }
+
+    /// MIDI-R3: a MIDI session killed while playing and opened after a minute's silence opens paused at its last
+    /// change, here its start, with no time counted for the silence.
+    @MainActor
+    func testASilentMIDISessionPausesAtItsLastNoteOnRelaunch() throws {
+        var app = launch(at: start, reset: true, midiNotes: "0,0,0")
+        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
+        kill(app)
+
+        app = launch(at: start + 61)
+
+        XCTAssertEqual(text(app, "practice.status"), "Paused at your last note")
+        XCTAssertEqual(elapsed(app), "0 seconds")
+        attachScreenshot(of: app, named: "Paused at its last note after a relaunch")
+    }
+
     /// SES-6: killed while running and while paused, the session comes back with the right time,
     /// and paused time never counts (SES-2).
     @MainActor
@@ -897,7 +934,8 @@ final class PracticeTests: UITestCase {
     private func launch(
         at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, unshowableSessions: Int? = nil,
         undoSeconds: Int? = nil, nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false,
-        textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil
+        textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
+        midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -939,6 +977,15 @@ final class PracticeTests: UITestCase {
         }
         if let midiNotes {
             app.launchEnvironment["PIANISM_MIDI_NOTES"] = midiNotes
+        }
+        if let midiPauseSeconds {
+            app.launchEnvironment["PIANISM_MIDI_PAUSE_SECONDS"] = String(midiPauseSeconds)
+        }
+        if let midiSaveSeconds {
+            app.launchEnvironment["PIANISM_MIDI_SAVE_SECONDS"] = String(midiSaveSeconds)
+        }
+        if let midiMinimumSeconds {
+            app.launchEnvironment["PIANISM_MIDI_MINIMUM_SECONDS"] = String(midiMinimumSeconds)
         }
         app.launch()
         XCTAssertTrue(app.staticTexts["practice.status"].waitForExistence(timeout: 10))

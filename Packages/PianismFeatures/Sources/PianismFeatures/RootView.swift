@@ -1,5 +1,9 @@
 import SwiftUI
 
+#if os(iOS)
+    import UIKit
+#endif
+
 /// The app's top-level screen: a tab per area.
 public struct RootView: View {
     let practice: PracticeModel
@@ -29,6 +33,22 @@ public struct RootView: View {
                 HistoryView(model: history)
             }
         }
+        // Asks "Still practicing?", ends a timer session at the cap, and pauses or ends a silent MIDI session, while
+        // the app is on screen on any tab, as on an iPad on a music stand (SES-3, SES-4, MIDI-1). Only while the app
+        // is in front: away, the notification asks, and a refresh at the nudge would cancel it as it arrives.
+        .task(id: scenePhase == .active ? practice.session : nil) {
+            guard scenePhase == .active else { return }
+            while let next = practice.nextRefresh,
+                (try? await Task.sleep(for: .seconds(next.timeIntervalSince(practice.clock.now)))) != nil
+            {
+                practice.tick()
+            }
+        }
+        #if os(iOS)
+            .onChange(of: practice.keepsScreenAwake, initial: true) {
+                UIApplication.shared.isIdleTimerDisabled = practice.keepsScreenAwake
+            }
+        #endif
         // The notification opens Practice, to its question or the end being picked (SES-3).
         .onChange(of: practice.nudgeOpened) { _, opened in
             if opened != nil {
@@ -39,7 +59,7 @@ public struct RootView: View {
         // app ends a deletion's undo (SES-5).
         .onChange(of: scenePhase) {
             if scenePhase == .active {
-                practice.refresh()
+                practice.tick()
                 history.refresh()
             } else if scenePhase == .background {
                 history.commitDelete()

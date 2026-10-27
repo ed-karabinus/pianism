@@ -76,3 +76,11 @@ CoreMIDI's timestamp. Bluetooth delivers notes about 10–30 ms late, which is n
 detector's 10 s, 60 s and 600 s, and one clock keeps notes in step with every other change, including
 the fixed clock of the end-to-end tests. If a device ever needs exact note times, the change stays
 inside `CoreMIDINotes`.
+
+Amended 2026-10-26 by MIDI-1's timeouts, as the owner decided on 2026-10-24 and 2026-10-26. A MIDI
+session is never asked "Still practicing?" and never stopped at the 4-hour cap, since a silence ends
+it. Pause and Resume still work on one: a note resumes a tapped Pause, and a tapped Pause left for the
+save timeout (10 minutes) ends the session 5 s after the tap. Practice says "Paused at your last note"
+only when a silence made the pause; a tapped Pause says "Paused". The screen stays on from a MIDI
+session's start to its end, pauses included, so it can be read from the bench. The drop-back above
+stays: when the silence pause starts, the timer drops back to the last note.

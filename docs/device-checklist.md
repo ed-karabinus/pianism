@@ -13,10 +13,10 @@ owner runs them each milestone, as the README's Testing table says. Each row giv
 | 4 | **USB, Mac:** the same, recording on the Mac | 2026-10-16: macOS asked "Allow accessory to connect?" first. The piano appeared as "MIDI KEYBOARD", not by its model name. Messages were as over Bluetooth, nothing while idle, one message per packet. |
 | 5 | **Unplug and replug, USB to the Mac,** at the piano's end: play a chord with the pedal while unplugged, plug in and wait 30 s, then unplug and plug in again without playing, then play | 2026-10-17: nothing played while unplugged was sent later. Plugging in sent nothing until a key was played. CoreMIDI reported the source removed on each unplug and added on each replug. Replugs at the laptop's end didn't register for about five minutes. |
 | 6 | **Restart the piano with USB connected** | 2026-10-17: Bluetooth MIDI switched back on, and USB stayed connected but sent nothing. The owner's manual says USB is disabled while Bluetooth MIDI is connected. |
-| 7 | **Auto power-off:** leave the piano idle until it switches itself off, and note the time and anything sent | Not run (2026-10-17): the owner doesn't expect this piano to switch itself off. |
+| 7 | **Auto power-off:** leave the piano idle until it switches itself off, and note the time and anything sent | 2026-10-18, at the 15-minute setting, over USB and then Bluetooth to the Mac: each time the piano switched itself off 904 s after the last key was released. It sent nothing first, and CoreMIDI reported the source removed. |
 
 **Why these are manual:** they depend on the piano and on Apple's MIDI and Bluetooth stacks, which
-no simulator or CI runner has. The recordings from rows 1, 4 and 5 are fixtures for MIDI-1's
+no simulator or CI runner has. The recordings from rows 1, 4, 5 and 7 are fixtures for MIDI-1's
 detector tests (`Packages/PianismCore/Tests/PianismCoreTests/Fixtures`), covering the messages.
 Pairing, prompts, device names, the Bluetooth and USB switch, and power-off stay manual.
 
@@ -31,6 +31,11 @@ latency line doesn't show).
 | M1 | **USB, connected before launch:** piano on and plugged in, open Pianism, play three notes. Practice shows "Practicing" within a second, and the log line "MIDI session started … ms after its third note" reads under 250 ms (NFR-5). The adapter test `aSourceThatExistedBeforeTheAdapterIsHeard` covers the connection on the Mac; the latency needs the device | Not run yet. |
 | M2 | **Bluetooth, with no pairing screen in Pianism:** pair the piano in GarageBand, quit it, open Pianism and play; then switch the piano off and on, and play again. Notes arrive both times. If the second fails, note it on #44, which adds pairing | Not run yet. |
 | M3 | **Unplug and replug mid-piece, USB, at the piano's end:** the notes after the replug reach the same session. The adapter tests `aSourceThatAppearsAfterLaunchIsHeard` and `aRemovedSourceStopsNothingElse` cover it with virtual sources; this checks a real piano's endpoint | Not run yet. |
+| M4 | **Lock mid-piece:** play, press the side button, wait two minutes, unlock. Practice opens on "Paused at your last note", with the time counted up to the last note and none for the two minutes. The model test `aSessionLeftForHalfAnHourEndsAfterItsLastNote` covers the rule; this checks that coming back to the app applies it | Not run yet. |
+| M5 | **The drop-back:** play, then stop and watch Practice. The timer counts on past the last note, and at a minute it drops back to the last note's time and says "Paused at your last note". Note whether the drop-back reads as expected or as a glitch | Not run yet. |
+| M6 | **The screen stays on:** set Auto-Lock to 30 seconds, play, then leave the iPhone alone for 11 minutes. The screen stays on through the pause, and locks about 30 s after the session saves itself. A session started by tapping Start still locks at 30 s | Not run yet. |
+| M7 | **Battery:** a 30-minute MIDI session with the screen on. Note the battery percentage before and after | Not run yet. |
+| M8 | **The piano playing itself:** connected, play the piano's demo song or a recording on the piano. Note whether its notes reach Pianism and start a session | Not run yet. |
 
 **Why these are manual:** the simulator has no MIDI, and the Mac's virtual sources stand in for a
 piano only in software. Bluetooth pairing and a real cable stay manual.
