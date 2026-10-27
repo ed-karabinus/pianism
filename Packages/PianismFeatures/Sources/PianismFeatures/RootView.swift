@@ -55,14 +55,16 @@ public struct RootView: View {
                 tab = .practice
             }
         }
-        // Shows changes made while the app was away, and moves "today" along after midnight. Leaving the
-        // app ends a deletion's undo (SES-5).
+        // Shows changes made while the app was away, and moves "today" along after midnight. Leaving the screen,
+        // inactive included, stores a MIDI session's last note (MIDI-1): swiped away in the app switcher, the app
+        // is killed without reaching the background. Reaching the background ends a deletion's undo (SES-5).
         .onChange(of: scenePhase) {
             if scenePhase == .active {
                 practice.tick()
                 history.refresh()
-            } else if scenePhase == .background {
-                history.commitDelete()
+            } else {
+                practice.leaveForeground()
+                if scenePhase == .background { history.commitDelete() }
             }
         }
     }

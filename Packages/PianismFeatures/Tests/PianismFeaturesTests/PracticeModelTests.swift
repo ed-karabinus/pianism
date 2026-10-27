@@ -556,6 +556,41 @@ struct PracticeModelTests {
         #expect(model.isPausedAtLastNote)
     }
 
+    @Test("MIDI-1: killed while away, a MIDI session reopens paused at its last note, not at its last change")
+    func aKillWhileAwayKeepsTheLastNote() {
+        let store = InMemoryRunningSessionStore()
+        let start = clock.now
+        let before = makeModel(over: store)
+        for _ in 1...3 { before.noteOn(at: start) }
+        clock.advance(by: 40)
+        before.noteOn(at: clock.now)
+        before.leaveForeground()
+        clock.advance(by: 61)
+
+        let model = makeModel(over: store)
+
+        #expect(model.session?.pauses.map(\.start) == [start + 40])
+        #expect(model.session?.elapsed(at: clock.now) == 40)
+    }
+
+    @Test("MIDI-1: leaving the screen stores nothing for a timer session or a paused MIDI one")
+    func leavingStoresNothingWithoutANoteToKeep() {
+        let store = InMemoryRunningSessionStore()
+        let model = makeModel(over: store)
+        model.start()
+        model.leaveForeground()
+        #expect(store.current()?.lastNoteAt == nil)
+        model.stop()
+
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        clock.advance(by: 60)
+        model.tick()
+        model.leaveForeground()
+
+        #expect(store.current()?.state == .paused)
+        #expect(store.current()?.lastNoteAt == nil)
+    }
+
     @Test("MIDI-1: a MIDI session that a silence ends with under a minute played isn't saved, and Practice says so")
     func aShortRunEndedByTheTimeoutSaysTooShortToSave() {
         let history = InMemorySessionHistory()

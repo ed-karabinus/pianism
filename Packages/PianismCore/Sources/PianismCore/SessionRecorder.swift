@@ -85,6 +85,12 @@ public struct SessionRecorder: Sendable {
         try change { session, _ in try session.resume(at: date) }
     }
 
+    /// Stores when the running MIDI session's last note was played (MIDI-1).
+    @discardableResult
+    public func noteLastPlayed(at date: Date) throws -> PracticeSession {
+        try change { session, _ in try session.noteLastPlayed(at: date) }
+    }
+
     /// Ends the session now (SES-1). It stays in the store, ended, until ``archive(to:or:)`` moves it to history
     /// or drops it.
     @discardableResult

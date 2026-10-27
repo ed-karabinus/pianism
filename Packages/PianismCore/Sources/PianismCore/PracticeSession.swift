@@ -36,6 +36,9 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
     public let timeZone: TimeZone?
     public private(set) var pauses: [Pause] = []
     public private(set) var endedAt: Date?
+    /// When a running MIDI session's last note was played, stored as the app leaves the screen, so a kill while
+    /// it's away doesn't lose the notes since the last change (MIDI-1). `nil` once it ends, so history never has it.
+    public private(set) var lastNoteAt: Date?
     /// The pieces and skills practiced, in the order they were added (TAG-2). A session with none is
     /// valid, and shows as "Untagged".
     public var tagIDs: [Tag.ID] { tags ?? [] }
@@ -106,6 +109,13 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
             pauses[pauses.count - 1].end = date
         }
         endedAt = date
+        lastNoteAt = nil
+    }
+
+    /// Records when a running MIDI session's last note was played (MIDI-1).
+    public mutating func noteLastPlayed(at date: Date) throws(SessionError) {
+        try checkCanChange(at: date)
+        lastNoteAt = date
     }
 
     /// Replaces the session's tags (TAG-2). A finished session's tags change through ``editTags(_:)``.

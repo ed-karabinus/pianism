@@ -154,6 +154,14 @@ public final class PracticeModel: TagTarget {
         apply(detector.handle(.tick(clock.now)))
     }
 
+    /// Stores the MIDI session's last note as the app leaves the screen, so if it's killed while away, the silence
+    /// counts from that note, not from the last change (MIDI-1).
+    func leaveForeground() {
+        // The detector has a last note only while a MIDI session is playing.
+        guard let lastNote = detector.lastNote else { return }
+        perform { try recorder.noteLastPlayed(at: lastNote) }
+    }
+
     /// Stores the detector's effects in one command, so a note refreshes once, and only if it changed something.
     /// A MIDI session ended with under a minute played is dropped in the refresh, which Practice then says.
     private func apply(_ effects: [MIDIDetector.Effect]) {

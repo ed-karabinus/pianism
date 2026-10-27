@@ -213,6 +213,17 @@ struct MIDIDetectorTests {
         var later = playing(lastNote: start + 50)
         later.sync(with: running)
         #expect(later.handle(.stop(start + 52)) == [.end(afterLastNote: start + 50, at: start + 52)])
+        #expect(later.lastNote == nil)
+
+        // After a relaunch, from its stored last note, and from a later one heard since.
+        var withLastNote = running
+        try withLastNote.noteLastPlayed(at: start + 70)
+        var stored = MIDIDetector()
+        stored.sync(with: withLastNote)
+        #expect(stored.lastNote == start + 70)
+        var heardSince = playing(lastNote: start + 80)
+        heardSince.sync(with: withLastNote)
+        #expect(heardSince.lastNote == start + 80)
 
         // After a tapped Pause, paused at the tap: a note resumes it, and Stop ends it at once.
         var tapped = running
