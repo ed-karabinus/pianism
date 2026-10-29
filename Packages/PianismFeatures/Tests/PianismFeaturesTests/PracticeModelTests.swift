@@ -784,6 +784,8 @@ struct PracticeModelTests {
         // As iOS reports them: Floats, in 5 % steps.
         model.battery = BatteryReading(level: Double(Float(0.2)), isPluggedIn: false)
         #expect(model.showsLowBattery)
+        model.battery = BatteryReading(level: Double(Float(0.21)), isPluggedIn: false)
+        #expect(!model.showsLowBattery)
         model.battery = BatteryReading(level: Double(Float(0.25)), isPluggedIn: false)
         #expect(!model.showsLowBattery)
         model.battery = nil

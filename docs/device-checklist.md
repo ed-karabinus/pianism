@@ -59,7 +59,7 @@ Simulators can't set a battery level, so the warning's rule has a model test (`a
 
 | # | Check | Last result |
 | --- | --- | --- |
-| B1 | **The warning:** as the battery runs down, unplugged, piano on USB, Practice open, no session: the low-battery line, with a red battery icon, first shows somewhere from 24 % down to 20 % in the status bar, as iOS reports the level to apps in 5 % steps. Note the percentage it showed at. Plug in: it goes. Unplug: it's back. Unplug the piano's cable too and start a timer session: it goes, as nothing keeps the screen on then. Then, with the line showing in a MIDI session, lock the phone, plug in and unlock: the line goes | Not run yet. |
+| B1 | **The warning:** as the battery runs down, unplugged, piano on USB, Practice open, no session: the low-battery line, with a red battery icon, first shows somewhere from 24 % down to 20 % on the status bar's percentage (turn it on in Settings › Battery › Battery Percentage), as iOS reports the level to apps in 5 % steps. Note the percentage it showed at. Plug in: it goes. Unplug: it's back. Unplug the piano's cable too and start a timer session: it goes, as nothing keeps the screen on then. Then, with the line showing in a MIDI session, lock the phone, plug in and unlock: the line goes | Not run yet. |
 
 ## iCloud sync (SYN-1, issue #15)
 

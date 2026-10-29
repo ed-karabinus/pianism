@@ -248,9 +248,8 @@ public final class PracticeModel: TagTarget {
     var battery: BatteryReading?
 
     /// Whether Practice warns that the battery is at 20 % or less while it keeps the screen on, unless plugged in
-    /// (NFR-10). iOS reports the level in 5 % steps, so "below 20 %" would wait for 15 %: at or below the 20 % step
-    /// is closest to what NFR-10 means (decided with Ed, 2026-10-29). Whole percents, as iOS's 20 % is a Float a
-    /// hair above 0.2.
+    /// (NFR-10). iOS reports the level as a Float in 5 % steps, so "below 20 %" would wait for 15 %, and its 20 % is
+    /// a hair above 0.2: whole percents (decided with Ed, 2026-10-29).
     var showsLowBattery: Bool {
         keepsScreenAwake(showingPractice: true)
             && battery.map { ($0.level * 100).rounded() <= 20 && !$0.isPluggedIn } == true
