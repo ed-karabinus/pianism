@@ -13,6 +13,8 @@ public struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var tab = AppTab.practice
 
+    private var keepsScreenAwake: Bool { practice.keepsScreenAwake(showingPractice: tab == .practice) }
+
     public init(practice: PracticeModel, tags: TagPickerModel, history: HistoryModel) {
         self.practice = practice
         self.tags = tags
@@ -57,8 +59,17 @@ public struct RootView: View {
             }
         }
         #if os(iOS)
-            .onChange(of: practice.keepsScreenAwake(showingPractice: tab == .practice), initial: true) { _, awake in
+            .onChange(of: keepsScreenAwake, initial: true) { _, awake in
                 UIApplication.shared.isIdleTimerDisabled = awake
+                // The battery is watched only while the screen is kept on, which is when it matters (NFR-10).
+                UIDevice.current.isBatteryMonitoringEnabled = awake
+                practice.battery = awake ? .current : nil
+            }
+            .task(id: keepsScreenAwake) {
+                guard keepsScreenAwake else { return }
+                async let level: Void = followBattery(UIDevice.batteryLevelDidChangeNotification)
+                async let state: Void = followBattery(UIDevice.batteryStateDidChangeNotification)
+                _ = await (level, state)
             }
         #endif
         // The notification opens Practice, to its question or the end being picked (SES-3).
@@ -91,6 +102,7 @@ enum AccessibilityID {
     static let practiceTooShort = "practice.too-short"
     static let practiceWaiting = "practice.waiting"
     static let practicePianos = "practice.pianos"
+    static let practiceLowBattery = "practice.low-battery"
     static let practiceStart = "practice.start"
     static let practicePause = "practice.pause"
     static let practiceResume = "practice.resume"
@@ -143,3 +155,22 @@ private enum AppTab {
     let practice = PracticeModel.preview(.ready)
     RootView(practice: practice, tags: .preview(for: practice), history: .preview())
 }
+
+#if os(iOS)
+    extension RootView {
+        private func followBattery(_ name: Notification.Name) async {
+            for await _ in NotificationCenter.default.notifications(named: name) {
+                practice.battery = .current
+            }
+        }
+    }
+
+    extension BatteryReading {
+        /// The battery now, or nil while iOS doesn't know its level.
+        @MainActor static var current: BatteryReading? {
+            let device = UIDevice.current
+            guard device.batteryLevel >= 0 else { return nil }
+            return BatteryReading(level: Double(device.batteryLevel), isPluggedIn: device.batteryState != .unplugged)
+        }
+    }
+#endif

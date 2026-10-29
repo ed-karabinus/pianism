@@ -767,6 +767,34 @@ struct PracticeModelTests {
         #expect(!model.keepsScreenAwake(showingPractice: true))
     }
 
+    @Test("NFR-10: while the screen is kept on, Practice warns of a battery under 20 %, unless it's plugged in")
+    func aLowBatteryIsShownWhileTheScreenIsKeptOn() {
+        let model = makeModel()
+        let low = BatteryReading(level: 0.19, isPluggedIn: false)
+        model.battery = low
+        #expect(!model.showsLowBattery)
+        model.start()
+        #expect(!model.showsLowBattery)
+        model.stop()
+
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        #expect(model.showsLowBattery)
+        model.battery = BatteryReading(level: 0.19, isPluggedIn: true)
+        #expect(!model.showsLowBattery)
+        model.battery = BatteryReading(level: 0.2, isPluggedIn: false)
+        #expect(!model.showsLowBattery)
+        model.battery = nil
+        #expect(!model.showsLowBattery)
+
+        clock.advance(by: 660)
+        model.tick()
+        #expect(model.session == nil)
+        model.battery = low
+        #expect(!model.showsLowBattery)
+        model.connectedPianos = ["MIDI KEYBOARD"]
+        #expect(model.showsLowBattery)
+    }
+
     /// A model over `store`, with the app's nudge and cap.
     private func makeModel(over store: InMemoryRunningSessionStore = InMemoryRunningSessionStore()) -> PracticeModel {
         PracticeModel(

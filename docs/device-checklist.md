@@ -53,6 +53,14 @@ Run a build on the iPhone, as for MIDI-1. The log line "Pianos heard: …" in Co
 | P4 | **Pairing from Pianism:** with Bluetooth MIDI on at the piano and no USB cable, tap the piano line on Practice, then "Pair a Bluetooth piano". iOS asks for Bluetooth with Pianism's reason; allow it. The piano shows in Apple's list; tap it to connect, go back, and the Connected section lists it, as Practice does once the sheet is closed. Play three notes: a session starts. Note how Apple's screen looks inside Pianism (title, list) | Not run yet. |
 | P5 | **After the piano restarts:** paired from Pianism as in P4, switch the piano off and on with Pianism open. Note whether it comes back by itself, or only after opening the pairing screen again (M2 found it didn't after pairing in GarageBand). This decides whether #44 needs a PR that reconnects it | Not run yet. |
 
+## Low battery (NFR-10, issue #140)
+
+Simulators can't set a battery level, so the warning's rule has a model test (`aLowBatteryIsShownWhileTheScreenIsKeptOn`) and its reading of the battery is checked here.
+
+| # | Check | Last result |
+| --- | --- | --- |
+| B1 | **The warning:** battery under 20 % and unplugged, piano on USB, Practice open, no session: the low-battery line shows within a few seconds. Plug in: it goes. Unplug: it's back. Unplug the piano's cable too and start a timer session: it goes, as nothing keeps the screen on then. Then, with the line showing in a MIDI session, lock the phone, plug in and unlock: the line goes | Not run yet. |
+
 ## iCloud sync (SYN-1, issue #15)
 
 | # | Check | Last result |
