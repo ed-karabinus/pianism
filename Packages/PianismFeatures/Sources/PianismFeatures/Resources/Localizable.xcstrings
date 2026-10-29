@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ connected" : {
+      "comment" : "The pianos Pianism hears, by the names the system gives them"
+    },
     "%@, %@" : {
 
     },
@@ -35,6 +38,9 @@
       "comment" : "A built-in skill"
     },
     "Composer" : {
+
+    },
+    "Connect a piano" : {
 
     },
     "Couldn't change your tags" : {

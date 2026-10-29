@@ -33,6 +33,16 @@ public final class PracticeModel: TagTarget {
     /// Whether the last MIDI session had under a minute of played time, so it wasn't saved, until the next start
     /// (MIDI-1).
     private(set) var lastRunWasTooShort = false
+    /// The names of the pianos connected, as the system gives them (MIDI-2).
+    public var connectedPianos: [String] = [] {
+        didSet { readyUntil = clock.now + Self.readyAwake }
+    }
+    /// Until when Practice keeps the screen on with a piano connected, ready for a note: 15 minutes after the last
+    /// note, the piano connecting or the app coming to the front, which is about when a piano switches itself off
+    /// (MIDI-R5, decided with Ed, 2026-10-28). It matters only with a piano connected, and not during a MIDI session,
+    /// which keeps the screen on anyway, so it moves on at the session's end.
+    private(set) var readyUntil: Date?
+    private static let readyAwake: TimeInterval = 15 * 60
     /// Turns the piano's notes into MIDI sessions, following the stored session at each refresh (MIDI-1).
     @ObservationIgnored private var detector: MIDIDetector
 
@@ -67,7 +77,7 @@ public final class PracticeModel: TagTarget {
         answeredID = defaults.string(forKey: Self.answeredKey).flatMap(UUID.init(uuidString:))
         // Loads the stored session now, so the first frame after a relaunch already shows it, with the silence
         // since its last change applied.
-        tick()
+        cameToFront()
     }
 
     func start() {
@@ -82,6 +92,9 @@ public final class PracticeModel: TagTarget {
     /// started by tapping, notes only show the user is there, so past the nudge they answer "Still practicing?" as
     /// a Pause does (MIDI-R4, SES-3).
     public func noteOn(at date: Date) {
+        if session?.source != .midi {  // mutate:ignore - in a session it'd only refresh at each note; its end sets it
+            readyUntil = max(readyUntil ?? .distantPast, date + Self.readyAwake)
+        }
         guard session?.source != .timer else {
             answerIfPastNudge()
             return
@@ -152,6 +165,14 @@ public final class PracticeModel: TagTarget {
     func tick() {
         refresh()
         apply(detector.handle(.tick(clock.now)))
+        if let readyUntil, clock.now >= readyUntil { self.readyUntil = nil }
+    }
+
+    /// Ticks as the app comes to the front, at launch or back from elsewhere, which keeps the screen on a while longer
+    /// with a piano connected (MIDI-R5).
+    func cameToFront() {
+        readyUntil = clock.now + Self.readyAwake
+        tick()
     }
 
     /// Stores the MIDI session's last note as the app leaves the screen, so if it's killed while away, the silence
@@ -178,6 +199,7 @@ public final class PracticeModel: TagTarget {
                 case .resume(let date):
                     try recorder.resume(at: date)
                 case .end(let lastNote, let date):
+                    readyUntil = lastNote + Self.readyAwake
                     // A Stop dated before the last note, as after the clock steps back, ends the session at it.
                     endedID = try recorder.end(afterLastNote: lastNote, at: max(date, lastNote)).id
                 }
@@ -215,8 +237,12 @@ public final class PracticeModel: TagTarget {
     private var timerSession: PracticeSession? { session?.source == .midi ? nil : session }
 
     /// Whether the screen stays on: while a MIDI session lasts, pauses included, as a locked phone can't hear the
-    /// note that resumes it (MIDI-R5).
-    var keepsScreenAwake: Bool { session.map { $0.source == .midi && $0.state != .ended } == true }
+    /// note that resumes it, and while Practice shows with a piano connected, so it hears the first, until
+    /// `readyUntil` (MIDI-R5).
+    func keepsScreenAwake(showingPractice: Bool) -> Bool {
+        session.map { $0.source == .midi && $0.state != .ended } == true
+            || showingPractice && !connectedPianos.isEmpty && readyUntil != nil
+    }
 
     /// The session's time at `now` as the next tick leaves it: a MIDI session's silence stops at its last note
     /// once it pauses it, and a timer session stops at the cap. So a frame drawn before that tick, as while the
