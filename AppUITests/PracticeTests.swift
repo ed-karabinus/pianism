@@ -406,6 +406,42 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(relaunched.value as? String, "25 minutes, 3 seconds")
     }
 
+    /// HIS-2: History shows this week, and earlier weeks with the arrows or a swipe on the chart, back to the week of
+    /// the first session. A week before last is titled by its dates, with the year when it isn't this one.
+    @MainActor
+    func testEarlierWeeksShowWithTheArrowsOrASwipe() throws {
+        let week: TimeInterval = 7 * 24 * 60 * 60
+        for (startedAt, minutes) in [(start, 25.0), (start + week, 10.0), (start + 2 * week, 5.0)] {
+            var app = launch(at: startedAt, reset: startedAt == start)
+            tap(app, "practice.start")
+            kill(app)
+            app = launch(at: startedAt + minutes * 60)
+            tap(app, "practice.stop")
+            kill(app)
+        }
+
+        let app = launch(at: start + 2 * week + 60 * 60)
+        openHistory(app)
+        let shown = element(app, "history.week")
+        XCTAssertTrue(shown.waitForExistence(timeout: 5))
+        XCTAssertEqual("\(shown.label): \(shown.value ?? "")", "This week: 5 minutes")
+        XCTAssertFalse(app.buttons["history.week-later"].isEnabled)
+        tap(app, "history.week-earlier")
+        XCTAssertEqual("\(shown.label): \(shown.value ?? "")", "Last week: 10 minutes")
+        tap(app, "history.week-earlier")
+        // The first session's week, which began in December 2026.
+        XCTAssertTrue(shown.label.hasPrefix("Dec"), shown.label)
+        XCTAssertTrue(shown.label.contains("2026"), shown.label)
+        XCTAssertEqual(shown.value as? String, "25 minutes")
+        XCTAssertFalse(app.buttons["history.week-earlier"].isEnabled, "There's no practice before the first week")
+        attachScreenshot(of: app, named: "History, the first week")
+        let firstWeek = shown.label
+        element(app, "history.week-chart").swipeLeft()
+        XCTAssertTrue(shown.wait(for: \.label, toEqual: "Last week", timeout: 5), "The swipe didn't show a later week")
+        element(app, "history.week-chart").swipeRight()
+        XCTAssertTrue(shown.wait(for: \.label, toEqual: firstWeek, timeout: 5), "The swipe didn't show an earlier week")
+    }
+
     /// TAG-1, TAG-2, HIS-2: a running session is tagged from Practice with a new piece and a built-in skill,
     /// and History shows them on the session and in the week's time by tag; a session left untagged shows
     /// "Untagged". The tags are stored, so they're still there after the app is killed and relaunched.

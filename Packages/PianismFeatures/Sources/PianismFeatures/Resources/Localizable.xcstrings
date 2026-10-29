@@ -79,6 +79,9 @@
     "Don't show again" : {
 
     },
+    "Earlier week" : {
+
+    },
     "Edit" : {
 
     },
@@ -101,6 +104,12 @@
       "comment" : "A built-in skill"
     },
     "Last session: %@" : {
+
+    },
+    "Last week" : {
+
+    },
+    "Later week" : {
 
     },
     "Minutes" : {
