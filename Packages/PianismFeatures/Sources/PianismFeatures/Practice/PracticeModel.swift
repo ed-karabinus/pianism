@@ -218,8 +218,19 @@ public final class PracticeModel: TagTarget {
     /// note that resumes it (MIDI-R5).
     var keepsScreenAwake: Bool { session.map { $0.source == .midi && $0.state != .ended } == true }
 
-    /// Whether the session paused itself at its last note after a silence, rather than at a tap (MIDI-1).
-    var isPausedAtLastNote: Bool { session?.state == .paused && detector.isPausedBySilence }
+    /// The session's time at `now` as the next tick leaves it: a MIDI session's silence stops at its last note
+    /// once it pauses it, and a timer session stops at the cap. So a frame drawn before that tick, as while the
+    /// app comes back from the lock screen, shows no time that isn't counted (MIDI-1, SES-4).
+    func elapsed(at now: Date) -> TimeInterval {
+        let shownAt = min(now, detector.pauseDue(at: now) ?? now, timerSession?.whenPracticeReaches(cap) ?? now)
+        return session?.elapsed(at: shownAt) ?? 0
+    }
+
+    /// Whether the session paused itself at its last note after a silence, rather than at a tap, or the next tick
+    /// pauses it there (MIDI-1).
+    func isPausedAtLastNote(at now: Date) -> Bool {
+        session?.state == .paused && detector.isPausedBySilence || detector.pauseDue(at: now) != nil
+    }
 
     /// Whether the last session ended itself at the cap, which a banner explains until the next start (SES-4).
     var lastSessionReachedCap: Bool { lastSession.map { $0.id == cappedID } == true }
