@@ -106,6 +106,7 @@ enum AccessibilityID {
     static let historyUnshowable = "history.unshowable"
     static let historyNotSyncing = "history.not-syncing"
     static let historyWeek = "history.week"
+    static let historyWeekTag = "history.week-tag"
     static let historyDay = "history.day"
     static let historySession = "history.session"
     static let historyAdd = "history.add"

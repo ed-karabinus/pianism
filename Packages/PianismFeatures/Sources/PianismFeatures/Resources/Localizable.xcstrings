@@ -10,6 +10,9 @@
     "A newer version of Pianism changed this session. Update Pianism to change it." : {
 
     },
+    "A session counts toward each of its tags." : {
+
+    },
     "A target tempo is a whole number from %lld to %lld." : {
 
     },
