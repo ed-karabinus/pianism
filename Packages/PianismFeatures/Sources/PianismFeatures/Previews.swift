@@ -39,6 +39,7 @@ extension PracticeModel {
             // Played from 5 minutes ago to 90 seconds ago, so the silence since paused it at its last note.
             for offset: TimeInterval in [-300, -300, -300, -90] { model.noteOn(at: clock.now + offset) }
             model.tick()
+            model.connectedPianos = ["MIDI KEYBOARD"]
         }
         return model
     }

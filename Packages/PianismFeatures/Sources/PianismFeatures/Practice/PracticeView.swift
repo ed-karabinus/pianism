@@ -97,6 +97,18 @@ struct PracticeView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier(AccessibilityID.practiceWaiting)
             }
+            Group {
+                // An option, not a warning, for the many who time their practice without one (decided with Ed,
+                // 2026-10-28).
+                if model.connectedPianos.isEmpty {
+                    Text("Connect a piano", bundle: .module)
+                } else {
+                    Text("\(model.connectedPianos.formatted(.list(type: .and))) connected", bundle: .module)
+                }
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .accessibilityIdentifier(AccessibilityID.practicePianos)
             Spacer()
             if model.session?.state == .running || model.session?.state == .paused {
                 tagsButton

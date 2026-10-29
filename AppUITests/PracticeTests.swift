@@ -17,6 +17,7 @@ final class PracticeTests: UITestCase {
     func testStartPauseResumeStop() throws {
         let app = launch(at: start, reset: true)
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
+        XCTAssertEqual(text(app, "practice.pianos"), "Connect a piano")  // MIDI-2
 
         tap(app, "practice.start")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
@@ -45,9 +46,11 @@ final class PracticeTests: UITestCase {
     /// The simulator has no piano, so the app plays a chord at launch, on the fixed clock.
     @MainActor
     func testThreeNotesStartASessionAndAShortStopDiscardsIt() throws {
-        let app = launch(at: start, reset: true, midiNotes: "0,0,0")
+        let app = launch(at: start, reset: true, midiNotes: "0,0,0", midiPiano: "MIDI KEYBOARD")
         XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
+        XCTAssertEqual(text(app, "practice.pianos"), "MIDI KEYBOARD connected")  // MIDI-2
+        attachScreenshot(of: app, named: "A MIDI session, with the piano connected")
 
         tap(app, "practice.stop")
 
@@ -940,7 +943,7 @@ final class PracticeTests: UITestCase {
         at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, unshowableSessions: Int? = nil,
         undoSeconds: Int? = nil, nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false,
         textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
-        midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil
+        midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -982,6 +985,9 @@ final class PracticeTests: UITestCase {
         }
         if let midiNotes {
             app.launchEnvironment["PIANISM_MIDI_NOTES"] = midiNotes
+        }
+        if let midiPiano {
+            app.launchEnvironment["PIANISM_MIDI_PIANO"] = midiPiano
         }
         if let midiPauseSeconds {
             app.launchEnvironment["PIANISM_MIDI_PAUSE_SECONDS"] = String(midiPauseSeconds)

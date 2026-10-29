@@ -47,9 +47,18 @@ public struct RootView: View {
                 practice.tick()
             }
         }
+        // Lets the screen lock once Practice has waited 15 minutes for a note with a piano connected (MIDI-R5).
+        .task(id: scenePhase == .active ? practice.readyUntil : nil) {
+            while scenePhase == .active, let until = practice.readyUntil,
+                (try? await Task.sleep(
+                    for: .seconds(until.timeIntervalSince(practice.clock.now)), tolerance: .seconds(1))) != nil
+            {
+                practice.tick()
+            }
+        }
         #if os(iOS)
-            .onChange(of: practice.keepsScreenAwake, initial: true) {
-                UIApplication.shared.isIdleTimerDisabled = practice.keepsScreenAwake
+            .onChange(of: practice.keepsScreenAwake(showingPractice: tab == .practice), initial: true) { _, awake in
+                UIApplication.shared.isIdleTimerDisabled = awake
             }
         #endif
         // The notification opens Practice, to its question or the end being picked (SES-3).
@@ -63,7 +72,7 @@ public struct RootView: View {
         // is killed without reaching the background. Reaching the background ends a deletion's undo (SES-5).
         .onChange(of: scenePhase) {
             if scenePhase == .active {
-                practice.tick()
+                practice.cameToFront()
                 history.refresh()
             } else {
                 practice.leaveForeground()
@@ -81,6 +90,7 @@ enum AccessibilityID {
     static let practiceLastSession = "practice.last-session"
     static let practiceTooShort = "practice.too-short"
     static let practiceWaiting = "practice.waiting"
+    static let practicePianos = "practice.pianos"
     static let practiceStart = "practice.start"
     static let practicePause = "practice.pause"
     static let practiceResume = "practice.resume"

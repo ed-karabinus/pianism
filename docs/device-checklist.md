@@ -43,6 +43,16 @@ power-off disabled and Bluetooth MIDI off for the USB rows.
 **Why these are manual:** the simulator has no MIDI, and the Mac's virtual sources stand in for a
 piano only in software. Bluetooth pairing and a real cable stay manual.
 
+## MIDI-2 (issue #44)
+
+Run a build on the iPhone, as for MIDI-1. The log line "Pianos heard: …" in Console shows what CoreMIDI lists.
+
+| # | Check | Last result |
+| --- | --- | --- |
+| P1 | **The piano's name:** with the piano on USB, Practice says "MIDI KEYBOARD connected" (or whatever name the log shows); over Bluetooth, its Bluetooth name. Unplugged, it says "Connect a piano" within a couple of seconds. The adapter test `connectedPianosAreNamed` covers the names with virtual sources; this checks a real piano's | Not run yet. |
+| P2 | **Plugged in at the iPhone's end only:** what does Practice say, and what does the log list, before the cable is replugged at the piano's end? It tells whether a hint on Practice could ever spot that case (decided with Ed, 2026-10-28: the tip goes in the pairing sheet for now) | Not run yet. |
+| P3 | **The screen stays on while ready (MIDI-R5):** Auto-Lock at 30 seconds, piano connected, Practice open and no session: the screen stays on, and locks about 15 minutes after the last note (decided with Ed, 2026-10-28); note whether it locks at once then or after the 30 s. On History, it locks after 30 s. The model tests `aMIDISessionKeepsTheScreenAwakeUntilItEnds` and `aConnectedPianoKeepsTheScreenOnFifteenMinutes` cover the rule | Not run yet. |
+
 ## iCloud sync (SYN-1, issue #15)
 
 | # | Check | Last result |

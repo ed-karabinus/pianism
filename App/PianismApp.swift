@@ -167,6 +167,10 @@ struct PianismApp: App {
                     }
                 }
             }
+            // They show a piano as connected with PIANISM_MIDI_PIANO, its name, which Release builds ignore too.
+            if let piano = environment["PIANISM_MIDI_PIANO"] {
+                practice.connectedPianos = [piano]
+            }
         #endif
         // Hears every piano connected over USB or Bluetooth (MIDI-1); the simulator has none. A scripted end-to-end
         // test hears only its script.
@@ -207,6 +211,12 @@ struct PianismApp: App {
                     guard let midi else { return }
                     for await date in midi.notes {
                         practice.noteOn(at: date)
+                    }
+                }
+                .task {
+                    guard let midi else { return }
+                    for await pianos in midi.pianos {
+                        practice.connectedPianos = pianos
                     }
                 }
         }
