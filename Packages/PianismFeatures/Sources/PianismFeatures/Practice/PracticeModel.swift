@@ -247,9 +247,13 @@ public final class PracticeModel: TagTarget {
     /// The battery, read only while the screen is kept on.
     var battery: BatteryReading?
 
-    /// Whether Practice warns that the battery is low while it keeps the screen on, unless plugged in (NFR-10).
+    /// Whether Practice warns that the battery is at 20 % or less while it keeps the screen on, unless plugged in
+    /// (NFR-10). iOS reports the level in 5 % steps, so "below 20 %" would wait for 15 %: at or below the 20 % step
+    /// is closest to what NFR-10 means (decided with Ed, 2026-10-29). Whole percents, as iOS's 20 % is a Float a
+    /// hair above 0.2.
     var showsLowBattery: Bool {
-        keepsScreenAwake(showingPractice: true) && battery.map { $0.level < 0.2 && !$0.isPluggedIn } == true
+        keepsScreenAwake(showingPractice: true)
+            && battery.map { ($0.level * 100).rounded() <= 20 && !$0.isPluggedIn } == true
     }
 
     /// The session's time at `now` as the next tick leaves it: a MIDI session's silence stops at its last note

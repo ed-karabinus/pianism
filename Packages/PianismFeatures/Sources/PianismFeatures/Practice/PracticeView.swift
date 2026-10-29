@@ -118,9 +118,10 @@ struct PracticeView: View {
             .accessibilityIdentifier(AccessibilityID.practicePianos)
             if model.showsLowBattery {
                 Label {
-                    Text("Low battery. Plug in: the screen stays on while a piano is connected.", bundle: .module)
+                    Text("Low battery. The screen stays on while your piano is connected, so plug in.", bundle: .module)
                 } icon: {
-                    Image(systemName: "battery.25percent")
+                    // Red, as the status bar shows a low battery.
+                    Image(systemName: "battery.25percent").foregroundStyle(.red)
                 }
                 .font(.footnote)
                 .foregroundStyle(.secondary)

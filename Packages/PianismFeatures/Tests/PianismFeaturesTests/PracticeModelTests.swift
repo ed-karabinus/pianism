@@ -767,7 +767,7 @@ struct PracticeModelTests {
         #expect(!model.keepsScreenAwake(showingPractice: true))
     }
 
-    @Test("NFR-10: while the screen is kept on, Practice warns of a battery under 20 %, unless it's plugged in")
+    @Test("NFR-10: while the screen is kept on, Practice warns of a battery at 20 % or less, unless it's plugged in")
     func aLowBatteryIsShownWhileTheScreenIsKeptOn() {
         let model = makeModel()
         let low = BatteryReading(level: 0.19, isPluggedIn: false)
@@ -781,7 +781,10 @@ struct PracticeModelTests {
         #expect(model.showsLowBattery)
         model.battery = BatteryReading(level: 0.19, isPluggedIn: true)
         #expect(!model.showsLowBattery)
-        model.battery = BatteryReading(level: 0.2, isPluggedIn: false)
+        // As iOS reports them: Floats, in 5 % steps.
+        model.battery = BatteryReading(level: Double(Float(0.2)), isPluggedIn: false)
+        #expect(model.showsLowBattery)
+        model.battery = BatteryReading(level: Double(Float(0.25)), isPluggedIn: false)
         #expect(!model.showsLowBattery)
         model.battery = nil
         #expect(!model.showsLowBattery)
