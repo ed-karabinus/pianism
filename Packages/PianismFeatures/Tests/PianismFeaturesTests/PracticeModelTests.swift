@@ -488,14 +488,14 @@ struct PracticeModelTests {
         model.tick()
 
         #expect(model.session?.pauses.map(\.start) == [start + 20])
-        #expect(model.isPausedAtLastNote)
+        #expect(model.isPausedAtLastNote(at: clock.now))
         #expect(model.nextRefresh == start + 620)
 
         clock.advance(by: 10)
         model.noteOn(at: clock.now)
         #expect(model.session?.state == .running)
         #expect(model.session?.pauses.map { [$0.start, $0.end] } == [[start + 20, start + 90]])
-        #expect(!model.isPausedAtLastNote)
+        #expect(!model.isPausedAtLastNote(at: clock.now))
     }
 
     @Test("MIDI-1: a tapped Pause says just \"Paused\", and left alone 10 minutes ends the session 5 s after the tap")
@@ -509,8 +509,10 @@ struct PracticeModelTests {
         }
         clock.advance(by: 2)
         model.pause()
-        #expect(!model.isPausedAtLastNote)
+        #expect(!model.isPausedAtLastNote(at: clock.now))
         clock.advance(by: 600)
+        #expect(!model.isPausedAtLastNote(at: clock.now))
+        #expect(model.elapsed(at: clock.now) == 92)
 
         model.tick()
 
@@ -542,6 +544,50 @@ struct PracticeModelTests {
         #expect(!model.lastRunWasTooShort)
     }
 
+    @Test(
+        "MIDI-1: back on screen before the tick, as from the lock screen, Practice already shows the time and label the tick stores",
+        arguments: [60.0, 131, 1_800])
+    func aFrameBeforeTheTickShowsWhatTheTickStores(silence: TimeInterval) {
+        let store = InMemoryRunningSessionStore()
+        let model = makeModel(over: store)
+        let start = clock.now
+        for _ in 1...3 { model.noteOn(at: start) }
+        // A minute played, so the session the longest silence ends is kept.
+        for _ in 1...2 {
+            clock.advance(by: 30)
+            model.noteOn(at: clock.now)
+        }
+        clock.advance(by: silence)
+
+        #expect(model.elapsed(at: clock.now) == 60)
+        #expect(model.isPausedAtLastNote(at: clock.now))
+        #expect(store.current()?.state == .running)
+
+        model.tick()
+
+        #expect((model.session ?? model.lastSession)?.elapsed(at: clock.now) == 60)
+    }
+
+    @Test("MIDI-1, SES-4: Practice counts through a silence until it pauses, and a timer session until the cap")
+    func theShownTimeCountsUntilTheTickWouldStopIt() {
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudges: nudges, defaults: defaults, nudge: 90 * 60, cap: 600)
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        clock.advance(by: 18)
+        model.noteOn(at: clock.now)
+        clock.advance(by: 59)
+        #expect(model.elapsed(at: clock.now) == 77)
+        #expect(!model.isPausedAtLastNote(at: clock.now))
+        model.stop()
+
+        model.start()
+        clock.advance(by: 599)
+        #expect(model.elapsed(at: clock.now) == 599)
+        clock.advance(by: 3_600)
+        #expect(model.elapsed(at: clock.now) == 600)
+    }
+
     @Test("MIDI-R3: relaunched after a silence, Practice opens with the MIDI session paused at its last change")
     func aRelaunchAppliesTheSilenceSince() {
         let store = InMemoryRunningSessionStore()
@@ -553,7 +599,7 @@ struct PracticeModelTests {
         let model = makeModel(over: store)
 
         #expect(model.session?.pauses.map(\.start) == [start])
-        #expect(model.isPausedAtLastNote)
+        #expect(model.isPausedAtLastNote(at: clock.now))
     }
 
     @Test("MIDI-1: killed while away, a MIDI session reopens paused at its last note, not at its last change")

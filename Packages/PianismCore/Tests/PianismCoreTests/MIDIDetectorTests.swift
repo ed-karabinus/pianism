@@ -78,15 +78,17 @@ struct MIDIDetectorTests {
     // MARK: MIDI-1: a silence pauses, a note resumes, a longer silence ends
 
     @Test(
-        "MIDI-1: a silence pauses the session at its last note after a minute, and not before",
+        "MIDI-1: a silence pauses the session at its last note after a minute, and not before, and says so beforehand",
         arguments: [59.0, 60, 61])
     func silencePausesAfterAMinute(silence: TimeInterval) {
         var detector = playing(lastNote: start)
+        #expect(detector.pauseDue(at: start + silence) == (silence < 60 ? nil : start))
 
         let effects = detector.handle(.tick(start + silence))
 
         #expect(effects == (silence < 60 ? [] : [.pause(at: start)]))
         #expect(detector.isPausedBySilence == (silence >= 60))
+        #expect(detector.pauseDue(at: start + silence) == nil)
     }
 
     @Test(
@@ -99,6 +101,7 @@ struct MIDIDetectorTests {
         for _ in 1...3 { _ = detector.handle(.noteOn(start + 0.1)) }
         let pause = try #require(detector.nextDeadline)
         #expect(pause == start + 0.1 + 60)
+        #expect(detector.pauseDue(at: pause) == start + 0.1)
 
         #expect(detector.handle(.tick(pause)) == [.pause(at: start + 0.1)])
         let save = try #require(detector.nextDeadline)

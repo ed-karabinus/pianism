@@ -61,6 +61,12 @@ public struct MIDIDetector: Sendable {
         if case .playing(let last) = state { last } else { nil }
     }
 
+    /// The last note, once the silence since it pauses the session: where a tick at `now` pauses it, a tick at the
+    /// deadline included.
+    public func pauseDue(at now: Date) -> Date? {
+        if case .playing(let last) = state, now >= last + settings.pauseAfter { last } else { nil }
+    }
+
     /// Whether the session paused itself after a silence, rather than at a tap.
     public var isPausedBySilence: Bool {
         if case .paused(_, true) = state { true } else { false }

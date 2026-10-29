@@ -49,22 +49,28 @@ struct PracticeView: View {
     private func content(compactTime: Bool = false) -> some View {
         VStack(spacing: 24) {
             Spacer()
-            Text(status, bundle: .module)
-                .font(.title3.weight(.medium))
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier(AccessibilityID.practiceStatus)
+            // The status changes with the time, as a silence that pauses a MIDI session changes both at once.
             TimelineView(.periodic(from: .now, by: 1)) { _ in
-                let elapsed = model.session?.elapsed(at: model.clock.now) ?? 0
-                Text(ElapsedTime.display(elapsed))
-                    .font(
-                        .system(size: timeSize * timeScale * (compactTime ? 0.5 : 1), weight: .light, design: .rounded)
+                let now = model.clock.now
+                let elapsed = model.elapsed(at: now)
+                VStack(spacing: 24) {
+                    Text(status(at: now), bundle: .module)
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier(AccessibilityID.practiceStatus)
+                    Text(ElapsedTime.display(elapsed))
+                        .font(
+                            .system(
+                                size: timeSize * timeScale * (compactTime ? 0.5 : 1), weight: .light, design: .rounded
+                            )
                             .monospacedDigit()
-                    )
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                    .accessibilityLabel(Text("Practice time", bundle: .module))
-                    .accessibilityValue(ElapsedTime.spoken(elapsed))
-                    .accessibilityIdentifier(AccessibilityID.practiceElapsed)
+                        )
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .accessibilityLabel(Text("Practice time", bundle: .module))
+                        .accessibilityValue(ElapsedTime.spoken(elapsed))
+                        .accessibilityIdentifier(AccessibilityID.practiceElapsed)
+                }
             }
             if let session = model.session, model.isAskingStillPracticing {
                 stillPracticingBanner(session)
@@ -254,11 +260,12 @@ struct PracticeView: View {
         sizeClass == .regular ? 1.8 : 1
     }
 
-    private var status: LocalizedStringKey {
+    private func status(at now: Date) -> LocalizedStringKey {
         switch model.session?.state {
         case nil, .ended: "Ready to practice"
+        case _ where model.isPausedAtLastNote(at: now): "Paused at your last note"
         case .running: "Practicing"
-        case .paused: model.isPausedAtLastNote ? "Paused at your last note" : "Paused"
+        case .paused: "Paused"
         }
     }
 }
