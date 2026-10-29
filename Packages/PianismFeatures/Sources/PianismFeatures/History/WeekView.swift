@@ -6,8 +6,9 @@ import SwiftUI
 struct WeekView: View {
     let week: PracticeWeek
 
-    /// Room for the bars as the axis labels grow with the text size.
-    @ScaledMetric private var height: CGFloat = 140
+    /// Room for the bars as the axis labels grow with the text size, short enough to leave the sessions on screen
+    /// (decided with Ed, 2026-10-29).
+    @ScaledMetric private var height: CGFloat = 100
 
     var body: some View {
         Section {

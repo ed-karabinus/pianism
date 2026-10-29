@@ -386,6 +386,7 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(week.value as? String, "25 minutes, 3 seconds")
         let session = element(app, "history.session")
         XCTAssertEqual(session.value as? String, "25 minutes, 3 seconds")
+        XCTAssertTrue(session.isHittable, "The week pushed the session off the screen")
         attachScreenshot(of: app, named: "History, one session")
         // Its start and end fall at different seconds, which a time picked on the wheels would change.
         session.tap()
