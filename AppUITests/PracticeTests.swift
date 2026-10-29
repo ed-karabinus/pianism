@@ -441,17 +441,31 @@ final class PracticeTests: UITestCase {
         app = launch(at: start + 26 * 60)
         tap(app, "practice.stop")
         openHistory(app)
-        // HIS-2: the week's time with each tag, the tagged session counting toward both of its tags.
+        // HIS-2: the week's time with each tag is a tap away, so the sessions stay on screen.
         XCTAssertTrue(element(app, "history.week").waitForExistence(timeout: 5))
         let tagRows = app.descendants(matching: .any).matching(identifier: "history.week-tag")
-        XCTAssertEqual(tagRows.count, 3)
-        XCTAssertEqual(
+        XCTAssertEqual(tagRows.count, 0)
+        XCTAssertTrue(element(app, "history.session").isHittable, "The week pushed the sessions off the screen")
+        tap(app, "history.week-by-tag")
+        // The tagged session counts toward both of its tags, each marked as a piece or a skill.
+        XCTAssertTrue(tagRows.firstMatch.waitForExistence(timeout: 5))
+        func shownRows() -> [String] {
             (0..<tagRows.count).map {
                 "\(tagRows.element(boundBy: $0).label): \(tagRows.element(boundBy: $0).value ?? "")"
-            },
-            ["Ballade No. 1: 25 minutes", "Scales: 25 minutes", "Untagged: 1 minute"])
+            }
+        }
+        let expected = ["Ballade No. 1, Piece: 25 minutes", "Scales, Skill: 25 minutes", "Untagged: 1 minute"]
+        XCTAssertEqual(shownRows(), expected)
+        let nameStarts = (0..<tagRows.count).map { tagRows.element(boundBy: $0).staticTexts.firstMatch.frame.minX }
+        XCTAssertEqual(Set(nameStarts).count, 1, "The names don't line up: \(nameStarts)")
         attachScreenshot(of: app, named: "History, this week by tag")
-        // The week takes most of the screen, so the sessions are further down.
+        // It stays open.
+        kill(app)
+        app = launch(at: start + 27 * 60)
+        openHistory(app)
+        XCTAssertTrue(tagRows.firstMatch.waitForExistence(timeout: 5), "The breakdown closed after a relaunch")
+        XCTAssertEqual(shownRows(), expected)
+        // Open, it pushes the sessions further down.
         app.swipeUp()
         XCTAssertTrue(element(app, "history.day").waitForExistence(timeout: 5))
         let sessions = app.descendants(matching: .any).matching(identifier: "history.session")
