@@ -9,6 +9,8 @@ import os
 public final class HistoryModel {
     /// Days with practice, newest first, including sessions still waiting to be saved.
     private(set) var days: [PracticeDay] = []
+    /// The week of the last refresh, with each day's practice (HIS-2).
+    var week: PracticeWeek { PracticeWeek(containing: now, days: days, in: calendar) }
     /// The sessions shown that history hasn't saved yet (ADR 0007).
     private(set) var waitingIDs: Set<UUID> = []
     /// The time of the last refresh, which decides what counts as today and yesterday.

@@ -359,7 +359,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.staticTexts["practice.capped"].waitForExistence(timeout: 90), "It didn't stop at the cap")
     }
 
-    /// HIS-1: a finished session appears under Today with its time, and the day shows its total.
+    /// HIS-1, HIS-2: a finished session appears under Today with its time, and the day and the week show their totals.
     /// History is visited before and after Stop in one launch, so it must refresh when shown again.
     /// Opening the session, and its end's wheels, changes nothing (SES-5). It's stored, so it's still there
     /// after the app is killed and relaunched.
@@ -380,6 +380,10 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(day.waitForExistence(timeout: 5))
         XCTAssertEqual(day.label, "Today")
         XCTAssertEqual(day.value as? String, "25 minutes, 3 seconds")
+        // HIS-2: this week so far is this one session.
+        let week = element(app, "history.week")
+        XCTAssertEqual(week.label, "This week")
+        XCTAssertEqual(week.value as? String, "25 minutes, 3 seconds")
         let session = element(app, "history.session")
         XCTAssertEqual(session.value as? String, "25 minutes, 3 seconds")
         attachScreenshot(of: app, named: "History, one session")
