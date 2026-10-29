@@ -9,6 +9,7 @@ struct PracticeView: View {
     let edit: (UUID) -> Void
 
     @State private var isPickingTags = false
+    @State private var isConnectingPiano = false
     /// The session as it was when "I stopped earlier" was tapped, while its end is picked, and the end picked so
     /// far (SES-3). Keyed by the whole session, so a pause, a resume or a session stopped another way goes back
     /// to the question rather than keeping an end from before. The date isn't optional: a binding unwrapping one
@@ -26,6 +27,9 @@ struct PracticeView: View {
             content()
             content(compactTime: true)
             ScrollView { content(compactTime: true).frame(maxWidth: .infinity) }
+        }
+        .sheet(isPresented: $isConnectingPiano) {
+            ConnectPianoView(pianos: model.connectedPianos)
         }
         .sheet(isPresented: $isPickingTags) {
             // Tagging stores the session, so its failure shows over the picker, which covers this screen.
@@ -97,9 +101,11 @@ struct PracticeView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier(AccessibilityID.practiceWaiting)
             }
-            Group {
-                // An option, not a warning, for the many who time their practice without one (decided with Ed,
-                // 2026-10-28).
+            // An option, not a warning, for the many who time their practice without one (decided with Ed,
+            // 2026-10-28).
+            Button {
+                isConnectingPiano = true
+            } label: {
                 if model.connectedPianos.isEmpty {
                     Text("Connect a piano", bundle: .module)
                 } else {
@@ -107,7 +113,8 @@ struct PracticeView: View {
                 }
             }
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .frame(minHeight: 44)  // a footnote alone is too small to tap
+            .accessibilityHint(Text("Shows tips and Bluetooth pairing", bundle: .module))
             .accessibilityIdentifier(AccessibilityID.practicePianos)
             Spacer()
             if model.session?.state == .running || model.session?.state == .paused {

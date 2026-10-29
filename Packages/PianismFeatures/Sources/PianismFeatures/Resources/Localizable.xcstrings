@@ -13,6 +13,9 @@
     "A newer version of Pianism changed this session. Update Pianism to change it." : {
 
     },
+    "A piano connects to one device at a time, so disconnect it from any other first." : {
+
+    },
     "A target tempo is a whole number from %lld to %lld." : {
 
     },
@@ -37,7 +40,16 @@
     "Arpeggios" : {
       "comment" : "A built-in skill"
     },
+    "Bluetooth" : {
+
+    },
     "Composer" : {
+
+    },
+    "Connected" : {
+
+    },
+    "Connect the cable to your piano's USB port and to this device." : {
 
     },
     "Connect a piano" : {
@@ -97,6 +109,12 @@
     "I stopped earlier" : {
 
     },
+    "If your piano doesn't show up, unplug the cable at the piano's end and plug it back in." : {
+
+    },
+    "If it still doesn't show up, turn off Bluetooth MIDI on the piano: many pianos stay quiet over USB while it's connected." : {
+
+    },
     "Improvisation" : {
       "comment" : "A built-in skill"
     },
@@ -104,6 +122,9 @@
 
     },
     "Name" : {
+
+    },
+    "No piano connected" : {
 
     },
     "No practice yet" : {
@@ -116,6 +137,9 @@
 
     },
     "Note" : {
+
+    },
+    "Pair a Bluetooth piano" : {
 
     },
     "Pause" : {
@@ -175,6 +199,9 @@
     "Sessions you finish appear here." : {
 
     },
+    "Shows tips and Bluetooth pairing" : {
+
+    },
     "Sight-reading" : {
       "comment" : "A built-in skill"
     },
@@ -221,6 +248,9 @@
 
     },
     "Untagged" : {
+
+    },
+    "USB" : {
 
     },
     "Yesterday" : {
