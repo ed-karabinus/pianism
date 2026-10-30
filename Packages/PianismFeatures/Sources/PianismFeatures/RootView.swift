@@ -110,6 +110,7 @@ enum AccessibilityID {
     static let historyWeekChart = "history.week-chart"
     static let historyWeekEarlier = "history.week-earlier"
     static let historyWeekLater = "history.week-later"
+    static let historyWeekByTag = "history.week-by-tag"
     static let historyDay = "history.day"
     static let historySession = "history.session"
     static let historyAdd = "history.add"

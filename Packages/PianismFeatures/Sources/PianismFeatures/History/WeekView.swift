@@ -2,13 +2,18 @@ import Charts
 import PianismCore
 import SwiftUI
 
-/// A week at a glance, atop History: its total, a bar for each day's practice, and the time with each piece and
-/// skill (HIS-2). It shows this week, and earlier ones with a swipe or the arrows.
+/// A week at a glance, atop History: its total, a bar for each day's practice, and, a tap away, the time with each
+/// piece and skill (HIS-2). It shows this week, and earlier ones with a swipe or the arrows.
 struct WeekView: View {
     let model: HistoryModel
 
-    /// Room for the bars as the axis labels grow with the text size.
-    @ScaledMetric private var height: CGFloat = 140
+    /// Room for the bars as the axis labels grow with the text size, short enough to leave the sessions on screen
+    /// (decided with Ed, 2026-10-29).
+    @ScaledMetric private var height: CGFloat = 100
+    /// Wide enough for either icon at any text size, so every name lines up, even with no icon.
+    @ScaledMetric private var iconWidth: CGFloat = 24
+    /// Closed at first, so the sessions stay on screen, then as it was left (decided with Ed, 2026-10-29).
+    @AppStorage("showsWeekByTag") private var showsByTag = false
     @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
@@ -39,9 +44,12 @@ struct WeekView: View {
             .accessibilityIdentifier(AccessibilityID.historyWeekChart)
             // Untagged time alone would only repeat the week's total.
             if tagTimes.contains(where: { $0.tag != nil }) {
-                ForEach(tagTimes) { tagTime in
-                    TimedRow(title: Text(tags: tagTime.tag.map { [$0] } ?? []), duration: tagTime.time)
-                        .accessibilityIdentifier(AccessibilityID.historyWeekTag)
+                DisclosureGroup(isExpanded: $showsByTag) {
+                    ForEach(tagTimes, content: row)
+                } label: {
+                    // The identifier goes on the label: set on the group, it would reach every row.
+                    Text("By piece and skill", bundle: .module).accessibilityIdentifier(
+                        AccessibilityID.historyWeekByTag)
                 }
             }
         } header: {
@@ -65,7 +73,7 @@ struct WeekView: View {
             .labelStyle(.iconOnly)
         } footer: {
             // So times that add up to more than the week's don't read as a mistake.
-            if tagTimes.reduce(0, { $0 + $1.time }) > week.total {
+            if showsByTag && tagTimes.reduce(0, { $0 + $1.time }) > week.total {
                 Text("A session counts toward each of its tags.", bundle: .module)
             }
         }
@@ -73,6 +81,28 @@ struct WeekView: View {
 
     private var week: PracticeWeek { model.week }
     private var tagTimes: [PracticeWeek.TagTime] { week.timeByTag(in: model.tagIndex) }
+
+    /// A tag's time, marked as a piece or a skill, as a piece and a skill can share a name.
+    private func row(_ tagTime: PracticeWeek.TagTime) -> some View {
+        let title = Text(tags: tagTime.tag.map { [$0] } ?? [])
+        let kind: (icon: String, name: Text)? =
+            switch tagTime.tag?.kind {
+            case .piece: ("music.note", Text("Piece", bundle: .module))
+            case .skill: ("hand.raised", Text("Skill", bundle: .module))
+            case nil: nil
+            }
+        return HStack {
+            Image(systemName: kind?.icon ?? "music.note")
+                .foregroundStyle(.secondary)
+                .opacity(kind == nil ? 0 : 1)
+                .frame(width: iconWidth)
+            TimedRow(title: title, duration: tagTime.time)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(kind.map { Text("\(title), \($0.name)", bundle: .module) } ?? title)
+        .accessibilityValue(ElapsedTime.spoken(tagTime.time))
+        .accessibilityIdentifier(AccessibilityID.historyWeekTag)
+    }
 
     /// "This week", "Last week", or the week's dates, such as "Oct 5 – 11", with the year if it isn't this one.
     private var title: Text {

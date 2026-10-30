@@ -37,6 +37,9 @@
     "Arpeggios" : {
       "comment" : "A built-in skill"
     },
+    "By piece and skill" : {
+
+    },
     "Composer" : {
 
     },
@@ -145,6 +148,9 @@
     "Pianism stopped your session at %@ of practice, in case the timer was left running." : {
 
     },
+    "Piece" : {
+
+    },
     "Pieces" : {
 
     },
@@ -189,6 +195,9 @@
     },
     "Sight-reading" : {
       "comment" : "A built-in skill"
+    },
+    "Skill" : {
+
     },
     "Skills" : {
 
