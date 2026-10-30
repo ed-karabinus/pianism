@@ -129,6 +129,15 @@ struct PianismApp: App {
                     try? SwiftDataSessionHistory(store: elsewhere, clock: clock).save(session)
                 }
             }
+            // And another device deletes every session when a test posts this, through a second store as above, then
+            // posts "-done", so the test knows (#107).
+            var deleting: Int32 = 0
+            notify_register_dispatch("com.edkarabinus.Pianism.delete-elsewhere", &deleting, .global()) {
+                @Sendable [clock, historyURL] _ in
+                let elsewhere = SwiftDataSessionHistory(store: HistoryStore(url: historyURL), clock: clock)
+                for session in (try? elsewhere.sessions()) ?? [] { try? elsewhere.delete(id: session.id) }
+                notify_post("com.edkarabinus.Pianism.delete-elsewhere-done")
+            }
         #endif
         let sessions = SwiftDataSessionHistory(store: historyStore, clock: clock)
         let library = SwiftDataTagLibrary(store: historyStore, clock: clock)

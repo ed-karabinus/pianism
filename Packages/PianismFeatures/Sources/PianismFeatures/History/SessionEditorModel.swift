@@ -42,7 +42,8 @@ final class SessionEditorModel: TagTarget {
         self.history = history
         // If history can't say, the edit is offered, and saving reports what went wrong.
         isReadOnly = !isNew && (try? history.canEdit(id: session.id)) == false
-        // History shows only saved sessions, so one it no longer has was deleted.
+        // Read-only yet no longer listed: deleted, as a newer version's session is still listed. Checked only when
+        // read-only, as reading every session costs more.
         isDeleted = isReadOnly && (try? history.sessions())?.contains { $0.id == session.id } == false
     }
 

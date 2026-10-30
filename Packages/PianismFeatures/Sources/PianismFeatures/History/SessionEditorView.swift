@@ -132,6 +132,11 @@ struct SessionEditorView: View {
     SessionEditorView(editor: edit.editor, tags: edit.tags)
 }
 
+#Preview("Deleted on another device") {
+    let edit = SessionEdit.preview(deleted: true)
+    SessionEditorView(editor: edit.editor, tags: edit.tags)
+}
+
 #Preview("Overlapping another session") {
     let edit = SessionEdit.preview(overlapping: true)
     SessionEditorView(editor: edit.editor, tags: edit.tags)

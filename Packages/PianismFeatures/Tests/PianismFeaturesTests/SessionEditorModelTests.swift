@@ -41,7 +41,9 @@ struct SessionEditorModelTests {
         #expect(!SessionEditorModel(session: mine, history: history, now: clock.now).isReadOnly)
     }
 
-    @Test("#107: an edit saved after another device deleted the session says so and stays open, keeping what was typed")
+    @Test(
+        "SYN-1, #107: an edit saved after another device deleted the session says so and stays open, keeping what was typed"
+    )
     func savingADeletedSessionSaysSo() throws {
         let history = InMemorySessionHistory()
         let session = try endedSession()
@@ -55,7 +57,9 @@ struct SessionEditorModelTests {
         #expect(editor.note == "Coda")
     }
 
-    @Test("#107: a session deleted on another device after History showed it opens read-only, saying it was deleted")
+    @Test(
+        "SYN-1, #107: a session deleted on another device after History showed it opens read-only, saying it was deleted"
+    )
     func deletedSessionOpensSayingSo() throws {
         let history = InMemorySessionHistory()
         let session = try endedSession()
