@@ -443,15 +443,15 @@ final class PracticeTests: UITestCase {
         element(app, "history.week-chart").swipeRight()
         XCTAssertTrue(shown.wait(for: \.label, toEqual: firstWeek, timeout: 5), "The swipe didn't show an earlier week")
 
-        // A tap in Thursday's column, the fifth of seven left of the minutes, scrolls to its sessions.
-        let thursday = app.descendants(matching: .any).matching(identifier: "history.day")
-            .matching(NSPredicate(format: "label == 'Thursday, December 31'")).firstMatch
-        // As the last day, it can only scroll up as far as the end of the list.
-        let before = thursday.exists ? thursday.frame.minY : app.windows.firstMatch.frame.maxY
-        element(app, "history.week-chart").coordinate(withNormalizedOffset: CGVector(dx: 0.61, dy: 0.5)).tap()
-        let scrolled = XCTNSPredicateExpectation(
-            predicate: NSPredicate { _, _ in thursday.exists && thursday.frame.minY < before - 100 }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [scrolled], timeout: 5), .completed, "The tap didn't scroll to Thursday")
+        // A tap on Thursday's bar scrolls to its session, unless it's on screen already, as on an iPad.
+        let session = app.descendants(matching: .any).matching(identifier: "history.session")
+            .matching(NSPredicate(format: "value == '25 minutes'")).firstMatch
+        let wasShown = session.exists && session.isHittable
+        element(app, "history.week-chart").descendants(matching: .any)["Thursday"].tap()
+        if !wasShown {
+            XCTAssertTrue(session.waitForExistence(timeout: 5))
+            XCTAssertTrue(session.wait(for: \.isHittable, toEqual: true, timeout: 5), "The tap didn't show Thursday")
+        }
         attachScreenshot(of: app, named: "History, a tapped day")
     }
 

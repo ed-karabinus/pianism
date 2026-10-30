@@ -15,10 +15,6 @@ public final class HistoryModel {
     private(set) var pickedWeek: Date?
     /// Whether an earlier week has practice in it or before it, back to the week of the first session.
     var canShowEarlierWeek: Bool { days.last.map { $0.start < week.days[0].start } ?? false }
-    /// The day of the shown week that `date` falls in, if it has practice to scroll to (HIS-2).
-    func dayWithPractice(at date: Date) -> Date? {
-        week.days.first { calendar.isDate($0.start, inSameDayAs: date) && !$0.sessions.isEmpty }?.start
-    }
     /// The sessions shown that history hasn't saved yet (ADR 0007).
     private(set) var waitingIDs: Set<UUID> = []
     /// The time of the last refresh, which decides what counts as today and yesterday.
@@ -105,6 +101,11 @@ public final class HistoryModel {
         if let pickedWeek, calendar.compare(pickedWeek, to: now, toGranularity: .weekOfYear) != .orderedAscending {
             self.pickedWeek = nil
         }
+    }
+
+    /// The day of the shown week that `date` falls in, if it has practice to scroll to (HIS-2).
+    func dayWithPractice(at date: Date) -> Date? {
+        week.days.first { calendar.isDate($0.start, inSameDayAs: date) && !$0.sessions.isEmpty }?.start
     }
 
     /// Whether `session` can be deleted: one still waiting can, and a saved one can when it can be edited.

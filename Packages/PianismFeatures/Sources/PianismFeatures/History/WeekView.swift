@@ -44,6 +44,7 @@ struct WeekView: View {
                 }
             )
             // A tap anywhere in a day's column, not just on its bar, which can be short (decided with Ed, 2026-10-29).
+            // Bars can't take VoiceOver actions, but VoiceOver reads the sessions right below.
             .chartGesture { chart in
                 SpatialTapGesture().onEnded { tap in
                     if let date = chart.value(atX: tap.location.x, as: Date.self),

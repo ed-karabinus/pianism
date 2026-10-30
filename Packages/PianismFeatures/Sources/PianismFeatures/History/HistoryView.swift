@@ -11,7 +11,7 @@ struct HistoryView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollViewReader(content: content)
+            ScrollViewReader { content($0) }
                 .navigationTitle(Text("History", bundle: .module))
                 .toolbar {
                     Button(LocalizedStringResource("Add session", bundle: .module), systemImage: "plus") { model.add() }
