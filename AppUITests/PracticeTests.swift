@@ -163,7 +163,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
         XCTAssertEqual(element(app, "history.session").value as? String, "4 hours")
 
-        app.buttons["Practice"].firstMatch.tap()
+        openPractice(app)
         XCTAssertTrue(app.staticTexts["practice.last-session"].waitForExistence(timeout: 5))
         XCTAssertEqual(text(app, "practice.last-session"), "Last session: 4:00:00")
         XCTAssertFalse(app.staticTexts["practice.capped"].exists, "Edit should hide the banner")
@@ -289,7 +289,7 @@ final class PracticeTests: UITestCase {
         openHistory(app)
         // Real time has to pass the nudge, with nothing in History to wait for.
         Thread.sleep(forTimeInterval: 12)
-        app.buttons["Practice"].firstMatch.tap()
+        openPractice(app)
         XCTAssertTrue(
             app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 3), "It didn't ask on Practice")
         // A new banner asks the system again, which says it's allowed.
@@ -385,7 +385,7 @@ final class PracticeTests: UITestCase {
         openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "History, empty")
-        app.buttons["Practice"].firstMatch.tap()
+        openPractice(app)
         tap(app, "practice.stop")
         openHistory(app)
         let day = element(app, "history.day")
@@ -759,7 +759,7 @@ final class PracticeTests: UITestCase {
         var sessions = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertTrue(sessions.element(boundBy: 1).waitForExistence(timeout: 5), "A kill didn't keep the session")
         deleteBySwipe(app)
-        app.buttons["Practice"].firstMatch.tap()
+        openPractice(app)
         kill(app)
 
         app = launch(at: start + 52 * 60, undoSeconds: 60)
@@ -795,7 +795,7 @@ final class PracticeTests: UITestCase {
             "It said \(notice.label)")
         attachScreenshot(of: app, named: "History, not syncing")
 
-        app.buttons["Practice"].firstMatch.tap()
+        openPractice(app)
         tap(app, "practice.start")
         kill(app)
 
@@ -850,7 +850,7 @@ final class PracticeTests: UITestCase {
         openHistory(app)
         XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
         XCTAssertFalse(element(app, "history.session").exists)
-        app.buttons["Practice"].firstMatch.tap()
+        openPractice(app)
         // Each stopped a minute after it started, in a later launch, so it's long enough to keep (SES-1).
         for minute in 1...2 {
             tap(app, "practice.start")
@@ -1033,6 +1033,17 @@ final class PracticeTests: UITestCase {
         tab.tap()
         if !history.waitForExistence(timeout: 3) { tab.tap() }
         XCTAssertTrue(history.waitForExistence(timeout: 5), "History didn't open")
+    }
+
+    /// Opens Practice from History, tapping again if the tab bar swallowed the tap, as iOS 26's sometimes does
+    /// (#80): before a kill, a swallowed tap lost the deletion that leaving History saves.
+    @MainActor
+    private func openPractice(_ app: XCUIApplication) {
+        let tab = app.buttons["Practice"].firstMatch
+        let history = app.navigationBars["History"]
+        tab.tap()
+        if !history.waitForNonExistence(timeout: 3) { tab.tap() }
+        XCTAssertTrue(app.staticTexts["practice.status"].waitForExistence(timeout: 5), "Practice didn't open")
     }
 
     /// Taps Delete session in the confirmation, which iOS nests in a button with the same frame and identifier.
