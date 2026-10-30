@@ -54,13 +54,14 @@ struct PracticeView: View {
             TimelineView(.periodic(from: .now, by: 1)) { _ in
                 let now = model.clock.now
                 let elapsed = model.elapsed(at: now)
+                let pausedAtLastNote = model.isPausedAtLastNote(at: now)
                 VStack(spacing: 24) {
                     Text(status(at: now), bundle: .module)
                         .font(.title3.weight(.medium))
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier(AccessibilityID.practiceStatus)
                     Text(ElapsedTime.display(elapsed))
-                        .contentTransition(.numericText(countsDown: true))
+                        .contentTransition(.numericText(value: elapsed))
                         .font(
                             .system(
                                 size: timeSize * timeScale * (compactTime ? 0.5 : 1), weight: .light, design: .rounded
@@ -73,9 +74,11 @@ struct PracticeView: View {
                         .accessibilityValue(ElapsedTime.spoken(elapsed))
                         .accessibilityIdentifier(AccessibilityID.practiceElapsed)
                 }
-                // When a silence pauses a MIDI session, the time rolls back to the last note as the status changes,
-                // so the drop reads as deliberate (#139, decided with Ed, 2026-10-29). With Reduce Motion, it changes.
-                .animation(reduceMotion ? nil : .smooth(duration: 0.8), value: model.isPausedAtLastNote(at: now))
+                // When a silence pauses a MIDI session, the time rolls back to the last note as the status changes, so
+                // the drop reads as deliberate. Keyed to the pause, so each second's change doesn't roll, and only on
+                // the way in; with Reduce Motion the time just changes (#139, decided with Ed, 2026-10-29).
+                .animation(
+                    pausedAtLastNote && !reduceMotion ? .smooth(duration: 0.8) : nil, value: pausedAtLastNote)
             }
             if let session = model.session, model.isAskingStillPracticing {
                 stillPracticingBanner(session)
