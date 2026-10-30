@@ -18,6 +18,7 @@ struct PracticeView: View {
 
     @ScaledMetric(relativeTo: .largeTitle) private var timeSize = 76
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         // When Practice doesn't fit, as with the end being picked (SES-3), the time shrinks first, then Practice
@@ -59,6 +60,7 @@ struct PracticeView: View {
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier(AccessibilityID.practiceStatus)
                     Text(ElapsedTime.display(elapsed))
+                        .contentTransition(.numericText(countsDown: true))
                         .font(
                             .system(
                                 size: timeSize * timeScale * (compactTime ? 0.5 : 1), weight: .light, design: .rounded
@@ -71,6 +73,9 @@ struct PracticeView: View {
                         .accessibilityValue(ElapsedTime.spoken(elapsed))
                         .accessibilityIdentifier(AccessibilityID.practiceElapsed)
                 }
+                // When a silence pauses a MIDI session, the time rolls back to the last note as the status changes,
+                // so the drop reads as deliberate (#139, decided with Ed, 2026-10-29). With Reduce Motion, it changes.
+                .animation(reduceMotion ? nil : .smooth(duration: 0.8), value: model.isPausedAtLastNote(at: now))
             }
             if let session = model.session, model.isAskingStillPracticing {
                 stillPracticingBanner(session)
