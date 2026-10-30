@@ -79,10 +79,11 @@ Agents write code quickly, so the main risk is code that works but shouldn't exi
    and if a change is genuinely indivisible, say why in the PR. Squash merges make the PR title
    main's commit, so titles and commit messages follow Conventional Commits with the requirement ID
    as the scope: `feat(SYN-1): Store a session's tag IDs as JSON`. Work on a requirement is `feat`,
-   or `fix` for a bug in shipped behaviour; work with no requirement is `build`, `chore`, `ci`,
-   `docs`, `perf`, `refactor` or `test`, with no scope. The summary starts with a capital, and CI
-   checks the title (`.github/workflows/pr-title.yml`). The description says what, why, how it was
-   tested, and where to start reading. The owner reviews and merges every PR; agents never merge.
+   or `fix` for a bug in shipped behaviour; other work is `build`, `chore`, `ci`, `docs`, `perf`,
+   `refactor` or `test`, scoped by a requirement when it's about one: `docs(MIDI-1): Record the
+   device checks`. The summary starts with a capital, and CI checks the title
+   (`.github/workflows/pr-title.yml`). The description says what, why, how it was tested, and where
+   to start reading. The owner reviews and merges every PR; agents never merge.
 3. Anything that adds a module, a dependency or a persistent model change needs a short plan (and an
    ADR if it changes the architecture) approved by the owner before you write code.
 4. Estimate the production lines before you start, and report the estimate and the actual in the
