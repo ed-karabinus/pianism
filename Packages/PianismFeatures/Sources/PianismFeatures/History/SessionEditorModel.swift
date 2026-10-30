@@ -11,13 +11,17 @@ final class SessionEditorModel: TagTarget {
     private(set) var session: PracticeSession
     /// Whether the session is being added, so saving adds it to history rather than changing it.
     let isNew: Bool
-    /// Whether a newer version wrote the session, so this one can't change it (ADR 0006).
+    /// Whether a newer version wrote the session, so this one can't change it (ADR 0006), or it was deleted.
     let isReadOnly: Bool
+    /// Whether the session was deleted, on another device, since History showed it, or while it was being edited.
+    private(set) var isDeleted: Bool
     /// The latest the session can end: when it was opened, so it can't end in the future, or its own end
     /// if a clock that ran ahead put that later.
     let latestEnd: Date
     /// Whether to show that the edit couldn't be saved.
     var isShowingError = false
+    /// Whether to show that the edit couldn't be saved because the session was deleted.
+    var isShowingDeleted = false
 
     /// The session as it was opened, so moving its start or end works from the original pauses.
     private let original: PracticeSession
@@ -38,6 +42,8 @@ final class SessionEditorModel: TagTarget {
         self.history = history
         // If history can't say, the edit is offered, and saving reports what went wrong.
         isReadOnly = !isNew && (try? history.canEdit(id: session.id)) == false
+        // History shows only saved sessions, so one it no longer has was deleted.
+        isDeleted = isReadOnly && (try? history.sessions())?.contains { $0.id == session.id } == false
     }
 
     /// Whether the session differs from how it opened, so closing without saving asks first.
@@ -114,6 +120,11 @@ final class SessionEditorModel: TagTarget {
                 try history.edit(edited(stored))
             }
             return true
+        } catch is SessionDeleted {
+            // The editor stays open, so what was typed can still be copied.
+            isDeleted = true
+            isShowingDeleted = true
+            return false
         } catch {
             logger.error("Couldn't save an edited session: \(error, privacy: .public)")
             isShowingError = true

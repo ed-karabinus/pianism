@@ -37,6 +37,7 @@ public final class InMemorySessionHistory: SessionHistory {
 
     public func edit(_ session: PracticeSession) throws {
         guard !readOnlyIDs.contains(session.id) else { throw RecordFromNewerVersion() }
+        guard !deletedIDs.withLock({ $0.contains(session.id) }) else { throw SessionDeleted() }
         saved.withLock { sessions in
             if let index = sessions.firstIndex(where: { $0.id == session.id }) {
                 sessions[index] = session

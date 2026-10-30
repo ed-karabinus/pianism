@@ -211,6 +211,9 @@
     "This shares %@ of practice with your %@ session, so the day's total counts it twice." : {
 
     },
+    "This session was deleted on another device." : {
+      "comment" : "Why an edited session can't be saved, or can't be changed"
+    },
     "Today" : {
 
     },
