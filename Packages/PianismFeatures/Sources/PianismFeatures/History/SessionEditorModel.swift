@@ -11,17 +11,23 @@ final class SessionEditorModel: TagTarget {
     private(set) var session: PracticeSession
     /// Whether the session is being added, so saving adds it to history rather than changing it.
     let isNew: Bool
-    /// Whether a newer version wrote the session, so this one can't change it (ADR 0006), or it was deleted.
+    /// Whether the session opened with a `refusal`, so its fields are locked. One refused on save keeps them, so what
+    /// was typed can still be copied.
     let isReadOnly: Bool
-    /// Whether the session was deleted, on another device, since History showed it, or while it was being edited.
-    private(set) var isDeleted: Bool
+    /// Why the session can't be changed, if it can't: a newer version wrote it (ADR 0006), or it was deleted on
+    /// another device (#107). Either may have happened since History showed it, or while it was being edited.
+    private(set) var refusal: Refusal?
     /// The latest the session can end: when it was opened, so it can't end in the future, or its own end
     /// if a clock that ran ahead put that later.
     let latestEnd: Date
     /// Whether to show that the edit couldn't be saved.
     var isShowingError = false
-    /// Whether to show that the edit couldn't be saved because the session was deleted.
-    var isShowingDeleted = false
+    /// Whether to show that the edit couldn't be saved, because of `refusal`.
+    var isShowingRefusal = false
+
+    enum Refusal {
+        case newerVersion, deleted
+    }
 
     /// The session as it was opened, so moving its start or end works from the original pauses.
     private let original: PracticeSession
@@ -44,7 +50,9 @@ final class SessionEditorModel: TagTarget {
         isReadOnly = !isNew && (try? history.canEdit(id: session.id)) == false
         // Read-only yet no longer listed: deleted, as a newer version's session is still listed. Checked only when
         // read-only, as reading every session costs more.
-        isDeleted = isReadOnly && (try? history.sessions())?.contains { $0.id == session.id } == false
+        if isReadOnly {
+            refusal = (try? history.sessions())?.contains { $0.id == session.id } == false ? .deleted : .newerVersion
+        }
     }
 
     /// Whether the session differs from how it opened, so closing without saving asks first.
@@ -123,8 +131,12 @@ final class SessionEditorModel: TagTarget {
             return true
         } catch is SessionDeleted {
             // The editor stays open, so what was typed can still be copied.
-            isDeleted = true
-            isShowingDeleted = true
+            refusal = .deleted
+            isShowingRefusal = true
+            return false
+        } catch is RecordFromNewerVersion {
+            refusal = .newerVersion
+            isShowingRefusal = true
             return false
         } catch {
             logger.error("Couldn't save an edited session: \(error, privacy: .public)")

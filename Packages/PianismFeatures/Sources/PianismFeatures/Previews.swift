@@ -120,8 +120,9 @@ extension SessionEdit {
         try? session.stop(at: previewNow.addingTimeInterval(25 * 60 + 3))
         try? session.editTags(["ballade", BuiltInSkill.scales.rawValue])
         try? session.editNote("Coda hands separately, slowly. Left hand still rushes the run.")
-        let history = InMemorySessionHistory(readOnlyIDs: readOnly ? [session.id] : [])
+        let history = InMemorySessionHistory()
         history.save(session)
+        if readOnly { history.markWrittenByNewerVersion(id: session.id) }
         if deleted { try? history.delete(id: session.id) }
         var other = PracticeSession(startedAt: previewNow.addingTimeInterval(-10 * 60))
         try? other.stop(at: previewNow.addingTimeInterval(5 * 60))

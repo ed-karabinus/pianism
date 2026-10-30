@@ -32,12 +32,13 @@ struct SessionEditorModelTests {
     func newerVersionOpensReadOnly() throws {
         let newer = try endedSession()
         let mine = try endedSession()
-        let history = InMemorySessionHistory(readOnlyIDs: [newer.id])
+        let history = InMemorySessionHistory()
         history.save(newer)
         history.save(mine)
+        history.markWrittenByNewerVersion(id: newer.id)
 
         let newerEditor = SessionEditorModel(session: newer, history: history, now: clock.now)
-        #expect(newerEditor.isReadOnly && !newerEditor.isDeleted)
+        #expect(newerEditor.isReadOnly && newerEditor.refusal == .newerVersion)
         #expect(!SessionEditorModel(session: mine, history: history, now: clock.now).isReadOnly)
     }
 
@@ -53,7 +54,24 @@ struct SessionEditorModelTests {
         try history.delete(id: session.id)
 
         #expect(!editor.save())
-        #expect(editor.isDeleted && editor.isShowingDeleted && !editor.isShowingError)
+        #expect(editor.refusal == .deleted && editor.isShowingRefusal && !editor.isShowingError)
+        #expect(editor.note == "Coda")
+    }
+
+    @Test(
+        "SYN-1, #154: an edit saved after a newer version changed the session says so and stays open, keeping what was typed"
+    )
+    func savingASessionANewerVersionChangedSaysSo() throws {
+        let history = InMemorySessionHistory()
+        let session = try endedSession()
+        history.save(session)
+        let editor = SessionEditorModel(session: session, history: history, now: clock.now)
+        #expect(!editor.isReadOnly)
+        editor.note = "Coda"
+        history.markWrittenByNewerVersion(id: session.id)
+
+        #expect(!editor.save())
+        #expect(editor.refusal == .newerVersion && editor.isShowingRefusal && !editor.isShowingError)
         #expect(editor.note == "Coda")
     }
 
@@ -67,10 +85,11 @@ struct SessionEditorModelTests {
         try history.delete(id: session.id)
 
         let editor = SessionEditorModel(session: session, history: history, now: clock.now)
-        #expect(editor.isReadOnly && editor.isDeleted && !editor.isShowingDeleted)
+        #expect(editor.isReadOnly && editor.refusal == .deleted && !editor.isShowingRefusal)
         // One being added isn't in history either, but wasn't deleted.
         #expect(
-            !SessionEditorModel(session: try endedSession(), isNew: true, history: history, now: clock.now).isDeleted)
+            SessionEditorModel(session: try endedSession(), isNew: true, history: history, now: clock.now).refusal
+                == nil)
     }
 
     @Test("SES-5: when history can't be reached, the edit is offered, and saving it says it failed")

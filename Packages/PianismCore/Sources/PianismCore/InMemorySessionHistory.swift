@@ -5,13 +5,11 @@ import Synchronization
 public final class InMemorySessionHistory: SessionHistory {
     private let saved = Mutex<[PracticeSession]>([])
     private let deletedIDs = Mutex<Set<UUID>>([])
-    private let readOnlyIDs: Set<UUID>
+    private let readOnlyIDs = Mutex<Set<UUID>>([])
     private let unshowable: Int
 
-    /// An empty history, in which sessions saved with `readOnlyIDs` act as if a newer version wrote them, and
-    /// which says it holds `unshowable` sessions it can't show.
-    public init(readOnlyIDs: Set<UUID> = [], unshowable: Int = 0) {
-        self.readOnlyIDs = readOnlyIDs
+    /// An empty history, which says it holds `unshowable` sessions it can't show.
+    public init(unshowable: Int = 0) {
         self.unshowable = unshowable
     }
 
@@ -31,12 +29,17 @@ public final class InMemorySessionHistory: SessionHistory {
         }
     }
 
+    /// From now on, `id` acts as if a newer version wrote it, as when its copy from such a device syncs in.
+    public func markWrittenByNewerVersion(id: UUID) {
+        readOnlyIDs.withLock { _ = $0.insert(id) }
+    }
+
     public func canEdit(id: UUID) -> Bool {
-        !readOnlyIDs.contains(id) && saved.withLock { $0.contains { $0.id == id } }
+        !readOnlyIDs.withLock { $0.contains(id) } && saved.withLock { $0.contains { $0.id == id } }
     }
 
     public func edit(_ session: PracticeSession) throws {
-        guard !readOnlyIDs.contains(session.id) else { throw RecordFromNewerVersion() }
+        guard !readOnlyIDs.withLock({ $0.contains(session.id) }) else { throw RecordFromNewerVersion() }
         guard !deletedIDs.withLock({ $0.contains(session.id) }) else { throw SessionDeleted() }
         saved.withLock { sessions in
             if let index = sessions.firstIndex(where: { $0.id == session.id }) {
@@ -48,7 +51,7 @@ public final class InMemorySessionHistory: SessionHistory {
     public func delete(id: UUID) throws {
         try saved.withLock { sessions in
             guard sessions.contains(where: { $0.id == id }) else { return }
-            guard !readOnlyIDs.contains(id) else { throw RecordFromNewerVersion() }
+            guard !readOnlyIDs.withLock({ $0.contains(id) }) else { throw RecordFromNewerVersion() }
             sessions.removeAll { $0.id == id }
             deletedIDs.withLock { _ = $0.insert(id) }
         }
