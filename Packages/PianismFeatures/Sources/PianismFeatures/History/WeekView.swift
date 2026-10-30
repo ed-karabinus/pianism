@@ -38,7 +38,7 @@ struct WeekView: View {
                 DisclosureGroup(isExpanded: $showsByTag) {
                     ForEach(tagTimes, content: row)
                 } label: {
-                    // On the label, as on the group it would reach the rows too.
+                    // The identifier goes on the label: set on the group, it would reach every row.
                     Text("By piece and skill", bundle: .module).accessibilityIdentifier(
                         AccessibilityID.historyWeekByTag)
                 }
