@@ -70,6 +70,9 @@
     "Couldn't save that change" : {
 
     },
+    "Day" : {
+
+    },
     "Delete" : {
 
     },
@@ -122,6 +125,9 @@
 
     },
     "Low battery. The screen stays on while your piano is connected, so plug in." : {
+
+    },
+    "Minutes" : {
 
     },
     "Name" : {
@@ -239,6 +245,9 @@
       "comment" : "A built-in skill"
     },
     "This shares %@ of practice with your %@ session, so the day's total counts it twice." : {
+
+    },
+    "This week" : {
 
     },
     "Today" : {
