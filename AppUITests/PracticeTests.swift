@@ -408,7 +408,8 @@ final class PracticeTests: UITestCase {
     }
 
     /// HIS-2: History shows this week, and earlier weeks with the arrows or a swipe on the chart, back to the week of
-    /// the first session. A week before last is titled by its dates, with the year when it isn't this one.
+    /// the first session. A week before last is titled by its dates, with the year when it isn't this one. A tap on a
+    /// day scrolls to its sessions.
     @MainActor
     func testEarlierWeeksShowWithTheArrowsOrASwipe() throws {
         let week: TimeInterval = 7 * 24 * 60 * 60
@@ -441,6 +442,17 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(shown.wait(for: \.label, toEqual: "Last week", timeout: 5), "The swipe didn't show a later week")
         element(app, "history.week-chart").swipeRight()
         XCTAssertTrue(shown.wait(for: \.label, toEqual: firstWeek, timeout: 5), "The swipe didn't show an earlier week")
+
+        // A tap in Thursday's column, the fifth of seven left of the minutes, scrolls to its sessions.
+        let thursday = app.descendants(matching: .any).matching(identifier: "history.day")
+            .matching(NSPredicate(format: "label == 'Thursday, December 31'")).firstMatch
+        // As the last day, it can only scroll up as far as the end of the list.
+        let before = thursday.exists ? thursday.frame.minY : app.windows.firstMatch.frame.maxY
+        element(app, "history.week-chart").coordinate(withNormalizedOffset: CGVector(dx: 0.61, dy: 0.5)).tap()
+        let scrolled = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in thursday.exists && thursday.frame.minY < before - 100 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [scrolled], timeout: 5), .completed, "The tap didn't scroll to Thursday")
+        attachScreenshot(of: app, named: "History, a tapped day")
     }
 
     /// TAG-1, TAG-2, HIS-2: a running session is tagged from Practice with a new piece and a built-in skill,
