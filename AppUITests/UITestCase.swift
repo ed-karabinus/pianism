@@ -5,7 +5,39 @@ import notify
 /// on CI can be diagnosed from its results without rerunning it. It kills the app (`kill(_:)`) when it ends,
 /// so the next test's launch has no app to terminate.
 class UITestCase: XCTestCase {
-    private var isRecordingDiagnostics = false
+    private var isDroppingIssues = false
+    @MainActor private static var hasWarmedUp = false
+
+    override func setUp() {
+        super.setUp()
+        // UI tests run on the main thread, as in tearDown().
+        if Thread.isMainThread {
+            isDroppingIssues = true
+            MainActor.assumeIsolated { Self.warmUp() }
+            isDroppingIssues = false
+        }
+    }
+
+    /// On CI, a freshly booted iOS 27 simulator sometimes takes 60 s to let XCTest reach a launched app, and for
+    /// minutes after that a test's first query fails ("kAXErrorServerNotFound", or "does not have a process ID":
+    /// #136). So before the run's first test, the app launches until XCTest can reach its window, for up to 10
+    /// minutes, and what XCTest reports meanwhile is dropped (`record(_:)`). The 10 minutes are real time, which E3
+    /// and E4 rule out for what a test checks; this waits for the simulator rather than testing the app.
+    @MainActor
+    private static func warmUp() {
+        guard !hasWarmedUp else { return }
+        hasWarmedUp = true
+        let app = XCUIApplication()
+        let start = Date.now
+        for attempt in 1... {
+            app.launch()
+            let reachable = app.windows.firstMatch.waitForExistence(timeout: 10)
+            XCTContext.runActivity(named: "Warm-up launch \(attempt): \(reachable ? "reached" : "not reached")") { _ in
+            }
+            _ = Self.kill(app)
+            if reachable || Date.now.timeIntervalSince(start) > 600 { break }
+        }
+    }
 
     override func tearDown() {
         // Not async: with an async tearDown, XCTest stops a failing test (continueAfterFailure = false) by
@@ -38,12 +70,12 @@ class UITestCase: XCTestCase {
 
     override func record(_ issue: XCTIssue) {
         // A failure while taking the diagnostics is dropped: recording it would stop the test
-        // before the failure it was taken for.
-        guard !isRecordingDiagnostics else { return }
+        // before the failure it was taken for. So is one while the simulator settles (`warmUp()`).
+        guard !isDroppingIssues else { return }
         var issue = issue
         // UI tests fail on the main thread; skipping the diagnostics elsewhere beats trapping.
         if Thread.isMainThread {
-            isRecordingDiagnostics = true
+            isDroppingIssues = true
             let (screen, tree) = MainActor.assumeIsolated { Self.snapshot() }
             let screenshot = XCTAttachment(data: screen, uniformTypeIdentifier: "public.png")
             screenshot.name = "Screen at failure"
@@ -53,7 +85,7 @@ class UITestCase: XCTestCase {
                 attachment.name = "UI tree at failure"
                 issue.add(attachment)
             }
-            isRecordingDiagnostics = false
+            isDroppingIssues = false
         }
         super.record(issue)
     }
