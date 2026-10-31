@@ -115,7 +115,7 @@ struct HistoryView: View {
                     .accessibilityIdentifier(AccessibilityID.historyUnshowable)
                 }
                 if model.isNotSyncing { notSyncingNotice }
-                WeekView(week: model.week)
+                WeekView(week: model.week, tags: model.tagIndex)
                 ForEach(model.days) { day in
                     Section {
                         ForEach(day.sessions) { session in

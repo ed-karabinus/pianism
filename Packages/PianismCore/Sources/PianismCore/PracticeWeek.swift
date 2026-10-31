@@ -20,4 +20,32 @@ public struct PracticeWeek: Sendable {
             return byStart[day] ?? PracticeDay(start: day, sessions: [], total: 0)
         }
     }
+
+    /// The week's practice time with each tag, longest first, ties by name as the tag picker sorts them, and then any
+    /// untagged time. A session with several tags counts in full toward each, and a merged tag as the tag it was
+    /// merged into.
+    public func timeByTag(in index: TagIndex) -> [TagTime] {
+        var byTag: [Tag.ID: TagTime] = [:]
+        var untagged = TagTime(tag: nil, time: 0)
+        for session in days.flatMap(\.sessions) {
+            let time = session.elapsed(at: .distantPast)
+            let tags = index.tags(for: session.tagIDs)
+            if tags.isEmpty { untagged.time += time }
+            for tag in tags { byTag[tag.id, default: TagTime(tag: tag, time: 0)].time += time }
+        }
+        let tagged = byTag.values.sorted { first, second in
+            guard first.time == second.time else { return first.time > second.time }
+            // A piece and a skill can share a name, so the ID settles it, or their rows could swap between launches.
+            let order = (first.tag?.name ?? "").localizedStandardCompare(second.tag?.name ?? "")
+            return order == .orderedSame ? first.id ?? "" < second.id ?? "" : order == .orderedAscending
+        }
+        return tagged + (untagged.time > 0 ? [untagged] : [])
+    }
+
+    /// Practice time with a tag, or untagged with `tag` nil (HIS-2).
+    public struct TagTime: Sendable, Hashable, Identifiable {
+        public let tag: Tag?
+        public var time: TimeInterval
+        public var id: Tag.ID? { tag?.id }
+    }
 }

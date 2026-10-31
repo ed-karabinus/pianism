@@ -16,6 +16,9 @@
     "A piano connects to one device at a time, so disconnect it from any other first." : {
 
     },
+    "A session counts toward each of its tags." : {
+
+    },
     "A target tempo is a whole number from %lld to %lld." : {
 
     },
@@ -41,6 +44,9 @@
       "comment" : "A built-in skill"
     },
     "Bluetooth" : {
+
+    },
+    "By piece and skill" : {
 
     },
     "Composer" : {
@@ -124,6 +130,9 @@
     "Last session: %@" : {
 
     },
+    "Low battery. The screen stays on while your piano is connected, so plug in." : {
+
+    },
     "Minutes" : {
 
     },
@@ -161,6 +170,9 @@
 
     },
     "Pianism stopped your session at %@ of practice, in case the timer was left running." : {
+
+    },
+    "Piece" : {
 
     },
     "Pieces" : {
@@ -210,6 +222,9 @@
     },
     "Sight-reading" : {
       "comment" : "A built-in skill"
+    },
+    "Skill" : {
+
     },
     "Skills" : {
 
