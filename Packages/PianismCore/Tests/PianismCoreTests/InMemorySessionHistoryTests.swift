@@ -29,9 +29,10 @@ struct InMemorySessionHistoryTests {
         try mine.stop(at: clock.now + 600)
         var newer = PracticeSession(startedAt: clock.now + 900)
         try newer.stop(at: clock.now + 1_200)
-        let history = InMemorySessionHistory(readOnlyIDs: [newer.id])
+        let history = InMemorySessionHistory()
         history.save(mine)
         history.save(newer)
+        history.markWrittenByNewerVersion(id: newer.id)
         #expect(history.canEdit(id: mine.id) && !history.canEdit(id: newer.id) && !history.canEdit(id: UUID()))
 
         var edited = mine
@@ -55,9 +56,10 @@ struct InMemorySessionHistoryTests {
         try mine.stop(at: clock.now + 600)
         var newer = PracticeSession(startedAt: clock.now + 900)
         try newer.stop(at: clock.now + 1_200)
-        let history = InMemorySessionHistory(readOnlyIDs: [newer.id])
+        let history = InMemorySessionHistory()
         history.save(mine)
         history.save(newer)
+        history.markWrittenByNewerVersion(id: newer.id)
 
         try history.delete(id: mine.id)
         try history.delete(id: mine.id)

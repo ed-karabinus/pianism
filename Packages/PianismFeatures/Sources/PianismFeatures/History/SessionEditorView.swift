@@ -34,13 +34,8 @@ struct SessionEditorView: View {
                         title: Text("Practice time", bundle: .module),
                         duration: editor.session.elapsed(at: .distantPast))
                 } footer: {
-                    if editor.isDeleted {
-                        Text("This session was deleted on another device.", bundle: .module)
-                            .accessibilityIdentifier(AccessibilityID.editorDeleted)
-                    } else if editor.isReadOnly {
-                        Text(
-                            "A newer version of Pianism changed this session. Update Pianism to change it.",
-                            bundle: .module)
+                    if let refusal = editor.refusal {
+                        Self.reason(for: refusal).accessibilityIdentifier(AccessibilityID.editorRefusal)
                     } else if showsOverlapWarning, let overlap = editor.overlap {
                         // A footer shows only its first view, so the button needs a stack to appear.
                         VStack(alignment: .leading) {
@@ -72,7 +67,7 @@ struct SessionEditorView: View {
                 }
                 .disabled(editor.isReadOnly)
                 .accessibilityIdentifier(AccessibilityID.editorNote)
-                if !editor.isNew, !editor.isReadOnly, !editor.isDeleted {
+                if !editor.isNew, editor.refusal == nil {
                     Section {
                         Button(LocalizedStringResource("Delete session", bundle: .module), role: .destructive) {
                             isConfirmingDelete = true
@@ -110,7 +105,7 @@ struct SessionEditorView: View {
                     Button(role: .confirm) {
                         if editor.save() { dismiss() }
                     }
-                    .disabled(editor.isReadOnly || editor.isDeleted)
+                    .disabled(editor.refusal != nil)
                     .accessibilityIdentifier(AccessibilityID.editorSave)
                 }
             }
@@ -120,8 +115,18 @@ struct SessionEditorView: View {
         }
         .interactiveDismissDisabled(editor.hasChanges)
         .storageAlert(Text("Couldn't save that change", bundle: .module), isPresented: $editor.isShowingError)
-        .alert(Text("Couldn't save that change", bundle: .module), isPresented: $editor.isShowingDeleted) {
+        .alert(Text("Couldn't save that change", bundle: .module), isPresented: $editor.isShowingRefusal) {
         } message: {
+            if let refusal = editor.refusal { Self.reason(for: refusal) }
+        }
+    }
+
+    /// Why the session can't be changed, as the footer says it, and the alert when a save is refused.
+    private static func reason(for refusal: SessionEditorModel.Refusal) -> Text {
+        switch refusal {
+        case .newerVersion:
+            Text("A newer version of Pianism changed this session. Update Pianism to change it.", bundle: .module)
+        case .deleted:
             Text("This session was deleted on another device.", bundle: .module)
         }
     }
