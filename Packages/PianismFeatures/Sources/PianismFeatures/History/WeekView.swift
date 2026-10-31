@@ -6,6 +6,8 @@ import SwiftUI
 /// piece and skill (HIS-2). It shows this week, and earlier ones with a swipe or the arrows.
 struct WeekView: View {
     let model: HistoryModel
+    /// Shows the sessions of a tapped day with practice.
+    let showDay: (Date) -> Void
 
     /// Room for the bars as the axis labels grow with the text size, short enough to leave the sessions on screen
     /// (decided with Ed, 2026-10-29).
@@ -41,6 +43,17 @@ struct WeekView: View {
                     model.showWeek(earlier: (drag.translation.width > 0) == (layoutDirection == .leftToRight))
                 }
             )
+            // A tap anywhere in a day's column, not just on its bar, which can be short (decided with Ed, 2026-10-29).
+            // Bars can't take VoiceOver actions, but VoiceOver reads the sessions right below.
+            .chartGesture { chart in
+                SpatialTapGesture().onEnded { tap in
+                    if let date = chart.value(atX: tap.location.x, as: Date.self),
+                        let day = model.dayWithPractice(at: date)
+                    {
+                        showDay(day)
+                    }
+                }
+            }
             .accessibilityIdentifier(AccessibilityID.historyWeekChart)
             // Untagged time alone would only repeat the week's total.
             if tagTimes.contains(where: { $0.tag != nil }) {

@@ -103,6 +103,11 @@ public final class HistoryModel {
         }
     }
 
+    /// The day of the shown week that `date` falls in, if it has practice to scroll to (HIS-2).
+    func dayWithPractice(at date: Date) -> Date? {
+        week.days.first { calendar.isDate($0.start, inSameDayAs: date) && !$0.sessions.isEmpty }?.start
+    }
+
     /// Whether `session` can be deleted: one still waiting can, and a saved one can when it can be edited.
     func canDelete(_ session: PracticeSession) -> Bool {
         // As in the editor, if history can't say, deleting is offered, and committing reports what went wrong.
