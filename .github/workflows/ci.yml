@@ -89,14 +89,14 @@ jobs:
   # video encoder, and while recording an iPad's screen the simulator's renderer grew to 3.7 GB of
   # their 7 GB and XCTest lost track of the app. This repository is public, so the runners cost
   # nothing; GitHub Free runs at most 5 macOS jobs at once, so of a pull request's 6, one waits a minute or
-  # two for a short one to finish. The time limit allows for the `xcode-27` image, whose runners take
-  # about 6 minutes to build and 20 to test, plus any retries.
+  # two for a short one to finish. The time limit allows for the `xcode-27` image, whose jobs take
+  # up to 48 minutes with retries, plus one hung test's 15-minute allowance and its spindump (#136).
   e2e:
     name: End-to-end tests (${{ matrix.device }}, iOS ${{ matrix.ios }})
     needs: [core, lint]
     if: github.event_name != 'push'
     runs-on: ${{ matrix.ios == 26 && 'macos-26' || 'xcode-27' }}
-    timeout-minutes: 60
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
