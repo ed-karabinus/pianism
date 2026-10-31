@@ -18,3 +18,4 @@ changed and why; git history keeps the original. Each record's status is in its 
 | [7](0007-outbox-when-history-cant-save.md) | Finished sessions wait in an outbox when history can't save them |
 | [8](0008-icloud-sync-environments-and-deploy.md) | History syncs through CloudKit, with Debug and Release builds kept apart, and one checked deploy |
 | [9](0009-what-a-midi-session-stores.md) | A MIDI session stores nothing new; its played time comes from its pauses |
+| [10](0010-widget-extension-and-app-group-boundary.md) | A widget extension shows practice outside the app, and only the app writes what it shows |
