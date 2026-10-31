@@ -124,6 +124,17 @@ struct PracticeView: View {
             .frame(minHeight: 44)  // a footnote alone is too small to tap
             .accessibilityHint(Text("Shows tips and Bluetooth pairing", bundle: .module))
             .accessibilityIdentifier(AccessibilityID.practicePianos)
+            if model.showsLowBattery {
+                Label {
+                    Text("Low battery. The screen stays on while your piano is connected, so plug in.", bundle: .module)
+                } icon: {
+                    // Red, as the status bar shows a low battery.
+                    Image(systemName: "battery.25percent").foregroundStyle(.red)
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier(AccessibilityID.practiceLowBattery)
+            }
             Spacer()
             if model.session?.state == .running || model.session?.state == .paused {
                 tagsButton
@@ -442,6 +453,18 @@ private struct CommandButton: View {
 
 #Preview("Stopped at the cap, dark, AX5") {
     let model = PracticeModel.preview(.capped)
+    PracticeView(model: model, tags: .preview(for: model)) { _ in }
+        .preferredColorScheme(.dark)
+        .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("Low battery") {
+    let model = PracticeModel.preview(.lowBattery)
+    PracticeView(model: model, tags: .preview(for: model)) { _ in }
+}
+
+#Preview("Low battery, dark, AX5") {
+    let model = PracticeModel.preview(.lowBattery)
     PracticeView(model: model, tags: .preview(for: model)) { _ in }
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)

@@ -244,6 +244,17 @@ public final class PracticeModel: TagTarget {
             || showingPractice && !connectedPianos.isEmpty && readyUntil != nil
     }
 
+    /// The battery, read only while the screen is kept on.
+    var battery: BatteryReading?
+
+    /// Whether Practice warns that the battery is at 20 % or less while it keeps the screen on, unless plugged in
+    /// (NFR-10). iOS reports the level as a Float in 5 % steps, so "below 20 %" would wait for 15 %, and its 20 % is
+    /// a hair above 0.2: whole percents (decided with Ed, 2026-10-29).
+    var showsLowBattery: Bool {
+        keepsScreenAwake(showingPractice: true)
+            && battery.map { ($0.level * 100).rounded() <= 20 && !$0.isPluggedIn } == true
+    }
+
     /// The session's time at `now` as the next tick leaves it: a MIDI session's silence stops at its last note
     /// once it pauses it, and a timer session stops at the cap. So a frame drawn before that tick, as while the
     /// app comes back from the lock screen, shows no time that isn't counted (MIDI-1, SES-4).
@@ -330,6 +341,12 @@ public final class PracticeModel: TagTarget {
 struct NudgeOpening: Equatable {
     let sessionID: UUID
     let pickingEnd: Bool
+}
+
+/// The battery's charge, from 0 to 1, and whether it's plugged in.
+struct BatteryReading: Equatable {
+    var level: Double
+    var isPluggedIn: Bool
 }
 
 extension Date {
