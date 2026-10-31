@@ -396,6 +396,8 @@ final class PracticeTests: UITestCase {
         let week = element(app, "history.week")
         XCTAssertEqual(week.label, "This week")
         XCTAssertEqual(week.value as? String, "25 minutes, 3 seconds")
+        // Untagged time alone isn't broken down, as it would only repeat the total.
+        XCTAssertFalse(element(app, "history.week-tag").exists)
         let session = element(app, "history.session")
         XCTAssertEqual(session.value as? String, "25 minutes, 3 seconds")
         XCTAssertTrue(session.isHittable, "The week pushed the session off the screen")
@@ -417,9 +419,9 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(relaunched.value as? String, "25 minutes, 3 seconds")
     }
 
-    /// TAG-1, TAG-2: a running session is tagged from Practice with a new piece and a built-in skill,
-    /// and History shows them; a session left untagged shows "Untagged". The tags are stored, so
-    /// they're still there after the app is killed and relaunched.
+    /// TAG-1, TAG-2, HIS-2: a running session is tagged from Practice with a new piece and a built-in skill,
+    /// and History shows them on the session and in the week's time by tag; a session left untagged shows
+    /// "Untagged". The tags are stored, so they're still there after the app is killed and relaunched.
     @MainActor
     func testTagARunningSession() throws {
         var app = launch(at: start, reset: true)
@@ -451,6 +453,32 @@ final class PracticeTests: UITestCase {
         app = launch(at: start + 26 * 60)
         tap(app, "practice.stop")
         openHistory(app)
+        // HIS-2: the week's time with each tag is a tap away, so the sessions stay on screen.
+        XCTAssertTrue(element(app, "history.week").waitForExistence(timeout: 5))
+        let tagRows = app.descendants(matching: .any).matching(identifier: "history.week-tag")
+        XCTAssertEqual(tagRows.count, 0)
+        XCTAssertTrue(element(app, "history.session").isHittable, "The week pushed the sessions off the screen")
+        tap(app, "history.week-by-tag")
+        // The tagged session counts toward both of its tags, each marked as a piece or a skill.
+        XCTAssertTrue(tagRows.firstMatch.waitForExistence(timeout: 5))
+        func shownRows() -> [String] {
+            (0..<tagRows.count).map {
+                "\(tagRows.element(boundBy: $0).label): \(tagRows.element(boundBy: $0).value ?? "")"
+            }
+        }
+        let expected = ["Ballade No. 1, Piece: 25 minutes", "Scales, Skill: 25 minutes", "Untagged: 1 minute"]
+        XCTAssertEqual(shownRows(), expected)
+        let nameStarts = (0..<tagRows.count).map { tagRows.element(boundBy: $0).staticTexts.firstMatch.frame.minX }
+        XCTAssertEqual(Set(nameStarts).count, 1, "The names don't line up: \(nameStarts)")
+        attachScreenshot(of: app, named: "History, this week by tag")
+        // It stays open.
+        kill(app)
+        app = launch(at: start + 27 * 60)
+        openHistory(app)
+        XCTAssertTrue(tagRows.firstMatch.waitForExistence(timeout: 5), "The breakdown closed after a relaunch")
+        XCTAssertEqual(shownRows(), expected)
+        // Open, it pushes the sessions further down.
+        app.swipeUp()
         XCTAssertTrue(element(app, "history.day").waitForExistence(timeout: 5))
         let sessions = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertEqual(sessions.count, 2)

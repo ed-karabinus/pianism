@@ -56,6 +56,37 @@ struct PracticeWeekTests {
         #expect(week.days.map(\.total) == [0, 0, 0, 0, 0, 0, 15 * 60])
     }
 
+    @Test(
+        "HIS-2: the week's time with each tag, longest first, ties by name: a session counts toward each of its tags, a merged tag toward its target; untagged time comes last"
+    )
+    func timeByTag() throws {
+        let calendar = try calendar(firstWeekday: 2)
+        let ballade = PianismCore.Tag(id: "ballade", kind: .piece, name: "Ballade", isArchived: false)
+        let scales = PianismCore.Tag(id: "scales", kind: .skill, name: "Scales", isArchived: false)
+        let etude = PianismCore.Tag(id: "etude", kind: .piece, name: "Etude", isArchived: false)
+        let merged = PianismCore.Tag(
+            id: "ballade-copy", kind: .piece, name: "Ballade", isArchived: false, mergedInto: "ballade")
+        let index = TagIndex([ballade, scales, etude, merged])
+        let monday = try date(2026, 10, 12, 8, 0, in: calendar)
+        let sessions: [PracticeSession] = [
+            try session(at: monday, minutes: 30, tags: ["ballade", "scales"]),
+            try session(at: monday + 3_600, minutes: 10, tags: ["ballade-copy"]),
+            try session(at: monday + 7_200, minutes: 30, tags: ["etude"]),
+            try session(at: monday + 10_800, minutes: 5, tags: []),
+            try session(at: monday + 14_400, minutes: 15, tags: ["not-synced-yet"]),
+        ]
+        let week = PracticeWeek(
+            containing: monday, days: PracticeDay.group(sessions, in: calendar), in: calendar)
+
+        let times = week.timeByTag(in: index)
+
+        let expected: [PracticeWeek.TagTime] = [
+            .init(tag: ballade, time: 40 * 60), .init(tag: etude, time: 30 * 60), .init(tag: scales, time: 30 * 60),
+            .init(tag: nil, time: 20 * 60),
+        ]
+        #expect(times == expected)
+    }
+
     private func calendar(firstWeekday: Int, zone: String = "America/Los_Angeles") throws -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try #require(TimeZone(identifier: zone))
@@ -70,8 +101,9 @@ struct PracticeWeekTests {
             calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute)))
     }
 
-    private func session(at start: Date, minutes: Double) throws -> PracticeSession {
+    private func session(at start: Date, minutes: Double, tags: [PianismCore.Tag.ID] = []) throws -> PracticeSession {
         var session = PracticeSession(startedAt: start)
+        try session.setTags(tags)
         try session.stop(at: start + minutes * 60)
         return session
     }
