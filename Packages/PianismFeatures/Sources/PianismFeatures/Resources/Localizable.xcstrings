@@ -100,6 +100,9 @@
     "Don't show again" : {
 
     },
+    "Earlier week" : {
+
+    },
     "Edit" : {
 
     },
@@ -128,6 +131,12 @@
       "comment" : "A built-in skill"
     },
     "Last session: %@" : {
+
+    },
+    "Last week" : {
+
+    },
+    "Later week" : {
 
     },
     "Low battery. The screen stays on while your piano is connected, so plug in." : {

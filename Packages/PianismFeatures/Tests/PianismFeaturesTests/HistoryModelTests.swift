@@ -1,6 +1,7 @@
 import Foundation
 import PianismCore
 import PianismCoreTestSupport
+import Synchronization
 import Testing
 
 @testable import PianismFeatures
@@ -167,6 +168,53 @@ struct HistoryModelTests {
         clock.advance(by: 7 * 86_400)
         model.refresh()
         #expect(model.week.total == 0)
+    }
+
+    @Test("HIS-2: earlier weeks show back to the week of the first session, gaps included, and on to this week")
+    func earlierWeeks() throws {
+        let history = InMemorySessionHistory()
+        history.save(try endedSession(startingAfter: 0))
+        history.save(try endedSession(startingAfter: -15 * 86_400))
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
+        model.refresh()
+
+        model.showWeek(earlier: false)
+        #expect(model.pickedWeek == nil)
+        model.showWeek(earlier: true)
+        #expect(model.week.total == 0)
+        model.refresh()
+        #expect(model.week.total == 0)
+        model.showWeek(earlier: true)
+        #expect(model.week.total == 600)
+        #expect(!model.canShowEarlierWeek)
+        let first = model.week.days[0].start
+        model.showWeek(earlier: true)
+        #expect(model.week.days[0].start == first)
+
+        model.showWeek(earlier: false)
+        model.showWeek(earlier: false)
+        #expect(model.pickedWeek == nil)
+        #expect(model.week.total == 600)
+        #expect(model.canShowEarlierWeek)
+    }
+
+    @Test(
+        "HIS-2: a week picked while the clock was ahead stops being picked once the clock is set back to it or before")
+    func aClockSetBackDropsThePickedWeek() throws {
+        let clock = SettableClock(now: self.clock.now + 14 * 86_400)
+        let history = InMemorySessionHistory()
+        history.save(try endedSession(startingAfter: 0))
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
+        model.refresh()
+        model.showWeek(earlier: true)
+        #expect(model.pickedWeek != nil)
+
+        clock.now = self.clock.now
+        model.refresh()
+
+        #expect(model.pickedWeek == nil)
     }
 
     @Test("SES-5: a saved session opens for editing, and saving replaces it; one still waiting doesn't open (ADR 0007)")
@@ -507,6 +555,17 @@ struct HistoryModelTests {
         try session.stop(at: clock.now + seconds + 600)
         return session
     }
+}
+
+/// A clock a test can set back, unlike `ManualClock`.
+private final class SettableClock: WallClock {
+    private let current: Mutex<Date>
+    var now: Date {
+        get { current.withLock { $0 } }
+        set { current.withLock { $0 = newValue } }
+    }
+
+    init(now: Date) { current = Mutex(now) }
 }
 
 /// A history that works except that it can't delete, as when its store fails to save.

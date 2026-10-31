@@ -9,8 +9,12 @@ import os
 public final class HistoryModel {
     /// Days with practice, newest first, including sessions still waiting to be saved.
     private(set) var days: [PracticeDay] = []
-    /// The week of the last refresh, with each day's practice (HIS-2).
-    var week: PracticeWeek { PracticeWeek(containing: now, days: days, in: calendar) }
+    /// The week shown atop History, with each day's practice (HIS-2): this week, or an earlier one picked.
+    var week: PracticeWeek { PracticeWeek(containing: pickedWeek ?? now, days: days, in: calendar) }
+    /// A day in the earlier week picked, or nil for this week, which then moves along with each refresh.
+    private(set) var pickedWeek: Date?
+    /// Whether an earlier week has practice in it or before it, back to the week of the first session.
+    var canShowEarlierWeek: Bool { days.last.map { $0.start < week.days[0].start } ?? false }
     /// The sessions shown that history hasn't saved yet (ADR 0007).
     private(set) var waitingIDs: Set<UUID> = []
     /// The time of the last refresh, which decides what counts as today and yesterday.
@@ -57,6 +61,7 @@ public final class HistoryModel {
     /// midnight may have passed.
     public func refresh() {
         now = clock.now
+        dropPickedWeekIfCurrent()
         // An outbox that can't be read is reported by Practice, which raises its storage alert.
         let waiting = (try? outbox.sessions()) ?? []
         var saved: [PracticeSession] = []
@@ -79,6 +84,23 @@ public final class HistoryModel {
         // A session open for editing keeps its own copy, but shows tags as they are now, such as one renamed on
         // another device (SYN-1).
         editing?.tags.refresh()
+    }
+
+    /// Shows the week before the one shown, or the one after, back to the week of the first session and on to this
+    /// week (HIS-2).
+    func showWeek(earlier: Bool) {
+        guard earlier ? canShowEarlierWeek : pickedWeek != nil,
+            let date = calendar.date(byAdding: .weekOfYear, value: earlier ? -1 : 1, to: week.days[0].start)
+        else { return }
+        pickedWeek = date
+        dropPickedWeekIfCurrent()
+    }
+
+    /// Goes back to following this week once the picked one isn't earlier, such as after the clock was set back.
+    private func dropPickedWeekIfCurrent() {
+        if let pickedWeek, calendar.compare(pickedWeek, to: now, toGranularity: .weekOfYear) != .orderedAscending {
+            self.pickedWeek = nil
+        }
     }
 
     /// Whether `session` can be deleted: one still waiting can, and a saved one can when it can be edited.
