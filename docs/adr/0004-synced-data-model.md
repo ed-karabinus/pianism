@@ -1,7 +1,8 @@
 # 4. Finished sessions and tags in SwiftData, mapped to core values and synced through CloudKit
 
 - Status: accepted; schema v1 and some rules amended by [ADR 0006](0006-schema-v1-before-deploy.md); sync
-  environments and the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md)
+  environments and the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md); the
+  widget's summary file by [ADR 0010](0010-widget-extension-and-app-group-boundary.md)
 - Date: 2026-10-13
 - Issue: #25
 
@@ -140,9 +141,10 @@ with a single version.
   run opens every fixture with the current model, as the spec's testing table requires.
 
 **The store belongs to the app process.** The widget (GLN-2) doesn't open it. The app writes a
-small summary file to the App Group, with finished seconds per day for the last 7 days, whenever it
-saves. The widget adds the running session from ADR 0003's file to show today's total. That keeps
-one process on the CloudKit-mirrored store.
+small summary file to the App Group, with today's finished practice, whenever history changes
+(amended 2026-10-31 by ADR 0010: today only, not 7 days; the small widget shows today and nothing
+reads a week). The widget adds the running session from ADR 0003's file to show today's total.
+That keeps one process on the CloudKit-mirrored store.
 
 Option 1 is rejected because it puts SwiftData into the core (E1, ADR 0001). Grouping and totals
 would then be testable only on Apple platforms, through a model container. Option 3 needs two code

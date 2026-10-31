@@ -1,7 +1,8 @@
 # 3. The running session lives in the App Group, not the synced store
 
-- Status: accepted; amended by [ADR 0004](0004-synced-data-model.md) and
-  [ADR 0007](0007-outbox-when-history-cant-save.md)
+- Status: accepted; amended by [ADR 0004](0004-synced-data-model.md),
+  [ADR 0007](0007-outbox-when-history-cant-save.md) and
+  [ADR 0010](0010-widget-extension-and-app-group-boundary.md)
 - Date: 2026-10-13
 - Issue: #16
 
@@ -13,8 +14,8 @@ separate processes:
 | Where | Process | Changes |
 | --- | --- | --- |
 | Practice screen | App | start, pause, resume, stop |
-| Live Activity buttons (GLN-1) | App, launched in the background | pause, stop |
-| Small widget's Start button (GLN-2) | Widget extension | start |
+| Live Activity buttons (GLN-1) | App, by a `LiveActivityIntent` (ADR 0010) | pause, resume, stop |
+| Small widget's Start button (GLN-2) | App, by a `LiveActivityIntent` (ADR 0010); the extension changes nothing | start |
 | MIDI detector (M2) | App, foreground only | start, pause, resume, stop, and the last note's time on leaving the screen |
 | Nudge and cap (SES-3, SES-4) | App | stop, end-time correction |
 
@@ -51,9 +52,7 @@ Option 3.
 - **Only the app moves sessions into SwiftData.** When a session stops in the app, history saves it
   (or, with under 10 s of practice, or 1 min for a MIDI session, drops it, SES-1, MIDI-1) and then
   the file is cleared. Saving it again is harmless (ADR 0004), and a session history can't take
-  waits in the outbox (ADR 0007). When the widget or a Live Activity stops one, it stays in the
-  file, marked ended, and the app moves it on its next launch or return to the foreground. Each
-  store has exactly one writer.
+  waits in the outbox (ADR 0007). Each store has exactly one writer.
 - Elapsed time is always derived from the stored timestamps, so there is no periodic save. Each
   change writes once.
 
@@ -63,6 +62,11 @@ older file unreadable. An unreadable file counts as no session, so the session r
 update would be lost, and the outbox would set its waiting sessions aside. Samples now fix the
 format. Lines that no longer matched are corrected: moving a session into history takes two steps
 (ADR 0004), finished sessions can be edited (SES-5, ADR 0006), and `update` returns a value.
+
+Amended 2026-10-31 by ADR 0010: the widget's and the Live Activity's buttons run in the app's
+process, so the app is the file's only writer and the extension only reads it. A stop from the
+Lock Screen takes the same path as a stop on the Practice screen. `NSFileCoordinator` stays: the
+reader is still another process.
 
 Option 1 is rejected because CloudKit mirroring would sync every pause and resume, other devices
 would show sessions that are still running, and SwiftData contexts in two processes would race
@@ -78,7 +82,8 @@ across processes: a widget Stop and an app Pause at the same moment could silent
   adapter gets its own integration tests, including two writers racing.
 - Bad: a session stopped from the widget appears in History only after the app next runs.
   The widget shows the running or just-stopped session from the file, so the user doesn't see
-  the gap.
+  the gap. Amended 2026-10-31 by ADR 0010: the stop runs in the app's process and archives the
+  session at once, so there is no gap.
 - Bad: `NSFileCoordinator` isn't available on Linux, so the adapter lives in a separate
   Persistence package, tested on macOS only (consistent with ADR 0001).
 - To verify early: the M1 spike (#17) confirms that a widget intent can write this file and
