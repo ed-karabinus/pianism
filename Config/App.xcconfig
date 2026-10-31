@@ -13,6 +13,8 @@ GENERATE_INFOPLIST_FILE = YES
 INFOPLIST_FILE = Config/Info.plist
 INFOPLIST_KEY_CFBundleDisplayName = Pianism
 INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.music
+// Asked when Apple's Bluetooth MIDI pairing screen first opens (MIDI-2).
+INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = Pianism uses Bluetooth to connect to your piano, so your practice logs itself as you play.
 INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES
 INFOPLIST_KEY_UILaunchScreen_Generation = YES
 INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight

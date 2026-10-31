@@ -18,7 +18,16 @@ final class PracticeTests: UITestCase {
     func testStartPauseResumeStop() throws {
         let app = launch(at: start, reset: true)
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
-        XCTAssertEqual(text(app, "practice.pianos"), "Connect a piano")  // MIDI-2
+        // MIDI-2: the line opens how to connect a piano, with the tip for a piano that doesn't show up over USB.
+        XCTAssertEqual(app.buttons["practice.pianos"].label, "Connect a piano")
+        tap(app, "practice.pianos")
+        XCTAssertTrue(app.buttons["pianos.pair"].waitForExistence(timeout: 5), "No way to pair a Bluetooth piano")
+        XCTAssertEqual(
+            text(app, "pianos.replug"),
+            "If your piano doesn't show up, unplug the cable at the piano's end and plug it back in.")
+        attachScreenshot(of: app, named: "Connect a piano")
+        tap(app, "pianos.done")
+        XCTAssertTrue(app.buttons["pianos.pair"].waitForNonExistence(timeout: 5), "The sheet didn't close")
 
         tap(app, "practice.start")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
@@ -50,7 +59,7 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true, midiNotes: "0,0,0", midiPiano: "MIDI KEYBOARD")
         XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
-        XCTAssertEqual(text(app, "practice.pianos"), "MIDI KEYBOARD connected")  // MIDI-2
+        XCTAssertEqual(app.buttons["practice.pianos"].label, "MIDI KEYBOARD connected")  // MIDI-2
         attachScreenshot(of: app, named: "A MIDI session, with the piano connected")
 
         tap(app, "practice.stop")
@@ -363,7 +372,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.staticTexts["practice.capped"].waitForExistence(timeout: 90), "It didn't stop at the cap")
     }
 
-    /// HIS-1: a finished session appears under Today with its time, and the day shows its total.
+    /// HIS-1, HIS-2: a finished session appears under Today with its time, and the day and the week show their totals.
     /// History is visited before and after Stop in one launch, so it must refresh when shown again.
     /// Opening the session, and its end's wheels, changes nothing (SES-5). It's stored, so it's still there
     /// after the app is killed and relaunched.
@@ -384,8 +393,13 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(day.waitForExistence(timeout: 5))
         XCTAssertEqual(day.label, "Today")
         XCTAssertEqual(day.value as? String, "25 minutes, 3 seconds")
+        // HIS-2: this week so far is this one session.
+        let week = element(app, "history.week")
+        XCTAssertEqual(week.label, "This week")
+        XCTAssertEqual(week.value as? String, "25 minutes, 3 seconds")
         let session = element(app, "history.session")
         XCTAssertEqual(session.value as? String, "25 minutes, 3 seconds")
+        XCTAssertTrue(session.isHittable, "The week pushed the session off the screen")
         attachScreenshot(of: app, named: "History, one session")
         // Its start and end fall at different seconds, which a time picked on the wheels would change.
         session.tap()

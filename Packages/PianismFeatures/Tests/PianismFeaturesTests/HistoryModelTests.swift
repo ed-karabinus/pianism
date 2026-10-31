@@ -147,6 +147,28 @@ struct HistoryModelTests {
         #expect(model.now == clock.now)
     }
 
+    @Test(
+        "HIS-2: the week counts sessions still waiting to be saved, not one being deleted, and moves along with refresh"
+    )
+    func theWeekCountsWhatTheListShows() throws {
+        let history = InMemorySessionHistory()
+        let saved = try endedSession(startingAfter: 0)
+        let deleted = try endedSession(startingAfter: 1_200)
+        history.save(saved)
+        history.save(deleted)
+        outbox.add(try endedSession(startingAfter: 2_400))
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
+        model.refresh()
+
+        model.delete(deleted)
+
+        #expect(model.week.total == 1_200)
+        clock.advance(by: 7 * 86_400)
+        model.refresh()
+        #expect(model.week.total == 0)
+    }
+
     @Test("SES-5: a saved session opens for editing, and saving replaces it; one still waiting doesn't open (ADR 0007)")
     func savedSessionsOpenForEditing() throws {
         let history = InMemorySessionHistory()

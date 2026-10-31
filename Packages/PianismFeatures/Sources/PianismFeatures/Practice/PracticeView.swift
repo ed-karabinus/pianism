@@ -9,6 +9,7 @@ struct PracticeView: View {
     let edit: (UUID) -> Void
 
     @State private var isPickingTags = false
+    @State private var isConnectingPiano = false
     /// The session as it was when "I stopped earlier" was tapped, while its end is picked, and the end picked so
     /// far (SES-3). Keyed by the whole session, so a pause, a resume or a session stopped another way goes back
     /// to the question rather than keeping an end from before. The date isn't optional: a binding unwrapping one
@@ -18,6 +19,7 @@ struct PracticeView: View {
 
     @ScaledMetric(relativeTo: .largeTitle) private var timeSize = 76
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         // When Practice doesn't fit, as with the end being picked (SES-3), the time shrinks first, then Practice
@@ -26,6 +28,9 @@ struct PracticeView: View {
             content()
             content(compactTime: true)
             ScrollView { content(compactTime: true).frame(maxWidth: .infinity) }
+        }
+        .sheet(isPresented: $isConnectingPiano) {
+            ConnectPianoView(pianos: model.connectedPianos)
         }
         .sheet(isPresented: $isPickingTags) {
             // Tagging stores the session, so its failure shows over the picker, which covers this screen.
@@ -53,12 +58,14 @@ struct PracticeView: View {
             TimelineView(.periodic(from: .now, by: 1)) { _ in
                 let now = model.clock.now
                 let elapsed = model.elapsed(at: now)
+                let pausedAtLastNote = model.isPausedAtLastNote(at: now)
                 VStack(spacing: 24) {
                     Text(status(at: now), bundle: .module)
                         .font(.title3.weight(.medium))
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier(AccessibilityID.practiceStatus)
                     Text(ElapsedTime.display(elapsed))
+                        .contentTransition(.numericText(value: elapsed))
                         .font(
                             .system(
                                 size: timeSize * timeScale * (compactTime ? 0.5 : 1), weight: .light, design: .rounded
@@ -71,6 +78,11 @@ struct PracticeView: View {
                         .accessibilityValue(ElapsedTime.spoken(elapsed))
                         .accessibilityIdentifier(AccessibilityID.practiceElapsed)
                 }
+                // When a silence pauses a MIDI session, the time rolls back to the last note as the status changes, so
+                // the drop reads as deliberate. Keyed to the pause, so each second's change doesn't roll, and only on
+                // the way in; with Reduce Motion the time just changes (#139, decided with Ed, 2026-10-29).
+                .animation(
+                    pausedAtLastNote && !reduceMotion ? .smooth(duration: 0.8) : nil, value: pausedAtLastNote)
             }
             if let session = model.session, model.isAskingStillPracticing {
                 stillPracticingBanner(session)
@@ -97,9 +109,11 @@ struct PracticeView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier(AccessibilityID.practiceWaiting)
             }
-            Group {
-                // An option, not a warning, for the many who time their practice without one (decided with Ed,
-                // 2026-10-28).
+            // An option, not a warning, for the many who time their practice without one (decided with Ed,
+            // 2026-10-28).
+            Button {
+                isConnectingPiano = true
+            } label: {
                 if model.connectedPianos.isEmpty {
                     Text("Connect a piano", bundle: .module)
                 } else {
@@ -107,7 +121,8 @@ struct PracticeView: View {
                 }
             }
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .frame(minHeight: 44)  // a footnote alone is too small to tap
+            .accessibilityHint(Text("Shows tips and Bluetooth pairing", bundle: .module))
             .accessibilityIdentifier(AccessibilityID.practicePianos)
             Spacer()
             if model.session?.state == .running || model.session?.state == .paused {
