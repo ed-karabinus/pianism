@@ -11,7 +11,7 @@ struct HistoryView: View {
 
     var body: some View {
         NavigationStack {
-            content
+            ScrollViewReader { content($0) }
                 .navigationTitle(Text("History", bundle: .module))
                 .toolbar {
                     Button(LocalizedStringResource("Add session", bundle: .module), systemImage: "plus") { model.add() }
@@ -68,7 +68,8 @@ struct HistoryView: View {
         .onAppear { isUndoFocused = true }
     }
 
-    @ViewBuilder private var content: some View {
+    /// The list, or why there's none; `list` scrolls it.
+    @ViewBuilder private func content(_ list: ScrollViewProxy) -> some View {
         if model.days.isEmpty, model.loadFailed {
             ContentUnavailableView(
                 LocalizedStringResource("Couldn't load your history", bundle: .module),
@@ -115,7 +116,8 @@ struct HistoryView: View {
                     .accessibilityIdentifier(AccessibilityID.historyUnshowable)
                 }
                 if model.isNotSyncing { notSyncingNotice }
-                WeekView(model: model)
+                // A tapped day scrolls to its sessions, as the week can push them down.
+                WeekView(model: model) { day in withAnimation { list.scrollTo(day, anchor: .top) } }
                 ForEach(model.days) { day in
                     Section {
                         ForEach(day.sessions) { session in

@@ -421,7 +421,8 @@ final class PracticeTests: UITestCase {
     }
 
     /// HIS-2: History shows this week, and earlier weeks with the arrows or a swipe on the chart, back to the week of
-    /// the first session. A week before last is titled by its dates, with the year when it isn't this one.
+    /// the first session. A week before last is titled by its dates, with the year when it isn't this one. A tap on a
+    /// day scrolls to its sessions.
     @MainActor
     func testEarlierWeeksShowWithTheArrowsOrASwipe() throws {
         let week: TimeInterval = 7 * 24 * 60 * 60
@@ -454,6 +455,17 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(shown.wait(for: \.label, toEqual: "Last week", timeout: 5), "The swipe didn't show a later week")
         element(app, "history.week-chart").swipeRight()
         XCTAssertTrue(shown.wait(for: \.label, toEqual: firstWeek, timeout: 5), "The swipe didn't show an earlier week")
+
+        // A tap on Thursday's bar scrolls to its session, unless it's on screen already, as on an iPad.
+        let session = app.descendants(matching: .any).matching(identifier: "history.session")
+            .matching(NSPredicate(format: "value == '25 minutes'")).firstMatch
+        let wasShown = session.exists && session.isHittable
+        element(app, "history.week-chart").descendants(matching: .any)["Thursday"].tap()
+        if !wasShown {
+            XCTAssertTrue(session.waitForExistence(timeout: 5))
+            XCTAssertTrue(session.wait(for: \.isHittable, toEqual: true, timeout: 5), "The tap didn't show Thursday")
+        }
+        attachScreenshot(of: app, named: "History, a tapped day")
     }
 
     /// TAG-1, TAG-2, HIS-2: a running session is tagged from Practice with a new piece and a built-in skill,

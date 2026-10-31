@@ -170,6 +170,25 @@ struct HistoryModelTests {
         #expect(model.week.total == 0)
     }
 
+    @Test("HIS-2: a tap on a day of the shown week finds it only if it has practice")
+    func aTappedDayWithPractice() throws {
+        let history = InMemorySessionHistory()
+        history.save(try endedSession(startingAfter: 0))
+        history.save(try endedSession(startingAfter: -15 * 86_400))
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
+        model.refresh()
+        let today = try #require(model.days.first).start
+
+        #expect(model.dayWithPractice(at: today + 3_600) == today)
+        #expect(model.dayWithPractice(at: today - 86_400) == nil)
+        model.showWeek(earlier: true)
+        #expect(model.dayWithPractice(at: today) == nil)
+        model.showWeek(earlier: true)
+        let first = try #require(model.days.last).start
+        #expect(model.dayWithPractice(at: first + 60) == first)
+    }
+
     @Test("HIS-2: earlier weeks show back to the week of the first session, gaps included, and on to this week")
     func earlierWeeks() throws {
         let history = InMemorySessionHistory()
