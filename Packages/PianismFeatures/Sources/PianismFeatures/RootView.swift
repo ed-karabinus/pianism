@@ -13,6 +13,8 @@ public struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var tab = AppTab.practice
 
+    private var keepsScreenAwake: Bool { practice.keepsScreenAwake(showingPractice: tab == .practice) }
+
     public init(practice: PracticeModel, tags: TagPickerModel, history: HistoryModel) {
         self.practice = practice
         self.tags = tags
@@ -47,9 +49,27 @@ public struct RootView: View {
                 practice.tick()
             }
         }
+        // Lets the screen lock once Practice has waited 15 minutes for a note with a piano connected (MIDI-R5).
+        .task(id: scenePhase == .active ? practice.readyUntil : nil) {
+            while scenePhase == .active, let until = practice.readyUntil,
+                (try? await Task.sleep(
+                    for: .seconds(until.timeIntervalSince(practice.clock.now)), tolerance: .seconds(1))) != nil
+            {
+                practice.tick()
+            }
+        }
         #if os(iOS)
-            .onChange(of: practice.keepsScreenAwake, initial: true) {
-                UIApplication.shared.isIdleTimerDisabled = practice.keepsScreenAwake
+            .onChange(of: keepsScreenAwake, initial: true) { _, awake in
+                UIApplication.shared.isIdleTimerDisabled = awake
+                // The battery is watched only while the screen is kept on, which is when it matters (NFR-10).
+                UIDevice.current.isBatteryMonitoringEnabled = awake
+                practice.battery = awake ? .current : nil
+            }
+            .task(id: keepsScreenAwake) {
+                guard keepsScreenAwake else { return }
+                async let level: Void = followBattery(UIDevice.batteryLevelDidChangeNotification)
+                async let state: Void = followBattery(UIDevice.batteryStateDidChangeNotification)
+                _ = await (level, state)
             }
         #endif
         // The notification opens Practice, to its question or the end being picked (SES-3).
@@ -63,7 +83,7 @@ public struct RootView: View {
         // is killed without reaching the background. Reaching the background ends a deletion's undo (SES-5).
         .onChange(of: scenePhase) {
             if scenePhase == .active {
-                practice.tick()
+                practice.cameToFront()
                 history.refresh()
             } else {
                 practice.leaveForeground()
@@ -81,6 +101,8 @@ enum AccessibilityID {
     static let practiceLastSession = "practice.last-session"
     static let practiceTooShort = "practice.too-short"
     static let practiceWaiting = "practice.waiting"
+    static let practicePianos = "practice.pianos"
+    static let practiceLowBattery = "practice.low-battery"
     static let practiceStart = "practice.start"
     static let practicePause = "practice.pause"
     static let practiceResume = "practice.resume"
@@ -94,6 +116,9 @@ enum AccessibilityID {
     static let practiceStopAt = "practice.stop-at"
     static let practiceCapped = "practice.capped"
     static let practiceCappedEdit = "practice.capped-edit"
+    static let pianosPair = "pianos.pair"
+    static let pianosDone = "pianos.done"
+    static let pianosReplug = "pianos.replug"
     static let tagsAddPiece = "tags.add-piece"
     static let tagsAddSkill = "tags.add-skill"
     static let tagsDone = "tags.done"
@@ -136,3 +161,22 @@ private enum AppTab {
     let practice = PracticeModel.preview(.ready)
     RootView(practice: practice, tags: .preview(for: practice), history: .preview())
 }
+
+#if os(iOS)
+    extension RootView {
+        private func followBattery(_ name: Notification.Name) async {
+            for await _ in NotificationCenter.default.notifications(named: name) {
+                practice.battery = .current
+            }
+        }
+    }
+
+    extension BatteryReading {
+        /// The battery now, or nil while iOS doesn't know its level.
+        @MainActor static var current: BatteryReading? {
+            let device = UIDevice.current
+            guard device.batteryLevel >= 0 else { return nil }
+            return BatteryReading(level: Double(device.batteryLevel), isPluggedIn: device.batteryState != .unplugged)
+        }
+    }
+#endif

@@ -91,6 +91,24 @@ struct CoreMIDINotesTests {
         #expect(await notes.next() == clock.now)
     }
 
+    @Test("MIDI-2: the pianos heard are named as they come and go")
+    func connectedPianosAreNamed() async throws {
+        let name = "Test piano \(UUID())"
+        let midi = CoreMIDINotes(clock: clock)
+        var pianos = midi.pianos.makeAsyncIterator()
+        var names: [String]?
+
+        do {
+            let piano = try VirtualSource(named: name)
+            repeat { names = await pianos.next() } while names?.contains(name) == false
+            #expect(names?.contains(name) == true)
+            withExtendedLifetime(piano) {}
+        }
+
+        repeat { names = await pianos.next() } while names?.contains(name) == true
+        #expect(names?.contains(name) == false)
+    }
+
     /// Waits up to 10 s for CoreMIDI to announce a change, which it does on the main run loop.
     private func waitUntil(_ condition: () -> Bool) async throws {
         let deadline = ContinuousClock.now + .seconds(10)
@@ -107,9 +125,9 @@ private final class VirtualSource {
     private var client = MIDIClientRef()
     private(set) var endpoint = MIDIEndpointRef()
 
-    init() throws {
-        try #require(MIDIClientCreateWithBlock("Test piano" as CFString, &client, nil) == noErr)
-        try #require(MIDISourceCreateWithProtocol(client, "Test piano" as CFString, ._1_0, &endpoint) == noErr)
+    init(named name: String = "Test piano") throws {
+        try #require(MIDIClientCreateWithBlock(name as CFString, &client, nil) == noErr)
+        try #require(MIDISourceCreateWithProtocol(client, name as CFString, ._1_0, &endpoint) == noErr)
     }
 
     deinit {

@@ -17,6 +17,16 @@ final class PracticeTests: UITestCase {
     func testStartPauseResumeStop() throws {
         let app = launch(at: start, reset: true)
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
+        // MIDI-2: the line opens how to connect a piano, with the tip for a piano that doesn't show up over USB.
+        XCTAssertEqual(app.buttons["practice.pianos"].label, "Connect a piano")
+        tap(app, "practice.pianos")
+        XCTAssertTrue(app.buttons["pianos.pair"].waitForExistence(timeout: 5), "No way to pair a Bluetooth piano")
+        XCTAssertEqual(
+            text(app, "pianos.replug"),
+            "If your piano doesn't show up, unplug the cable at the piano's end and plug it back in.")
+        attachScreenshot(of: app, named: "Connect a piano")
+        tap(app, "pianos.done")
+        XCTAssertTrue(app.buttons["pianos.pair"].waitForNonExistence(timeout: 5), "The sheet didn't close")
 
         tap(app, "practice.start")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
@@ -45,9 +55,11 @@ final class PracticeTests: UITestCase {
     /// The simulator has no piano, so the app plays a chord at launch, on the fixed clock.
     @MainActor
     func testThreeNotesStartASessionAndAShortStopDiscardsIt() throws {
-        let app = launch(at: start, reset: true, midiNotes: "0,0,0")
+        let app = launch(at: start, reset: true, midiNotes: "0,0,0", midiPiano: "MIDI KEYBOARD")
         XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
+        XCTAssertEqual(app.buttons["practice.pianos"].label, "MIDI KEYBOARD connected")  // MIDI-2
+        attachScreenshot(of: app, named: "A MIDI session, with the piano connected")
 
         tap(app, "practice.stop")
 
@@ -1009,7 +1021,7 @@ final class PracticeTests: UITestCase {
         at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, unshowableSessions: Int? = nil,
         undoSeconds: Int? = nil, nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false,
         textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
-        midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil
+        midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -1051,6 +1063,9 @@ final class PracticeTests: UITestCase {
         }
         if let midiNotes {
             app.launchEnvironment["PIANISM_MIDI_NOTES"] = midiNotes
+        }
+        if let midiPiano {
+            app.launchEnvironment["PIANISM_MIDI_PIANO"] = midiPiano
         }
         if let midiPauseSeconds {
             app.launchEnvironment["PIANISM_MIDI_PAUSE_SECONDS"] = String(midiPauseSeconds)

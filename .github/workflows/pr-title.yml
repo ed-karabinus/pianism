@@ -19,7 +19,7 @@ jobs:
         env:
           TITLE: ${{ github.event.pull_request.title }}
         run: |
-          pattern='^(feat\([A-Z]+-[A-Z0-9]+\)|fix(\([A-Z]+-[A-Z0-9]+\))?|build|chore|ci|docs|perf|refactor|revert|test)!?: [A-Z]'
+          pattern='^(feat\([A-Z]+-[A-Z0-9]+\)|(fix|build|chore|ci|docs|perf|refactor|revert|test)(\([A-Z]+-[A-Z0-9]+\))?)!?: [A-Z]'
           if [[ ! "$TITLE" =~ $pattern ]]; then
             echo "::error::\"$TITLE\" should look like \"feat(SYN-1): Store tag IDs as JSON\" or \"ci: Retry the Linux build\" (CLAUDE.md, Workflow)."
             exit 1

@@ -10,8 +10,11 @@ import os
 public final class CoreMIDINotes: Sendable {
     /// Each key struck, dated by the clock when it arrives (ADR 0009).
     public let notes: AsyncStream<Date>
+    /// The names of the pianos it hears, as CoreMIDI gives them, each time they change (MIDI-2).
+    public let pianos: AsyncStream<[String]>
 
     private let continuation: AsyncStream<Date>.Continuation
+    private let pianosContinuation: AsyncStream<[String]>.Continuation
     private let clock: any WallClock
     private let midi = Mutex(Connection())
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "midi")
@@ -20,9 +23,10 @@ public final class CoreMIDINotes: Sendable {
         var client = MIDIClientRef()
         var port = MIDIPortRef()
         var sources = Set<MIDIEndpointRef>()
+        var names: [String] = []
     }
 
-    /// Starts listening. If CoreMIDI won't let it, it logs why and the stream stays empty.
+    /// Starts listening. If CoreMIDI won't let it, it logs why and the streams stay empty.
     ///
     /// CoreMIDI announces pianos coming and going on the run loop of the thread that made the process's first MIDI
     /// client, so this is made on the main thread, whose run loop runs for the app's lifetime.
@@ -30,6 +34,7 @@ public final class CoreMIDINotes: Sendable {
     public init(clock: any WallClock) {
         self.clock = clock
         (notes, continuation) = AsyncStream.makeStream()
+        (pianos, pianosContinuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
         // The blocks are @Sendable, so they aren't taken to run on the main actor: CoreMIDI calls each on a thread of
         // its own, and a block isolated to the main actor would stop the app there.
         var client = MIDIClientRef()
@@ -57,6 +62,7 @@ public final class CoreMIDINotes: Sendable {
 
     deinit {
         continuation.finish()
+        pianosContinuation.finish()
         midi.withLock { _ = MIDIClientDispose($0.client) }
     }
 
@@ -64,8 +70,9 @@ public final class CoreMIDINotes: Sendable {
     // periphery:ignore - the adapter tests wait on it, and Periphery doesn't index package tests
     var sources: Set<MIDIEndpointRef> { midi.withLock { $0.sources } }
 
-    /// Connects every source that's online and lets go of each that went. A piano unplugged and plugged back in may
-    /// keep its endpoint while its old connection hears nothing, so it's connected again.
+    /// Connects every source that's online and lets go of each that went, then says which pianos it hears if that
+    /// changed. A piano unplugged and plugged back in may keep its endpoint while its old connection hears nothing, so
+    /// it's connected again.
     private func connectAll() {
         midi.withLock { midi in
             let online = Set(
@@ -82,7 +89,19 @@ public final class CoreMIDINotes: Sendable {
             {
                 midi.sources.insert(source)
             }
+            let names = Set(midi.sources.map(Self.displayName(of:))).sorted()
+            guard names != midi.names else { return }
+            midi.names = names
+            pianosContinuation.yield(names)
+            logger.info("Pianos heard: \(names, privacy: .public)")
         }
+    }
+
+    /// The name the system shows for a source, such as "MIDI KEYBOARD" for a piano over USB.
+    private static func displayName(of source: MIDIEndpointRef) -> String {
+        var name: Unmanaged<CFString>?
+        MIDIObjectGetStringProperty(source, kMIDIPropertyDisplayName, &name)
+        return name?.takeRetainedValue() as String? ?? ""
     }
 
     /// Yields a date for each Note On with a velocity. It steps through each packet by message size, so a word of a
