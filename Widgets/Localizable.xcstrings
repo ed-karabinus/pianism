@@ -1,0 +1,15 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Practice" : {
+      "comment" : "The widget's name in the widget gallery"
+    },
+    "Today" : {
+
+    },
+    "Today's practice time." : {
+      "comment" : "The widget's description in the widget gallery"
+    }
+  },
+  "version" : "1.0"
+}

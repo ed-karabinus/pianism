@@ -1,6 +1,7 @@
 import Foundation
 import PianismCore
 import PianismFeatures
+import PianismGlance
 import PianismMIDI
 import PianismPersistence
 import PianismSystem
@@ -13,8 +14,6 @@ import SwiftUI
 /// The composition root: the only place that wires concrete adapters into the core.
 @main
 struct PianismApp: App {
-    /// Shared with the widget and Live Activity. Must match `Config/Pianism.entitlements`.
-    static let appGroup = "group.com.edkarabinus.Pianism"
     /// Holds synced history (SYN-1). Must match `Config/Pianism.entitlements`.
     static let iCloudContainer = "iCloud.com.edkarabinus.Pianism"
 
@@ -25,9 +24,11 @@ struct PianismApp: App {
     private let midi: CoreMIDINotes?
 
     init() {
-        guard let store = FileRunningSessionStore(appGroup: Self.appGroup) else {
-            // Without the App Group, the widget and Live Activity couldn't see the session.
-            fatalError("Missing the \(Self.appGroup) App Group entitlement.")
+        guard let store = FileRunningSessionStore(appGroup: AppGroup.identifier),
+            let totals = FilePracticeTotals(appGroup: AppGroup.identifier)
+        else {
+            // Without the App Group, the widget couldn't see the session or today's practice.
+            fatalError("Missing the \(AppGroup.identifier) App Group entitlement.")
         }
         var clock: any WallClock = SystemClock()
         // After this much practice Practice asks "Still practicing?" (SES-3), and after this much a running session
@@ -189,7 +190,9 @@ struct PianismApp: App {
             midi = CoreMIDINotes(clock: clock)
         #endif
         tags = TagPickerModel(practice: practice, library: library)
-        let history = HistoryModel(history: sessions, tags: library, outbox: outbox, running: store, clock: clock)
+        let history = HistoryModel(
+            history: sessions, tags: library, outbox: outbox, running: store, clock: clock,
+            glance: SystemPracticeGlance(file: totals))
         #if DEBUG
             // End-to-end tests lengthen Undo with PIANISM_UNDO_SECONDS. Release builds ignore it.
             if let seconds = ProcessInfo.processInfo.environment["PIANISM_UNDO_SECONDS"].flatMap(Int.init) {

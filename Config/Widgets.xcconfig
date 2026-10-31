@@ -1,0 +1,15 @@
+// The widget extension: the small widget showing today's practice (ADR 0010).
+
+PRODUCT_NAME = PianismWidgets
+PRODUCT_BUNDLE_IDENTIFIER = com.edkarabinus.Pianism.Widgets
+
+// The App Group only: the extension reads two files there and needs nothing else the app is entitled to.
+CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements
+
+GENERATE_INFOPLIST_FILE = YES
+INFOPLIST_FILE = Config/Widgets-Info.plist
+INFOPLIST_KEY_CFBundleDisplayName = Pianism
+SKIP_INSTALL = YES
+APPLICATION_EXTENSION_API_ONLY = YES
+ENABLE_PREVIEWS = YES
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks @executable_path/../../Frameworks

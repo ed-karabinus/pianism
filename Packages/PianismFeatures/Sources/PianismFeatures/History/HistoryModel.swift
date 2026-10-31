@@ -42,17 +42,19 @@ public final class HistoryModel {
     private let tags: any TagLibrary
     private let outbox: any SessionOutbox
     private let running: any RunningSessionStore
+    private let glance: any PracticeGlance
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
 
     public init(
         history: any SessionHistory, tags: any TagLibrary, outbox: any SessionOutbox, running: any RunningSessionStore,
-        clock: any WallClock
+        clock: any WallClock, glance: any PracticeGlance
     ) {
         self.history = history
         self.tags = tags
         self.outbox = outbox
         self.running = running
         self.clock = clock
+        self.glance = glance
         self.now = clock.now
     }
 
@@ -81,6 +83,10 @@ public final class HistoryModel {
         let unsaved = waiting.filter { !savedIDs.contains($0.id) }
         waitingIDs = Set(unsaved.map(\.id))
         days = PracticeDay.group((saved + unsaved).filter { $0.id != pendingDeletion?.id }, in: calendar)
+        // Not while history can't load, so an outage can't zero the widget (GLN-2).
+        if !loadFailed {
+            glance.show(PracticeTotals(from: days, at: now, in: calendar))
+        }
         // A session open for editing keeps its own copy, but shows tags as they are now, such as one renamed on
         // another device (SYN-1).
         editing?.tags.refresh()

@@ -5,6 +5,9 @@ SDKROOT = iphoneos
 IPHONEOS_DEPLOYMENT_TARGET = 26.0
 // 1 = iPhone, 2 = iPad. The iPad on a music stand is a primary use.
 TARGETED_DEVICE_FAMILY = 1,2
+// Here, not per target: App Store validation requires the app and its extension to agree on both.
+MARKETING_VERSION = 0.1.0
+CURRENT_PROJECT_VERSION = 1
 
 SWIFT_VERSION = 6.0
 SWIFT_STRICT_CONCURRENCY = complete
@@ -17,6 +20,8 @@ CLANG_ENABLE_OBJC_ARC = YES
 ENABLE_STRICT_OBJC_MSGSEND = YES
 ENABLE_USER_SCRIPT_SANDBOXING = YES
 DEAD_CODE_STRIPPING = YES
+// As Xcode's templates set it: stripping the signed extension while embedding it only warns, and does nothing.
+COPY_PHASE_STRIP = NO
 LOCALIZATION_PREFERS_STRING_CATALOGS = YES
 
 CODE_SIGN_STYLE = Automatic

@@ -19,7 +19,11 @@ The screenshots come from the end-to-end tests, on the iPhone 17 simulator.
 ```mermaid
 flowchart TB
     app["App target<br/>composition root"] --> features
-    widget["Widget extension<br/>(M3)"] --> features
+    app --> glance
+    widget["Widget extension<br/>today's practice"] --> glance
+    widget --> persistence
+    widget --> core
+    glance["PianismGlance<br/>what the app and the widget both name"]
     features["PianismFeatures<br/>SwiftUI screens + view models"] --> core
     persistence["PianismPersistence<br/>running-session file, SwiftData + CloudKit"] --> core
     midi["PianismMIDI<br/>CoreMIDI, every connected piano"] --> core

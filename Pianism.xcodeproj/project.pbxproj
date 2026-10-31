@@ -12,6 +12,11 @@
 		0A0000000000000000000078 /* PianismCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000077 /* PianismCore */; };
 		0A0000000000000000000081 /* PianismSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000080 /* PianismSystem */; };
 		0A0000000000000000000084 /* PianismMIDI in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000083 /* PianismMIDI */; };
+		0A00000000000000000000AE /* PianismWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0A00000000000000000000A0 /* PianismWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		0A00000000000000000000AF /* PianismCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0A00000000000000000000B0 /* PianismCore */; };
+		0A00000000000000000000B1 /* PianismPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = 0A00000000000000000000B2 /* PianismPersistence */; };
+		0A00000000000000000000C2 /* PianismGlance in Frameworks */ = {isa = PBXBuildFile; productRef = 0A00000000000000000000C1 /* PianismGlance */; };
+		0A00000000000000000000C4 /* PianismGlance in Frameworks */ = {isa = PBXBuildFile; productRef = 0A00000000000000000000C3 /* PianismGlance */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -22,7 +27,28 @@
 			remoteGlobalIDString = 0A0000000000000000000030;
 			remoteInfo = Pianism;
 		};
+		0A00000000000000000000AB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0A0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0A00000000000000000000A4;
+			remoteInfo = PianismWidgets;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		0A00000000000000000000AD /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				0A00000000000000000000AE /* PianismWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		0A0000000000000000000010 /* Pianism.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pianism.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -32,6 +58,8 @@
 		0A0000000000000000000022 /* App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = App.xcconfig; sourceTree = "<group>"; };
 		0A0000000000000000000023 /* UITests.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = UITests.xcconfig; sourceTree = "<group>"; };
 		0A0000000000000000000024 /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
+		0A00000000000000000000A0 /* PianismWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PianismWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		0A00000000000000000000A1 /* Widgets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Widgets.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -43,6 +71,11 @@
 		0A0000000000000000000006 /* AppUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = AppUITests;
+			sourceTree = "<group>";
+		};
+		0A00000000000000000000A2 /* Widgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Widgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -57,6 +90,7 @@
 				0A0000000000000000000078 /* PianismCore in Frameworks */,
 				0A0000000000000000000081 /* PianismSystem in Frameworks */,
 				0A0000000000000000000084 /* PianismMIDI in Frameworks */,
+				0A00000000000000000000C2 /* PianismGlance in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -64,6 +98,16 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0A00000000000000000000A6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0A00000000000000000000AF /* PianismCore in Frameworks */,
+				0A00000000000000000000B1 /* PianismPersistence in Frameworks */,
+				0A00000000000000000000C4 /* PianismGlance in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,6 +119,7 @@
 			children = (
 				0A0000000000000000000005 /* App */,
 				0A0000000000000000000006 /* AppUITests */,
+				0A00000000000000000000A2 /* Widgets */,
 				0A0000000000000000000004 /* Config */,
 				0A0000000000000000000003 /* Products */,
 			);
@@ -85,6 +130,7 @@
 			children = (
 				0A0000000000000000000010 /* Pianism.app */,
 				0A0000000000000000000011 /* PianismUITests.xctest */,
+				0A00000000000000000000A0 /* PianismWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -97,6 +143,7 @@
 				0A0000000000000000000021 /* Release.xcconfig */,
 				0A0000000000000000000022 /* App.xcconfig */,
 				0A0000000000000000000023 /* UITests.xcconfig */,
+				0A00000000000000000000A1 /* Widgets.xcconfig */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -111,10 +158,12 @@
 				0A0000000000000000000040 /* Sources */,
 				0A0000000000000000000041 /* Frameworks */,
 				0A0000000000000000000042 /* Resources */,
+				0A00000000000000000000AD /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				0A00000000000000000000AC /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				0A0000000000000000000005 /* App */,
@@ -126,6 +175,7 @@
 				0A0000000000000000000077 /* PianismCore */,
 				0A0000000000000000000080 /* PianismSystem */,
 				0A0000000000000000000083 /* PianismMIDI */,
+				0A00000000000000000000C1 /* PianismGlance */,
 			);
 			productName = Pianism;
 			productReference = 0A0000000000000000000010 /* Pianism.app */;
@@ -154,6 +204,31 @@
 			productReference = 0A0000000000000000000011 /* PianismUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		0A00000000000000000000A4 /* PianismWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0A00000000000000000000A8 /* Build configuration list for PBXNativeTarget "PianismWidgets" */;
+			buildPhases = (
+				0A00000000000000000000A5 /* Sources */,
+				0A00000000000000000000A6 /* Frameworks */,
+				0A00000000000000000000A7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				0A00000000000000000000A2 /* Widgets */,
+			);
+			name = PianismWidgets;
+			packageProductDependencies = (
+				0A00000000000000000000B0 /* PianismCore */,
+				0A00000000000000000000B2 /* PianismPersistence */,
+				0A00000000000000000000C3 /* PianismGlance */,
+			);
+			productName = PianismWidgets;
+			productReference = 0A00000000000000000000A0 /* PianismWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -170,6 +245,9 @@
 					0A0000000000000000000031 = {
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = 0A0000000000000000000030;
+					};
+					0A00000000000000000000A4 = {
+						CreatedOnToolsVersion = 27.0;
 					};
 				};
 			};
@@ -188,6 +266,7 @@
 				0A0000000000000000000076 /* XCLocalSwiftPackageReference "Packages/PianismCore" */,
 				0A0000000000000000000079 /* XCLocalSwiftPackageReference "Packages/PianismSystem" */,
 				0A0000000000000000000082 /* XCLocalSwiftPackageReference "Packages/PianismMIDI" */,
+				0A00000000000000000000C0 /* XCLocalSwiftPackageReference "Packages/PianismGlance" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0A0000000000000000000003 /* Products */;
@@ -196,6 +275,7 @@
 			targets = (
 				0A0000000000000000000030 /* Pianism */,
 				0A0000000000000000000031 /* PianismUITests */,
+				0A00000000000000000000A4 /* PianismWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -209,6 +289,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		0A0000000000000000000045 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0A00000000000000000000A7 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -232,6 +319,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		0A00000000000000000000A5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -239,6 +333,11 @@
 			isa = PBXTargetDependency;
 			target = 0A0000000000000000000030 /* Pianism */;
 			targetProxy = 0A0000000000000000000050 /* PBXContainerItemProxy */;
+		};
+		0A00000000000000000000AC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0A00000000000000000000A4 /* PianismWidgets */;
+			targetProxy = 0A00000000000000000000AB /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -285,6 +384,20 @@
 			};
 			name = Release;
 		};
+		0A00000000000000000000A9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A00000000000000000000A1 /* Widgets.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		0A00000000000000000000AA /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A00000000000000000000A1 /* Widgets.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -315,6 +428,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		0A00000000000000000000A8 /* Build configuration list for PBXNativeTarget "PianismWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0A00000000000000000000A9 /* Debug */,
+				0A00000000000000000000AA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -338,6 +460,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/PianismMIDI;
 		};
+		0A00000000000000000000C0 /* XCLocalSwiftPackageReference "Packages/PianismGlance" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/PianismGlance;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -360,6 +486,22 @@
 		0A0000000000000000000083 /* PianismMIDI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PianismMIDI;
+		};
+		0A00000000000000000000B0 /* PianismCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PianismCore;
+		};
+		0A00000000000000000000B2 /* PianismPersistence */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PianismPersistence;
+		};
+		0A00000000000000000000C1 /* PianismGlance */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PianismGlance;
+		};
+		0A00000000000000000000C3 /* PianismGlance */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PianismGlance;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

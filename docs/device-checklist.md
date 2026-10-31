@@ -63,6 +63,16 @@ Simulators can't set a battery level, so the warning's rule has a model test (`a
 | --- | --- | --- |
 | B1 | **The warning:** as the battery runs down, unplugged, piano on USB, Practice open, no session: the low-battery line, with a red battery icon, first shows somewhere from 24 % down to 20 % on the status bar's percentage (turn it on in Settings › Battery › Battery Percentage), as iOS reports the level to apps in 5 % steps. Note the percentage it showed at. Plug in: it goes. Unplug: it's back. Unplug the piano's cable too and start a timer session: it goes, as nothing keeps the screen on then. Then, with the line showing in a MIDI session, lock the phone, plug in and unlock: the line goes | Not run yet. |
 
+## Small widget (GLN-2, issue #48)
+
+Run a build on the iPhone, then add the widget: long-press the Home Screen, tap Edit, Add Widget, find "Pianism", pick the small "Practice" one. The widget shows today's practice from two App Group files the app writes; Home Screen automation stalls on the simulator (spike #17), so these stay device checks.
+
+| # | Check | Last result |
+| --- | --- | --- |
+| W1 | **Today's total after a save:** with the widget showing, start a session, stop it after a minute and stay on Practice. The widget reads "1m" within a few seconds, without History being opened. Then open History and compare its today. The feature test "GLN-2: each refresh shows the widget today's finished practice…" covers the number; this checks the save's change notification reloads the Home Screen | Not run yet. |
+| W2 | **After an edit:** in History, edit that session's times to make it 25 minutes, save. The widget reads "25m" within a few seconds. Then delete the session: it reads "0m" at once, while the undo bar still shows, and Undo brings "25m" back | Not run yet. |
+| W3 | **After midnight:** set the iPhone's time to a minute before midnight (Settings > General > Date & Time, automatic off), wait past midnight without opening Pianism. The widget shows "0m" for the new day on its own. Set the time back to automatic; it shows today's total again once Pianism next opens | Not run yet. |
+
 ## iCloud sync (SYN-1, issue #15)
 
 | # | Check | Last result |
