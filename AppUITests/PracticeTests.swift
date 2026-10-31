@@ -658,7 +658,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.alerts.staticTexts["This session was deleted on another device."].exists, "It didn't say why")
         attachScreenshot(of: app, named: "Saving a session deleted on another device")
         app.alerts.buttons.firstMatch.tap()
-        XCTAssertTrue(element(app, "editor.deleted").waitForExistence(timeout: 5), "The editor didn't stay open")
+        XCTAssertTrue(element(app, "editor.refusal").waitForExistence(timeout: 5), "The editor didn't stay open")
         attachScreenshot(of: app, named: "After OK")
         XCTAssertFalse(app.buttons["editor.save"].isEnabled, "Save is still offered")
         XCTAssertEqual(element(app, "editor.note").value as? String, "Coda", "What was typed is gone")

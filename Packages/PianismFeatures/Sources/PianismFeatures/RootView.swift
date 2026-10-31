@@ -146,7 +146,7 @@ enum AccessibilityID {
     static let editorNote = "editor.note"
     static let editorOverlap = "editor.overlap"
     static let editorOverlapOff = "editor.overlap-off"
-    static let editorDeleted = "editor.deleted"
+    static let editorRefusal = "editor.refusal"
     static let editorDelete = "editor.delete"
     static let historyDelete = "history.delete"
     static let historyUndo = "history.undo"

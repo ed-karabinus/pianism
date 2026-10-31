@@ -421,8 +421,9 @@ struct HistoryModelTests {
     @Test("SES-5, ADR 0006: a session a newer version wrote can't be deleted")
     func readOnlyCantBeDeleted() throws {
         let session = try endedSession(startingAfter: 0)
-        let history = InMemorySessionHistory(readOnlyIDs: [session.id])
+        let history = InMemorySessionHistory()
         history.save(session)
+        history.markWrittenByNewerVersion(id: session.id)
         let model = HistoryModel(
             history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock)
         model.refresh()
