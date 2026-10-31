@@ -129,6 +129,15 @@ struct PianismApp: App {
                     try? SwiftDataSessionHistory(store: elsewhere, clock: clock).save(session)
                 }
             }
+            // And another device deletes every session when a test posts this, through a second store as above, then
+            // posts "-done", so the test knows (#107).
+            var deleting: Int32 = 0
+            notify_register_dispatch("com.edkarabinus.Pianism.delete-elsewhere", &deleting, .global()) {
+                @Sendable [clock, historyURL] _ in
+                let elsewhere = SwiftDataSessionHistory(store: HistoryStore(url: historyURL), clock: clock)
+                for session in (try? elsewhere.sessions()) ?? [] { try? elsewhere.delete(id: session.id) }
+                notify_post("com.edkarabinus.Pianism.delete-elsewhere-done")
+            }
         #endif
         let sessions = SwiftDataSessionHistory(store: historyStore, clock: clock)
         let library = SwiftDataTagLibrary(store: historyStore, clock: clock)
@@ -166,6 +175,10 @@ struct PianismApp: App {
                         practice.noteOn(at: launch.date + offset)
                     }
                 }
+            }
+            // They show a piano as connected with PIANISM_MIDI_PIANO, its name, which Release builds ignore too.
+            if let piano = environment["PIANISM_MIDI_PIANO"] {
+                practice.connectedPianos = [piano]
             }
         #endif
         // Hears every piano connected over USB or Bluetooth (MIDI-1); the simulator has none. A scripted end-to-end
@@ -207,6 +220,12 @@ struct PianismApp: App {
                     guard let midi else { return }
                     for await date in midi.notes {
                         practice.noteOn(at: date)
+                    }
+                }
+                .task {
+                    guard let midi else { return }
+                    for await pianos in midi.pianos {
+                        practice.connectedPianos = pianos
                     }
                 }
         }

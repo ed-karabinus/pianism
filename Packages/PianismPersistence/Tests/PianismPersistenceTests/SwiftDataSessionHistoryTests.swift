@@ -371,7 +371,9 @@ final class SwiftDataSessionHistoryTests {
         #expect(try history.sessions() == [edited])
     }
 
-    @Test("ADR 0006: a session a newer version wrote can't be edited, and a deleted or unsaved one is left alone")
+    @Test(
+        "ADR 0006, #107: a session a newer version wrote or one deleted can't be edited, and an unsaved one is left alone"
+    )
     func editRefusesNewerDeletedAndUnsaved() throws {
         let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
         let newer = UUID()
@@ -391,7 +393,7 @@ final class SwiftDataSessionHistoryTests {
             #expect(try !history.canEdit(id: id))
         }
         #expect(throws: RecordFromNewerVersion.self) { try history.edit(fromNewer) }
-        try history.edit(gone)
+        #expect(throws: SessionDeleted.self) { try history.edit(gone) }
         try history.edit(unsaved)
 
         #expect(try history.sessions() == before)

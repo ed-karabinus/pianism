@@ -6,6 +6,12 @@ public struct SessionRefused: Error {
     public init() {}
 }
 
+/// Thrown by ``SessionHistory/edit(_:)`` when the session was deleted, such as on another device since its editor
+/// opened, so the edit isn't lost silently (#107).
+public struct SessionDeleted: Error {
+    public init() {}
+}
+
 /// Where finished sessions are kept (HIS-1, ADR 0004).
 public protocol SessionHistory: Sendable {
     /// Every saved session, in no particular order.
@@ -24,7 +30,8 @@ public protocol SessionHistory: Sendable {
     func canEdit(id: UUID) throws -> Bool
 
     /// Replaces the saved session with `session`'s ID by `session`, as edited (SES-5). Changes nothing
-    /// if it was never saved or was deleted. Throws ``RecordFromNewerVersion`` if a newer version wrote it.
+    /// if it was never saved. Throws ``SessionDeleted`` if it was deleted, and ``RecordFromNewerVersion`` if a newer
+    /// version wrote it.
     func edit(_ session: PracticeSession) throws
 
     /// Deletes the saved session with `id` for good, so it no longer reads and saving it again changes nothing

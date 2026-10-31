@@ -1,4 +1,5 @@
 import XCTest
+import notify
 
 /// End-to-end tests of the Practice screen (SES-1, SES-2, SES-6).
 ///
@@ -17,6 +18,16 @@ final class PracticeTests: UITestCase {
     func testStartPauseResumeStop() throws {
         let app = launch(at: start, reset: true)
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
+        // MIDI-2: the line opens how to connect a piano, with the tip for a piano that doesn't show up over USB.
+        XCTAssertEqual(app.buttons["practice.pianos"].label, "Connect a piano")
+        tap(app, "practice.pianos")
+        XCTAssertTrue(app.buttons["pianos.pair"].waitForExistence(timeout: 5), "No way to pair a Bluetooth piano")
+        XCTAssertEqual(
+            text(app, "pianos.replug"),
+            "If your piano doesn't show up, unplug the cable at the piano's end and plug it back in.")
+        attachScreenshot(of: app, named: "Connect a piano")
+        tap(app, "pianos.done")
+        XCTAssertTrue(app.buttons["pianos.pair"].waitForNonExistence(timeout: 5), "The sheet didn't close")
 
         tap(app, "practice.start")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
@@ -45,9 +56,11 @@ final class PracticeTests: UITestCase {
     /// The simulator has no piano, so the app plays a chord at launch, on the fixed clock.
     @MainActor
     func testThreeNotesStartASessionAndAShortStopDiscardsIt() throws {
-        let app = launch(at: start, reset: true, midiNotes: "0,0,0")
+        let app = launch(at: start, reset: true, midiNotes: "0,0,0", midiPiano: "MIDI KEYBOARD")
         XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
+        XCTAssertEqual(app.buttons["practice.pianos"].label, "MIDI KEYBOARD connected")  // MIDI-2
+        attachScreenshot(of: app, named: "A MIDI session, with the piano connected")
 
         tap(app, "practice.stop")
 
@@ -151,7 +164,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
         XCTAssertEqual(element(app, "history.session").value as? String, "4 hours")
 
-        app.buttons["Practice"].firstMatch.tap()
+        openPractice(app)
         XCTAssertTrue(app.staticTexts["practice.last-session"].waitForExistence(timeout: 5))
         XCTAssertEqual(text(app, "practice.last-session"), "Last session: 4:00:00")
         XCTAssertFalse(app.staticTexts["practice.capped"].exists, "Edit should hide the banner")
@@ -277,7 +290,7 @@ final class PracticeTests: UITestCase {
         openHistory(app)
         // Real time has to pass the nudge, with nothing in History to wait for.
         Thread.sleep(forTimeInterval: 12)
-        app.buttons["Practice"].firstMatch.tap()
+        openPractice(app)
         XCTAssertTrue(
             app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 3), "It didn't ask on Practice")
         // A new banner asks the system again, which says it's allowed.
@@ -373,7 +386,7 @@ final class PracticeTests: UITestCase {
         openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
         attachScreenshot(of: app, named: "History, empty")
-        app.buttons["Practice"].firstMatch.tap()
+        openPractice(app)
         tap(app, "practice.stop")
         openHistory(app)
         let day = element(app, "history.day")
@@ -631,6 +644,38 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "History, with a session from another device")
     }
 
+    /// SYN-1, #107: an edit saved after another device deleted the session says so, and the editor stays open with
+    /// what was typed, so it can be copied.
+    @MainActor
+    func testSavingASessionDeletedElsewhereSaysSo() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        kill(app)
+        app = launch(at: start + 25 * 60)
+        tap(app, "practice.stop")
+        openHistory(app)
+        let session = element(app, "history.session")
+        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        session.tap()
+        let note = element(app, "editor.note")
+        note.tap()
+        note.typeText("Coda")
+
+        let deleted = XCTDarwinNotificationExpectation(
+            notificationName: "com.edkarabinus.Pianism.delete-elsewhere-done")
+        notify_post("com.edkarabinus.Pianism.delete-elsewhere")
+        wait(for: [deleted], timeout: 30)
+        tap(app, "editor.save")
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5), "Saving didn't say it failed")
+        XCTAssertTrue(app.alerts.staticTexts["This session was deleted on another device."].exists, "It didn't say why")
+        attachScreenshot(of: app, named: "Saving a session deleted on another device")
+        app.alerts.buttons.firstMatch.tap()
+        XCTAssertTrue(element(app, "editor.deleted").waitForExistence(timeout: 5), "The editor didn't stay open")
+        attachScreenshot(of: app, named: "After OK")
+        XCTAssertFalse(app.buttons["editor.save"].isEnabled, "Save is still offered")
+        XCTAssertEqual(element(app, "editor.note").value as? String, "Coda", "What was typed is gone")
+    }
+
     /// SES-5, TAG-2: a finished session is tagged, ended 5 minutes earlier and given a note from History,
     /// which shows the tags and the shorter practice time once the edit is saved. It's all stored, so
     /// it's still there after the app is killed and relaunched.
@@ -823,7 +868,7 @@ final class PracticeTests: UITestCase {
         var sessions = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertTrue(sessions.element(boundBy: 1).waitForExistence(timeout: 5), "A kill didn't keep the session")
         deleteBySwipe(app)
-        app.buttons["Practice"].firstMatch.tap()
+        openPractice(app)
         kill(app)
 
         app = launch(at: start + 52 * 60, undoSeconds: 60)
@@ -859,7 +904,7 @@ final class PracticeTests: UITestCase {
             "It said \(notice.label)")
         attachScreenshot(of: app, named: "History, not syncing")
 
-        app.buttons["Practice"].firstMatch.tap()
+        openPractice(app)
         tap(app, "practice.start")
         kill(app)
 
@@ -914,7 +959,7 @@ final class PracticeTests: UITestCase {
         openHistory(app)
         XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
         XCTAssertFalse(element(app, "history.session").exists)
-        app.buttons["Practice"].firstMatch.tap()
+        openPractice(app)
         // Each stopped a minute after it started, in a later launch, so it's long enough to keep (SES-1).
         for minute in 1...2 {
             tap(app, "practice.start")
@@ -1021,7 +1066,7 @@ final class PracticeTests: UITestCase {
         at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, unshowableSessions: Int? = nil,
         undoSeconds: Int? = nil, nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false,
         textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
-        midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil
+        midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -1064,6 +1109,9 @@ final class PracticeTests: UITestCase {
         if let midiNotes {
             app.launchEnvironment["PIANISM_MIDI_NOTES"] = midiNotes
         }
+        if let midiPiano {
+            app.launchEnvironment["PIANISM_MIDI_PIANO"] = midiPiano
+        }
         if let midiPauseSeconds {
             app.launchEnvironment["PIANISM_MIDI_PAUSE_SECONDS"] = String(midiPauseSeconds)
         }
@@ -1094,6 +1142,17 @@ final class PracticeTests: UITestCase {
         tab.tap()
         if !history.waitForExistence(timeout: 3) { tab.tap() }
         XCTAssertTrue(history.waitForExistence(timeout: 5), "History didn't open")
+    }
+
+    /// Opens Practice from History, tapping again if the tab bar swallowed the tap, as iOS 26's sometimes does
+    /// (#80): before a kill, a swallowed tap lost the deletion that leaving History saves.
+    @MainActor
+    private func openPractice(_ app: XCUIApplication) {
+        let tab = app.buttons["Practice"].firstMatch
+        let history = app.navigationBars["History"]
+        tab.tap()
+        if !history.waitForNonExistence(timeout: 3) { tab.tap() }
+        XCTAssertTrue(app.staticTexts["practice.status"].waitForExistence(timeout: 5), "Practice didn't open")
     }
 
     /// Taps Delete session in the confirmation, which iOS nests in a button with the same frame and identifier.

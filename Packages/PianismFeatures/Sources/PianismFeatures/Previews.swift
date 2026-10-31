@@ -9,12 +9,12 @@ private let previewNow = Date(timeIntervalSince1970: 1_798_761_600)
 
 extension PracticeModel {
     enum PreviewState {
-        case ready, running, paused, pastNudge, capped, tooShort, midiPaused
+        case ready, running, paused, pastNudge, capped, tooShort, midiPaused, lowBattery
     }
 
     /// A model over an in-memory store, 25 minutes into a session, 95 minutes into one past the 90-minute nudge,
     /// or 5 hours into one that ends itself at the 4-hour cap, just after a MIDI session too short to save, or with
-    /// a MIDI session paused by a silence, for previews.
+    /// a MIDI session paused by a silence, also on a low battery, for previews.
     static func preview(_ state: PreviewState) -> PracticeModel {
         let minutesEarlier: TimeInterval =
             switch state {
@@ -24,7 +24,7 @@ extension PracticeModel {
             }
         let started = previewNow.addingTimeInterval(-minutesEarlier * 60)
         let store = PreviewStore(
-            state == .ready || state == .midiPaused
+            state == .ready || state == .midiPaused || state == .lowBattery
                 ? nil : PracticeSession(startedAt: started, source: state == .tooShort ? .midi : .timer))
         let clock = PreviewClock(now: previewNow.addingTimeInterval(25 * 60 + 3))
         let model = PracticeModel(
@@ -35,10 +35,12 @@ extension PracticeModel {
         } else if state == .tooShort {
             // Its notes were a chord at its start, so it ends 5 s later with nothing played.
             model.stop()
-        } else if state == .midiPaused {
+        } else if state == .midiPaused || state == .lowBattery {
             // Played from 5 minutes ago to 90 seconds ago, so the silence since paused it at its last note.
             for offset: TimeInterval in [-300, -300, -300, -90] { model.noteOn(at: clock.now + offset) }
             model.tick()
+            model.connectedPianos = ["MIDI KEYBOARD"]
+            if state == .lowBattery { model.battery = BatteryReading(level: 0.15, isPluggedIn: false) }
         }
         return model
     }
@@ -111,15 +113,17 @@ extension HistoryModel {
 
 extension SessionEdit {
     /// A finished session, tagged with a piece and a built-in skill, to edit; read-only as if a newer
-    /// version wrote it, if `readOnly`; overlapping another session, if `overlapping`.
+    /// version wrote it, if `readOnly`; deleted on another device, if `deleted`; overlapping another session, if
+    /// `overlapping`.
     @MainActor
-    static func preview(readOnly: Bool = false, overlapping: Bool = false) -> SessionEdit {
+    static func preview(readOnly: Bool = false, deleted: Bool = false, overlapping: Bool = false) -> SessionEdit {
         var session = PracticeSession(startedAt: previewNow)
         try? session.stop(at: previewNow.addingTimeInterval(25 * 60 + 3))
         try? session.editTags(["ballade", BuiltInSkill.scales.rawValue])
         try? session.editNote("Coda hands separately, slowly. Left hand still rushes the run.")
         let history = InMemorySessionHistory(readOnlyIDs: readOnly ? [session.id] : [])
         history.save(session)
+        if deleted { try? history.delete(id: session.id) }
         var other = PracticeSession(startedAt: previewNow.addingTimeInterval(-10 * 60))
         try? other.stop(at: previewNow.addingTimeInterval(5 * 60))
         return SessionEdit(

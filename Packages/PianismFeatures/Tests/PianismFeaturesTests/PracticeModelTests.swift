@@ -699,26 +699,105 @@ struct PracticeModelTests {
     }
 
     @Test(
-        "MIDI-R5 (its first half): the screen stays on while a MIDI session lasts, pauses included, and not for a timer session"
+        "MIDI-R5: the screen stays on while a MIDI session lasts, pauses included, and while Practice shows with a piano connected; a timer session alone doesn't"
     )
     func aMIDISessionKeepsTheScreenAwakeUntilItEnds() {
         let model = makeModel()
-        #expect(!model.keepsScreenAwake)
+        #expect(!model.keepsScreenAwake(showingPractice: true))
         model.start()
-        #expect(!model.keepsScreenAwake)
+        #expect(!model.keepsScreenAwake(showingPractice: true))
         clock.advance(by: 60)
         model.stop()
 
         for _ in 1...3 { model.noteOn(at: clock.now) }
-        #expect(model.keepsScreenAwake)
+        #expect(model.keepsScreenAwake(showingPractice: true))
+        #expect(model.keepsScreenAwake(showingPractice: false))
         clock.advance(by: 60)
         model.tick()
         #expect(model.session?.state == .paused)
-        #expect(model.keepsScreenAwake)
+        #expect(model.keepsScreenAwake(showingPractice: true))
         clock.advance(by: 600)
         model.tick()
         #expect(model.session == nil)
-        #expect(!model.keepsScreenAwake)
+        #expect(!model.keepsScreenAwake(showingPractice: true))
+
+        model.connectedPianos = ["MIDI KEYBOARD"]
+        #expect(model.keepsScreenAwake(showingPractice: true))
+        #expect(!model.keepsScreenAwake(showingPractice: false))
+    }
+
+    @Test(
+        "MIDI-R5 (decided with Ed, 2026-10-28): with a piano connected and no session, Practice keeps the screen on for 15 minutes after the last note, the piano connecting or the app coming to the front"
+    )
+    func aConnectedPianoKeepsTheScreenOnFifteenMinutes() {
+        let model = makeModel()
+        clock.advance(by: 3_600)
+        model.connectedPianos = ["MIDI KEYBOARD"]
+        clock.advance(by: 600)
+        model.noteOn(at: clock.now)
+        clock.advance(by: 899)
+        model.tick()
+        #expect(model.keepsScreenAwake(showingPractice: true))
+
+        clock.advance(by: 1)
+        model.tick()
+        #expect(model.session == nil)
+        #expect(!model.keepsScreenAwake(showingPractice: true))
+
+        model.cameToFront()
+        #expect(model.keepsScreenAwake(showingPractice: true))
+        clock.advance(by: 900)
+        model.tick()
+        model.connectedPianos = ["MIDI KEYBOARD", "CA59 Bluetooth"]
+        #expect(model.keepsScreenAwake(showingPractice: true))
+
+        // After a MIDI session, from its last note.
+        clock.advance(by: 10)
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        clock.advance(by: 30)
+        model.noteOn(at: clock.now)
+        clock.advance(by: 660)
+        model.tick()
+        #expect(model.session == nil)
+        clock.advance(by: 239)
+        model.tick()
+        #expect(model.keepsScreenAwake(showingPractice: true))
+        clock.advance(by: 1)
+        model.tick()
+        #expect(!model.keepsScreenAwake(showingPractice: true))
+    }
+
+    @Test("NFR-10: while the screen is kept on, Practice warns of a battery at 20 % or less, unless it's plugged in")
+    func aLowBatteryIsShownWhileTheScreenIsKeptOn() {
+        let model = makeModel()
+        let low = BatteryReading(level: 0.19, isPluggedIn: false)
+        model.battery = low
+        #expect(!model.showsLowBattery)
+        model.start()
+        #expect(!model.showsLowBattery)
+        model.stop()
+
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        #expect(model.showsLowBattery)
+        model.battery = BatteryReading(level: 0.19, isPluggedIn: true)
+        #expect(!model.showsLowBattery)
+        // As iOS reports them: Floats, in 5 % steps.
+        model.battery = BatteryReading(level: Double(Float(0.2)), isPluggedIn: false)
+        #expect(model.showsLowBattery)
+        model.battery = BatteryReading(level: Double(Float(0.21)), isPluggedIn: false)
+        #expect(!model.showsLowBattery)
+        model.battery = BatteryReading(level: Double(Float(0.25)), isPluggedIn: false)
+        #expect(!model.showsLowBattery)
+        model.battery = nil
+        #expect(!model.showsLowBattery)
+
+        clock.advance(by: 660)
+        model.tick()
+        #expect(model.session == nil)
+        model.battery = low
+        #expect(!model.showsLowBattery)
+        model.connectedPianos = ["MIDI KEYBOARD"]
+        #expect(model.showsLowBattery)
     }
 
     /// A model over `store`, with the app's nudge and cap.

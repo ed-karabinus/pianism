@@ -51,6 +51,12 @@ build: ## Build the app as it ships (Release) for the simulator; the tests build
 # The app is installed before the simulator boots for the tests: on a fresh iOS 27 simulator, an app
 # installed while the system's notification service is still starting up never gets registered with it,
 # so the system drops every notification the app schedules until the next boot.
+# XCTDisableSpindump: when a launch isn't confirmed in time, which happens now and then on a freshly booted
+# iOS 27 simulator, XCTest spends about 100 s taking a whole-machine spindump before failing the test.
+# The retry passes, and the spindump has never helped, so it's skipped (#136).
+# Without a limit, a launch that never returns ran until the CI job's hour was up (#136), so every test gets
+# 15 minutes: the longest takes under 3, and the warm-up before the first (#153) can take 13. A test that
+# runs out isn't retried, and XCTest's spindump of it, which XCTDisableSpindump doesn't skip, adds 2 minutes.
 test-app: ## Build the app once, then run its end-to-end tests on each simulator in DEVICES (default: iPhone iPad), on iOS IOS (such as 27.0; default: newest)
 	$(NO_WARNINGS) xcodebuild build-for-testing -project $(PROJECT) -scheme $(SCHEME) \
 		-destination "$$(scripts/simulator-destination.sh $(firstword $(DEVICES)) $(IOS))" $(XCODE_FLAGS)
@@ -62,10 +68,12 @@ test-app: ## Build the app once, then run its end-to-end tests on each simulator
 		destination="$$(scripts/simulator-destination.sh $$device $(IOS))" || exit 1; \
 		udid="$${destination##*id=}"; \
 		xcrun simctl bootstatus "$$udid" -b >/dev/null && xcrun simctl install "$$udid" "$$app" && \
-			xcrun simctl shutdown "$$udid" && xcrun simctl bootstatus "$$udid" -b >/dev/null || exit 1; \
+			xcrun simctl shutdown "$$udid" && xcrun simctl bootstatus "$$udid" -b >/dev/null && \
+			xcrun simctl spawn "$$udid" defaults write -g XCTDisableSpindump -bool YES || exit 1; \
 		xcodebuild test-without-building -project $(PROJECT) -scheme $(SCHEME) -destination "$$destination" \
 			-resultBundlePath $(RESULTS)/app-$$device.xcresult -collect-test-diagnostics never \
-			-retry-tests-on-failure -test-iterations 2 $(XCODE_FLAGS); \
+			-retry-tests-on-failure -test-iterations 2 \
+			-test-timeouts-enabled YES -default-test-execution-time-allowance 900 $(XCODE_FLAGS); \
 		status=$$?; \
 		xcrun simctl shutdown "$$udid"; \
 		[ $$status -eq 0 ] || exit 1; \
