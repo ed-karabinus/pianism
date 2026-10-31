@@ -65,7 +65,11 @@ public final class SwiftDataSessionHistory: SessionHistory {
     public func edit(_ session: PracticeSession) throws {
         try saving.withLock { _ in
             let context = ModelContext(try store.container())
-            guard let shown = Self.shown(among: try context.fetch(Self.copies(of: session.id))) else { return }
+            let copies = try context.fetch(Self.copies(of: session.id))
+            guard let shown = Self.shown(among: copies) else {
+                if copies.isEmpty { return }
+                throw SessionDeleted()
+            }
             guard shown.version <= HistoryStore.recordVersion else { throw RecordFromNewerVersion() }
             // Never earlier than before: a copy from a device whose clock runs ahead must not overtake it.
             try write(session, to: shown, modifiedAt: max(clock.now, shown.modifiedAt))

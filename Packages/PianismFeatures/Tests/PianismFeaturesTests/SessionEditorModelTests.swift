@@ -36,8 +36,41 @@ struct SessionEditorModelTests {
         history.save(newer)
         history.save(mine)
 
-        #expect(SessionEditorModel(session: newer, history: history, now: clock.now).isReadOnly)
+        let newerEditor = SessionEditorModel(session: newer, history: history, now: clock.now)
+        #expect(newerEditor.isReadOnly && !newerEditor.isDeleted)
         #expect(!SessionEditorModel(session: mine, history: history, now: clock.now).isReadOnly)
+    }
+
+    @Test(
+        "SYN-1, #107: an edit saved after another device deleted the session says so and stays open, keeping what was typed"
+    )
+    func savingADeletedSessionSaysSo() throws {
+        let history = InMemorySessionHistory()
+        let session = try endedSession()
+        history.save(session)
+        let editor = SessionEditorModel(session: session, history: history, now: clock.now)
+        editor.note = "Coda"
+        try history.delete(id: session.id)
+
+        #expect(!editor.save())
+        #expect(editor.isDeleted && editor.isShowingDeleted && !editor.isShowingError)
+        #expect(editor.note == "Coda")
+    }
+
+    @Test(
+        "SYN-1, #107: a session deleted on another device after History showed it opens read-only, saying it was deleted"
+    )
+    func deletedSessionOpensSayingSo() throws {
+        let history = InMemorySessionHistory()
+        let session = try endedSession()
+        history.save(session)
+        try history.delete(id: session.id)
+
+        let editor = SessionEditorModel(session: session, history: history, now: clock.now)
+        #expect(editor.isReadOnly && editor.isDeleted && !editor.isShowingDeleted)
+        // One being added isn't in history either, but wasn't deleted.
+        #expect(
+            !SessionEditorModel(session: try endedSession(), isNew: true, history: history, now: clock.now).isDeleted)
     }
 
     @Test("SES-5: when history can't be reached, the edit is offered, and saving it says it failed")

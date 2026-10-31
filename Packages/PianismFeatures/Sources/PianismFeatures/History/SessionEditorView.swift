@@ -34,7 +34,10 @@ struct SessionEditorView: View {
                         title: Text("Practice time", bundle: .module),
                         duration: editor.session.elapsed(at: .distantPast))
                 } footer: {
-                    if editor.isReadOnly {
+                    if editor.isDeleted {
+                        Text("This session was deleted on another device.", bundle: .module)
+                            .accessibilityIdentifier(AccessibilityID.editorDeleted)
+                    } else if editor.isReadOnly {
                         Text(
                             "A newer version of Pianism changed this session. Update Pianism to change it.",
                             bundle: .module)
@@ -69,7 +72,7 @@ struct SessionEditorView: View {
                 }
                 .disabled(editor.isReadOnly)
                 .accessibilityIdentifier(AccessibilityID.editorNote)
-                if !editor.isNew, !editor.isReadOnly {
+                if !editor.isNew, !editor.isReadOnly, !editor.isDeleted {
                     Section {
                         Button(LocalizedStringResource("Delete session", bundle: .module), role: .destructive) {
                             isConfirmingDelete = true
@@ -107,7 +110,7 @@ struct SessionEditorView: View {
                     Button(role: .confirm) {
                         if editor.save() { dismiss() }
                     }
-                    .disabled(editor.isReadOnly)
+                    .disabled(editor.isReadOnly || editor.isDeleted)
                     .accessibilityIdentifier(AccessibilityID.editorSave)
                 }
             }
@@ -117,11 +120,20 @@ struct SessionEditorView: View {
         }
         .interactiveDismissDisabled(editor.hasChanges)
         .storageAlert(Text("Couldn't save that change", bundle: .module), isPresented: $editor.isShowingError)
+        .alert(Text("Couldn't save that change", bundle: .module), isPresented: $editor.isShowingDeleted) {
+        } message: {
+            Text("This session was deleted on another device.", bundle: .module)
+        }
     }
 }
 
 #Preview("Tagged") {
     let edit = SessionEdit.preview()
+    SessionEditorView(editor: edit.editor, tags: edit.tags)
+}
+
+#Preview("Deleted on another device") {
+    let edit = SessionEdit.preview(deleted: true)
     SessionEditorView(editor: edit.editor, tags: edit.tags)
 }
 

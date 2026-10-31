@@ -48,7 +48,7 @@ struct InMemorySessionHistoryTests {
     }
 
     @Test(
-        "SES-5, ADR 0006: a deleted session no longer reads, can't be edited or saved again; a newer version's can't be deleted"
+        "SES-5, ADR 0006, #107: a deleted session no longer reads, can't be edited or saved again; a newer version's can't be deleted"
     )
     func deleteIsForGood() throws {
         var mine = PracticeSession(startedAt: clock.now)
@@ -64,7 +64,7 @@ struct InMemorySessionHistoryTests {
         try history.delete(id: UUID())
         #expect(throws: RecordFromNewerVersion.self) { try history.delete(id: newer.id) }
         history.save(mine)
-        try history.edit(mine)
+        #expect(throws: SessionDeleted.self) { try history.edit(mine) }
 
         #expect(history.sessions() == [newer])
         #expect(!history.canEdit(id: mine.id))

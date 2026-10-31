@@ -1,4 +1,5 @@
 import XCTest
+import notify
 
 /// End-to-end tests of the Practice screen (SES-1, SES-2, SES-6).
 ///
@@ -593,6 +594,38 @@ final class PracticeTests: UITestCase {
         XCTAssertFalse(synced.exists, "The session arrived before History opened")
         XCTAssertTrue(synced.waitForExistence(timeout: 60), "The session didn't show")
         attachScreenshot(of: app, named: "History, with a session from another device")
+    }
+
+    /// SYN-1, #107: an edit saved after another device deleted the session says so, and the editor stays open with
+    /// what was typed, so it can be copied.
+    @MainActor
+    func testSavingASessionDeletedElsewhereSaysSo() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        kill(app)
+        app = launch(at: start + 25 * 60)
+        tap(app, "practice.stop")
+        openHistory(app)
+        let session = element(app, "history.session")
+        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        session.tap()
+        let note = element(app, "editor.note")
+        note.tap()
+        note.typeText("Coda")
+
+        let deleted = XCTDarwinNotificationExpectation(
+            notificationName: "com.edkarabinus.Pianism.delete-elsewhere-done")
+        notify_post("com.edkarabinus.Pianism.delete-elsewhere")
+        wait(for: [deleted], timeout: 30)
+        tap(app, "editor.save")
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5), "Saving didn't say it failed")
+        XCTAssertTrue(app.alerts.staticTexts["This session was deleted on another device."].exists, "It didn't say why")
+        attachScreenshot(of: app, named: "Saving a session deleted on another device")
+        app.alerts.buttons.firstMatch.tap()
+        XCTAssertTrue(element(app, "editor.deleted").waitForExistence(timeout: 5), "The editor didn't stay open")
+        attachScreenshot(of: app, named: "After OK")
+        XCTAssertFalse(app.buttons["editor.save"].isEnabled, "Save is still offered")
+        XCTAssertEqual(element(app, "editor.note").value as? String, "Coda", "What was typed is gone")
     }
 
     /// SES-5, TAG-2: a finished session is tagged, ended 5 minutes earlier and given a note from History,
