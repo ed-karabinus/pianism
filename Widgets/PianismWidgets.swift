@@ -3,11 +3,13 @@ import PianismGlance
 import SwiftUI
 import WidgetKit
 
-/// The widget extension (ADR 0010): the small widget showing today's practice.
+/// The widget extension (ADR 0010): the small widget showing today's practice, and the running session as a Live
+/// Activity.
 @main
 struct PianismWidgets: WidgetBundle {
     var body: some Widget {
         PracticeWidget()
+        PracticeLiveActivity()
     }
 }
 

@@ -16,7 +16,16 @@ let package = Package(
     products: [
         .library(name: "PianismGlance", targets: ["PianismGlance"])
     ],
+    dependencies: [
+        .package(path: "../PianismCore")
+    ],
     targets: [
-        .target(name: "PianismGlance", swiftSettings: strict)
+        .target(
+            name: "PianismGlance",
+            dependencies: [
+                .product(name: "PianismCore", package: "PianismCore")
+            ],
+            swiftSettings: strict
+        )
     ]
 )

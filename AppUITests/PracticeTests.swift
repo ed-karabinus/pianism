@@ -184,6 +184,42 @@ final class PracticeTests: UITestCase {
         assertStoppedAtTheCap(app)
     }
 
+    /// GLN-1: the Live Activity's Pause, Resume and Stop run intents in the app's process, which change the session
+    /// through the same model as the taps on Practice, so Practice agrees with the Lock Screen. The activity itself
+    /// can't be reached from XCUITest, and a simulator may not show one at all, so the app performs each intent at
+    /// launch and Practice shows the result; the device checklist (L1–L9) covers the activity and its buttons.
+    @MainActor
+    func testTheLiveActivitysButtonsPauseResumeAndStop() throws {
+        var app = launch(at: start, reset: true, intent: "start")
+        assertStatus(app, becomes: "Practicing", "The intent didn't start a session")
+        kill(app)
+
+        app = launch(at: start + 10 * 60, intent: "pause")
+        assertStatus(app, becomes: "Paused", "The intent didn't pause the session")
+        XCTAssertEqual(elapsed(app), "10 minutes")
+        attachScreenshot(of: app, named: "Paused by the Live Activity's intent")
+        kill(app)
+
+        app = launch(at: start + 15 * 60, intent: "resume")
+        assertStatus(app, becomes: "Practicing", "The intent didn't resume the session")
+        kill(app)
+
+        app = launch(at: start + 25 * 60, intent: "stop")
+        assertStatus(app, becomes: "Ready to practice", "The intent didn't stop the session")
+        XCTAssertEqual(text(app, "practice.last-session"), "Last session: 20:00")
+        attachScreenshot(of: app, named: "Stopped by the Live Activity's intent")
+    }
+
+    /// Asserts the status reads `expected`, waiting up to 5 s for it: an intent performed at launch runs in a task,
+    /// which the first frame can beat.
+    @MainActor
+    private func assertStatus(_ app: XCUIApplication, becomes expected: String, _ message: String) {
+        let status = app.staticTexts["practice.status"]
+        let reads = expectation(for: NSPredicate(format: "label == %@", expected), evaluatedWith: status)
+        _ = XCTWaiter.wait(for: [reads], timeout: 5)
+        XCTAssertEqual(status.label, expected, message)
+    }
+
     /// SES-4: with the app left open, as on a music stand, the session ends itself when it reaches the cap,
     /// shortened to 12 seconds on the real clock, over the 10 s a session needs to be kept (SES-1). Nothing is
     /// checked while it runs, so a slow simulator can't miss it.
@@ -259,12 +295,15 @@ final class PracticeTests: UITestCase {
     /// SES-3: the banner offers the notification, which then asks "Still practicing?" while the app is away, unless
     /// the session is paused. Its "Still practicing" answers for the session, and its "I stopped earlier" opens
     /// Practice to pick the end. A nudge that passes while History shows is asked when Practice is back. The clock
-    /// is real and the nudge 10 s, as the system's notification needs time to pass.
+    /// is real and the nudge 20 s, as the system's notification needs time to pass.
     @MainActor
     func testNotificationAsksStillPracticing() throws {
-        let app = launch(at: nil, reset: true, nudgeSeconds: 10)
+        // 20 s, as the app has to be away before the nudge: a tick at the nudge with the app in front asks there and
+        // cancels the notification. Starting, opening History and swiping home took 10 s on CI's iPhone Duo once the
+        // Live Activity started alongside (2026-11-01), and had under a second to spare on a Mac with 10 s.
+        let app = launch(at: nil, reset: true, nudgeSeconds: 20)
         tap(app, "practice.start")
-        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 20), "It didn't ask")
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 30), "It didn't ask")
         // The system asks once per install, so a retry on the same simulator finds the notification allowed.
         let remind = app.buttons["practice.remind-me"]
         if remind.waitForExistence(timeout: 3) {
@@ -303,7 +342,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.start")
         openHistory(app)
         // Real time has to pass the nudge, with nothing in History to wait for.
-        Thread.sleep(forTimeInterval: 12)
+        Thread.sleep(forTimeInterval: 22)
         openPractice(app)
         XCTAssertTrue(
             app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 3), "It didn't ask on Practice")

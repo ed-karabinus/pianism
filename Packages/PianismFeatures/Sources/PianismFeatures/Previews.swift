@@ -156,7 +156,7 @@ private struct PreviewNudges: PracticeNudges {
 /// Shows nothing: previews have no widget.
 private struct PreviewGlance: PracticeGlance {
     func show(_: PracticeTotals) {}
-    func show(_: PracticeSession?) {}
+    func show(_: PracticeSession?, cappedAt _: TimeInterval?) {}
 }
 
 private struct PreviewClock: WallClock {

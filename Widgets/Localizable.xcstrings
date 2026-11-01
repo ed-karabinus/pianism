@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Pause" : {
+      "comment" : "The Live Activity's button; VoiceOver reads this"
+    },
     "Paused" : {
 
     },
@@ -10,8 +13,14 @@
     "Practicing" : {
 
     },
+    "Resume" : {
+      "comment" : "The Live Activity's button while paused; VoiceOver reads this"
+    },
     "Start" : {
       "comment" : "The widget's button, shown as a play symbol; VoiceOver reads this"
+    },
+    "Stop" : {
+      "comment" : "The Live Activity's button; VoiceOver reads this"
     },
     "Today" : {
 

@@ -87,6 +87,18 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         return at.addingTimeInterval(-elapsed(at: at))
     }
 
+    /// When the session was paused, while it is, so a clock outside the app stops there (GLN-1, GLN-2).
+    public var pausedAt: Date? {
+        state == .paused ? latestEvent : nil
+    }
+
+    /// What a clock showing only practice counts over: from ``practiceOrigin`` to the moment practice reaches `cap`,
+    /// if it keeps running, or without end when there's no cap (GLN-1). A clock that stops at the range's end, like
+    /// the Live Activity's, stops at the cap by itself, with no process running (SES-4).
+    public func practiceClock(cap: TimeInterval?) -> ClosedRange<Date> {
+        practiceOrigin...(cap.map { practiceOrigin + $0 } ?? .distantFuture)
+    }
+
     /// When a running session's practice time reaches `practice`, if it keeps running, or `nil` if it's paused
     /// or ended (SES-4). A moment in the past means it already has. One already past it when it last resumed, as
     /// when Pause came after the cap but before the app noticed, reaches it then, so it can still stop there.

@@ -111,12 +111,15 @@ public final class PracticeModel: TagTarget {
         }
     }
 
-    func pause() {
+    /// Pauses the session (SES-2). Public for the Live Activity's Pause, which the app runs through this model
+    /// (ADR 0010).
+    public func pause() {
         answerIfPastNudge()
         perform { try recorder.pause() }
     }
 
-    func resume() {
+    /// Resumes the session (SES-2). Public for the Live Activity's Resume, as `pause()` is.
+    public func resume() {
         answerIfPastNudge()
         perform { try recorder.resume() }
     }
@@ -154,8 +157,9 @@ public final class PracticeModel: TagTarget {
         await nudges.requestPermission()
     }
 
-    /// Ends the session now, or a MIDI session at the earlier of now and 5 s after its last note (MIDI-R4).
-    func stop() {
+    /// Ends the session now, or a MIDI session at the earlier of now and 5 s after its last note (MIDI-R4). Public for
+    /// the Live Activity's Stop, as `pause()` is.
+    public func stop() {
         if session?.source == .midi {
             apply(detector.handle(.stop(clock.now)))
         } else {
@@ -313,7 +317,7 @@ public final class PracticeModel: TagTarget {
             isShowingStorageError = true
         }
         detector.sync(with: session)
-        glance.show(session)
+        glance.show(session, cappedAt: timerSession == nil ? nil : cap)
         isPastNudge = timerSession?.whenPracticeReaches(nudge).map { $0 <= clock.now } ?? false
         // The notification waits for the running session to reach the nudge. A pause, a stop or a session already
         // past it cancels it, so it comes at most once per session.
@@ -330,6 +334,12 @@ public final class PracticeModel: TagTarget {
     /// that change, so it isn't an error for the user.
     private func perform(_ command: () throws -> Void) {
         do {
+            // A Pause or Stop after the cap, as from the Live Activity while the app sat suspended, ends the session
+            // at the cap instead (SES-4): the refresh alone would keep the time past it, as a paused session is
+            // never capped.
+            if let capped = try recorder.end(atCap: cap) {
+                cappedID = capped.id
+            }
             try command()
         } catch is RecorderError, is SessionError {
             logger.info("Command superseded by another change to the session")

@@ -164,8 +164,17 @@ struct PianismApp: App {
             defaults: .standard, nudge: nudge, cap: cap, midi: midiSettings)
         answering.practice = practice
         self.practice = practice
-        // The widget's Start runs in this process as an intent, which finds the model through this (ADR 0010).
-        let commands = GlanceCommands(start: { practice.start() })
+        // The widget's and the Live Activity's buttons run in this process as intents, which find the model through
+        // this (ADR 0010). Each waits for the Live Activity to take the change before the intent returns.
+        func command(_ run: @escaping @MainActor @Sendable () -> Void) -> GlanceCommands.Command {
+            {
+                run()
+                await glance.settle()
+            }
+        }
+        let commands = GlanceCommands(
+            start: command { practice.start() }, pause: command { practice.pause() },
+            resume: command { practice.resume() }, stop: command { practice.stop() })
         AppDependencyManager.shared.add(dependency: commands)
         #if DEBUG
             // End-to-end tests play notes with PIANISM_MIDI_NOTES, as seconds after launch separated by commas, as the
@@ -186,14 +195,28 @@ struct PianismApp: App {
             if let piano = environment["PIANISM_MIDI_PIANO"] {
                 practice.connectedPianos = [piano]
             }
-            // They start a session as the widget's Start does, with PIANISM_INTENT=start, which performs the intent
-            // here, as the widget can't be tapped on a simulator (ADR 0010). Only the system's perform flow injects
-            // an intent's dependencies (a plain perform() traps on reading one, 2026-10-31), so the hook sets the
-            // commands by hand; that the system finds them is a device check (W4). Release builds ignore it.
-            if environment["PIANISM_INTENT"] == "start" {
-                let intent = StartPracticeIntent()
-                intent.$commands.wrappedValue = commands
-                Task { _ = try? await intent.perform() }
+            // They change the session as the widget's and the Live Activity's buttons do, with
+            // PIANISM_INTENT=start|pause|resume|stop, which performs that intent here, as neither can be tapped on a
+            // simulator (ADR 0010). Only the system's perform flow injects an intent's dependencies (a plain perform()
+            // traps on reading one, 2026-10-31), so the hook sets the commands by hand; that the system finds them is
+            // a device check (W4, L2). Release builds ignore it.
+            if let name = environment["PIANISM_INTENT"] {
+                let start = StartPracticeIntent()
+                let pause = PausePracticeIntent()
+                let resume = ResumePracticeIntent()
+                let stop = StopPracticeIntent()
+                for dependency in [start.$commands, pause.$commands, resume.$commands, stop.$commands] {
+                    dependency.wrappedValue = commands
+                }
+                Task {
+                    switch name {
+                    case "start": _ = try? await start.perform()
+                    case "pause": _ = try? await pause.perform()
+                    case "resume": _ = try? await resume.perform()
+                    case "stop": _ = try? await stop.perform()
+                    default: fatalError("Unknown PIANISM_INTENT: \(name)")
+                    }
+                }
             }
         #endif
         // Hears every piano connected over USB or Bluetooth (MIDI-1); the simulator has none. A scripted end-to-end

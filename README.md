@@ -23,6 +23,7 @@ flowchart TB
     widget["Widget extension<br/>today's practice"] --> glance
     widget --> persistence
     widget --> core
+    glance --> core
     glance["PianismGlance<br/>what the app and the widget both name"]
     features["PianismFeatures<br/>SwiftUI screens + view models"] --> core
     persistence["PianismPersistence<br/>running-session file, SwiftData + CloudKit"] --> core
