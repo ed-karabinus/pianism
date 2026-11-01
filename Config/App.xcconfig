@@ -3,8 +3,6 @@
 PRODUCT_NAME = Pianism
 // Changeable until the app is registered in App Store Connect.
 PRODUCT_BUNDLE_IDENTIFIER = com.edkarabinus.Pianism
-MARKETING_VERSION = 0.1.0
-CURRENT_PROJECT_VERSION = 1
 
 CODE_SIGN_ENTITLEMENTS = Config/Pianism.entitlements
 

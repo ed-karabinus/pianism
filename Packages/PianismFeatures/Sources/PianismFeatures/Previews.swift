@@ -101,7 +101,8 @@ extension HistoryModel {
         let outbox = waiting ? sessions : InMemorySessionHistory()
         let model = HistoryModel(
             history: history, tags: InMemoryTagLibrary(previewTags), outbox: outbox,
-            running: PreviewStore(nil), clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)))
+            running: PreviewStore(nil), clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)),
+            glance: PreviewGlance())
         model.isNotSyncing = notSyncing
         if deleting {
             model.refresh()
@@ -150,6 +151,11 @@ private struct PreviewNudges: PracticeNudges {
     func requestPermission() {}
     func schedule(after _: TimeInterval, sessionID _: UUID) {}
     func cancel() {}
+}
+
+/// Shows nothing: previews have no widget.
+private struct PreviewGlance: PracticeGlance {
+    func show(_: PracticeTotals) {}
 }
 
 private struct PreviewClock: WallClock {

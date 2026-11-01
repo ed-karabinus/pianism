@@ -45,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: swift-format
-        run: swift format lint --strict --recursive --parallel App AppUITests Packages
+        run: swift format lint --strict --recursive --parallel App AppUITests Widgets Packages
 
   # Periphery reads the compiler's index, so it needs an Xcode build (ADR 0005).
   unused:
