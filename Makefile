@@ -45,6 +45,10 @@ build: ## Build the app as it ships (Release) for the simulator; the tests build
 # Builds once, then tests each device without rebuilding. One simulator at a time, each shut down
 # after its tests: two booted simulators overload an 8 GB Mac, and iOS's launch watchdog then kills apps.
 # A failed test runs once more and passes if the retry does: on CI's slow runners, UI tests flake.
+# The test runner Xcode generates gets the audio background mode, which CoreMIDI requires of a process
+# that makes a virtual source (`testAPianoTheSystemAnnouncesIsHeard`; without it, kMIDINotPermitted). No
+# build setting reaches the runner's own Info.plist, and the simulator doesn't check the edited bundle's
+# signature; a rebuild writes the plist afresh, so the add runs after every build and is a no-op on a repeat.
 # A failure skips xcodebuild's diagnostics (sysdiagnoses, log archives): on CI's iOS 27 runners,
 # collecting them ran past the job's time limit and lost the result bundle. UITestCase still attaches
 # each failure's screen and UI tree.
@@ -62,6 +66,8 @@ test-app: ## Build the app once, then run its end-to-end tests on each simulator
 		-destination "$$(scripts/simulator-destination.sh $(firstword $(DEVICES)) $(IOS))" $(XCODE_FLAGS)
 	@app="$$(xcodebuild -showBuildSettings -project $(PROJECT) -scheme $(SCHEME) \
 		-destination 'generic/platform=iOS Simulator' 2>/dev/null | awk '$$1 == "CODESIGNING_FOLDER_PATH" {print $$3}')"; \
+	runner="$$(dirname "$$app")/PianismUITests-Runner.app/Info.plist"; \
+	/usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string audio" "$$runner" >/dev/null 2>&1 || true; \
 	for device in $(DEVICES); do \
 		echo "== End-to-end tests on $$device"; \
 		rm -rf $(RESULTS)/app-$$device.xcresult; \

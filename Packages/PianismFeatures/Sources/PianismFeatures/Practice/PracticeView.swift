@@ -114,14 +114,18 @@ struct PracticeView: View {
             Button {
                 isConnectingPiano = true
             } label: {
-                if model.connectedPianos.isEmpty {
-                    Text("Connect a piano", bundle: .module)
-                } else {
-                    Text("\(model.connectedPianos.formatted(.list(type: .and))) connected", bundle: .module)
+                Group {
+                    if model.connectedPianos.isEmpty {
+                        Text("Connect a piano", bundle: .module)
+                    } else {
+                        Text("\(model.connectedPianos.formatted(.list(type: .and))) connected", bundle: .module)
+                    }
                 }
+                // On the label, not the button: the label is what's tapped and what VoiceOver measures, and a
+                // footnote alone is too small for either (XCTest's audit, 2026-11-01).
+                .frame(minHeight: 44)
             }
             .font(.footnote)
-            .frame(minHeight: 44)  // a footnote alone is too small to tap
             .accessibilityHint(Text("Shows tips and Bluetooth pairing", bundle: .module))
             .accessibilityIdentifier(AccessibilityID.practicePianos)
             if model.showsLowBattery {
