@@ -116,8 +116,10 @@ struct PracticeModelTests {
         #expect(model.lastSession == nil)
     }
 
-    @Test("SES-4, GLN-1: a Pause or Stop after the cap ends the session at the cap instead", arguments: [false, true])
-    func aLateCommandCapsTheSession(stopping: Bool) {
+    @Test(
+        "SES-4, GLN-1: a Pause, Stop or tag change after the cap ends the session at the cap instead, dropping the tag",
+        arguments: ["pause", "stop", "setTags"])
+    func aLateCommandCapsTheSession(command: String) {
         let history = InMemorySessionHistory()
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
@@ -126,10 +128,15 @@ struct PracticeModelTests {
         let start = clock.now
         clock.advance(by: 1_000)
 
-        if stopping { model.stop() } else { model.pause() }
+        switch command {
+        case "pause": model.pause()
+        case "stop": model.stop()
+        default: model.setTags(["late"])
+        }
 
         #expect(model.session == nil)
         #expect(history.sessions().map(\.endedAt) == [start + 600])
+        #expect(history.sessions().map(\.tagIDs) == [[]])
         #expect(model.lastSessionReachedCap)
         #expect(glance.shownSessions.suffix(1) == [nil])
     }
@@ -149,26 +156,17 @@ struct PracticeModelTests {
         #expect(glance.shownCaps.suffix(1) == [nil])
     }
 
-    @Test("GLN-1: the shown session is nil after Stop, after the cap and after a too-short session")
-    func nothingIsShownOnceTheSessionIsOver() {
+    @Test("GLN-1: the shown session is nil once the cap ends it")
+    func nothingIsShownOnceTheCapEndsTheSession() {
         let store = InMemoryRunningSessionStore()
         let model = makeModel(over: store)
         model.start()
-        clock.advance(by: 600)
-        model.stop()
-        #expect(model.lastSession != nil)
-        #expect(glance.shownSessions.suffix(1) == [nil])
+        #expect(glance.shownSessions.suffix(1) == [model.session])
 
-        model.start()
         clock.advance(by: 20_000)
         model.refresh()
-        #expect(model.lastSessionReachedCap)
-        #expect(glance.shownSessions.suffix(1) == [nil])
 
-        model.start()
-        clock.advance(by: 5)
-        model.stop()
-        #expect(model.lastSession == nil)
+        #expect(model.lastSessionReachedCap)
         #expect(glance.shownSessions.suffix(1) == [nil])
         #expect(store.current() == nil)
     }

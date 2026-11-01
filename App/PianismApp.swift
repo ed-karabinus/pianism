@@ -166,23 +166,15 @@ struct PianismApp: App {
         self.practice = practice
         // The widget's and the Live Activity's buttons run in this process as intents, which find the model through
         // this (ADR 0010). Each waits for the Live Activity to take the change before the intent returns.
+        func command(_ run: @escaping @MainActor @Sendable () -> Void) -> GlanceCommands.Command {
+            {
+                run()
+                await glance.settle()
+            }
+        }
         let commands = GlanceCommands(
-            start: {
-                practice.start()
-                await glance.settle()
-            },
-            pause: {
-                practice.pause()
-                await glance.settle()
-            },
-            resume: {
-                practice.resume()
-                await glance.settle()
-            },
-            stop: {
-                practice.stop()
-                await glance.settle()
-            })
+            start: command { practice.start() }, pause: command { practice.pause() },
+            resume: command { practice.resume() }, stop: command { practice.stop() })
         AppDependencyManager.shared.add(dependency: commands)
         #if DEBUG
             // End-to-end tests play notes with PIANISM_MIDI_NOTES, as seconds after launch separated by commas, as the

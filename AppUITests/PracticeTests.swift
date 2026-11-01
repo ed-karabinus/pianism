@@ -191,23 +191,33 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testTheLiveActivitysButtonsPauseResumeAndStop() throws {
         var app = launch(at: start, reset: true, intent: "start")
-        XCTAssertEqual(text(app, "practice.status"), "Practicing")
+        assertStatus(app, becomes: "Practicing", "The intent didn't start a session")
         kill(app)
 
         app = launch(at: start + 10 * 60, intent: "pause")
-        XCTAssertEqual(text(app, "practice.status"), "Paused", "The intent didn't pause the session")
+        assertStatus(app, becomes: "Paused", "The intent didn't pause the session")
         XCTAssertEqual(elapsed(app), "10 minutes")
         attachScreenshot(of: app, named: "Paused by the Live Activity's intent")
         kill(app)
 
         app = launch(at: start + 15 * 60, intent: "resume")
-        XCTAssertEqual(text(app, "practice.status"), "Practicing", "The intent didn't resume the session")
+        assertStatus(app, becomes: "Practicing", "The intent didn't resume the session")
         kill(app)
 
         app = launch(at: start + 25 * 60, intent: "stop")
-        XCTAssertEqual(text(app, "practice.status"), "Ready to practice", "The intent didn't stop the session")
+        assertStatus(app, becomes: "Ready to practice", "The intent didn't stop the session")
         XCTAssertEqual(text(app, "practice.last-session"), "Last session: 20:00")
         attachScreenshot(of: app, named: "Stopped by the Live Activity's intent")
+    }
+
+    /// Asserts the status reads `expected`, waiting up to 5 s for it: an intent performed at launch runs in a task,
+    /// which the first frame can beat.
+    @MainActor
+    private func assertStatus(_ app: XCUIApplication, becomes expected: String, _ message: String) {
+        let status = app.staticTexts["practice.status"]
+        let reads = expectation(for: NSPredicate(format: "label == %@", expected), evaluatedWith: status)
+        _ = XCTWaiter.wait(for: [reads], timeout: 5)
+        XCTAssertEqual(status.label, expected, message)
     }
 
     /// SES-4: with the app left open, as on a music stand, the session ends itself when it reaches the cap,

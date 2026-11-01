@@ -63,18 +63,21 @@ final class SystemPracticeGlance: PracticeGlance {
         await pending.withLock { $0 }?.value
     }
 
-    /// Brings the system's activities in line with the stored session: the session's activity is updated when what
-    /// it shows changed, any other, such as one that outlived a killed app, is ended, and a session with none gets
-    /// one. Starting one can fail, as when Live Activities are off in Settings, and that never fails the session.
+    /// Brings the system's activities in line with the stored session: the session's live activity is updated when
+    /// what it shows changed, any other, such as one that outlived a killed app, is ended, and a session with none
+    /// gets one. Starting one can fail, as when Live Activities are off in Settings, and that never fails the session.
+    /// Nothing automated reaches this (ADR 0010); the device checklist's L rows do.
     private func reconcileActivities(with session: PracticeSession?, cappedAt cap: TimeInterval?) async {
-        let content = session.map { session in
-            let state = PracticeAttributes.ContentState(session: session, cappedAt: cap)
-            // Stale at the cap, when there is one: the clock has stopped, and the session ends when the app next runs.
-            return ActivityContent(state: state, staleDate: cap.map { _ in state.timer.upperBound })
+        let content = session.map {
+            ActivityContent(state: PracticeAttributes.ContentState(session: $0, cappedAt: cap), staleDate: nil)
         }
         var shown = false
         for activity in Activity<PracticeAttributes>.activities {
-            if let session, let content, activity.attributes.sessionID == session.id {
+            // An activity the system ended, as after 8 hours with a session paused overnight, stays listed as ended
+            // for up to 4 hours more, and updating it does nothing, so only a live one counts as showing the
+            // session, and only the first, so a duplicate is ended rather than kept.
+            let live = [.active, .stale].contains(activity.activityState)
+            if let session, let content, activity.attributes.sessionID == session.id, live, !shown {
                 shown = true
                 if activity.content.state != content.state {
                     await activity.update(content)

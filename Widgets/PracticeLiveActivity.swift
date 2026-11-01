@@ -85,17 +85,14 @@ private struct PracticeButtons: View {
                 Button(intent: PausePracticeIntent()) {
                     Label("Pause", systemImage: "pause.fill")
                 }
-                .accessibilityLabel("Pause")
             } else {
                 Button(intent: ResumePracticeIntent()) {
                     Label("Resume", systemImage: "play.fill")
                 }
-                .accessibilityLabel("Resume")
             }
             Button(intent: StopPracticeIntent()) {
                 Label("Stop", systemImage: "stop.fill")
             }
-            .accessibilityLabel("Stop")
         }
         .buttonStyle(.bordered)
         .frame(maxWidth: .infinity)
