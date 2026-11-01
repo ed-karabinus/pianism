@@ -1,3 +1,4 @@
+import ActivityKit
 import PianismCore
 import PianismGlance
 import PianismPersistence
@@ -6,12 +7,16 @@ import WidgetKit
 import os
 
 /// Shows practice outside the app (ADR 0010): writes today's finished practice to the App Group and has the widget
-/// read it, and the stored session, again. Lives in the app, not a package: WidgetKit isn't on macOS, so
-/// `make test-adapters` couldn't run it.
+/// read it, and the stored session, again; and shows the session as a Live Activity, started, updated and ended from
+/// here only. Lives in the app, not a package: WidgetKit and ActivityKit aren't on macOS, so `make test-adapters`
+/// couldn't run it.
 final class SystemPracticeGlance: PracticeGlance {
     private let file: FilePracticeTotals
     private let lastWritten = Mutex<PracticeTotals?>(nil)
     private let lastShown = Mutex<PracticeSession?>(nil)
+    /// The last change sent to ActivityKit. Each waits for the one before, so a pause can't land after the resume
+    /// that followed it.
+    private let pending = Mutex<Task<Void, Never>?>(nil)
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "glance")
 
     init(file: FilePracticeTotals) {
@@ -32,7 +37,15 @@ final class SystemPracticeGlance: PracticeGlance {
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetKind.practice)
     }
 
-    func show(_ session: PracticeSession?) {
+    func show(_ session: PracticeSession?, cappedAt cap: TimeInterval?) {
+        // An ended session still stored, as when neither history nor the outbox could take it, isn't being practiced.
+        let session = session?.state == .ended ? nil : session
+        pending.withLock { previous in
+            previous = Task { [previous] in
+                await previous?.value
+                await self.reconcileActivities(with: session, cappedAt: cap)
+            }
+        }
         // Practice refreshes at every tick and tag change too; the widget reads the session's file itself, so it
         // only needs a reload when what it draws from changed: a new session, or one paused, resumed or gone.
         let changed = lastShown.withLock { last in
@@ -42,5 +55,43 @@ final class SystemPracticeGlance: PracticeGlance {
         }
         guard changed else { return }
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetKind.practice)
+    }
+
+    /// Waits until ActivityKit has taken every change shown so far. An intent run in the background calls this
+    /// before it returns, as the system may suspend the app once it has.
+    func settle() async {
+        await pending.withLock { $0 }?.value
+    }
+
+    /// Brings the system's activities in line with the stored session: the session's activity is updated when what
+    /// it shows changed, any other, such as one that outlived a killed app, is ended, and a session with none gets
+    /// one. Starting one can fail, as when Live Activities are off in Settings, and that never fails the session.
+    private func reconcileActivities(with session: PracticeSession?, cappedAt cap: TimeInterval?) async {
+        let content = session.map { session in
+            let state = PracticeAttributes.ContentState(session: session, cappedAt: cap)
+            // Stale at the cap, when there is one: the clock has stopped, and the session ends when the app next runs.
+            return ActivityContent(state: state, staleDate: cap.map { _ in state.timer.upperBound })
+        }
+        var shown = false
+        for activity in Activity<PracticeAttributes>.activities {
+            if let session, let content, activity.attributes.sessionID == session.id {
+                shown = true
+                if activity.content.state != content.state {
+                    await activity.update(content)
+                }
+            } else {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+        }
+        guard let session, let content, !shown else { return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            logger.info("Live Activities are off, so the session shows in the app and the widget only")
+            return
+        }
+        do {
+            _ = try Activity.request(attributes: PracticeAttributes(sessionID: session.id), content: content)
+        } catch {
+            logger.info("Couldn't start the Live Activity: \(error, privacy: .public)")
+        }
     }
 }

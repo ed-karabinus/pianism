@@ -98,7 +98,7 @@ struct PracticeWidgetView: View {
         if let session = entry.session {
             Text(
                 timerInterval: (session.practiceOrigin - entry.finished)...Date.distantFuture,
-                pauseTime: session.state == .paused ? session.latestEvent : nil, countsDown: false)
+                pauseTime: session.pausedAt, countsDown: false)
         } else {
             let duration = Duration.seconds(Int(entry.finished / 60) * 60)
             Text(duration.formatted(.units(allowed: [.hours, .minutes], width: .narrow)))
@@ -108,8 +108,9 @@ struct PracticeWidgetView: View {
 }
 
 /// A session started 95 minutes ago and paused 70 minutes ago: still paused at 25 minutes, or resumed 60 minutes ago,
-/// so 85 minutes practiced and counting. On the real clock, as a live total counts from it.
-private func previewSession(paused: Bool) -> PracticeSession {
+/// so 85 minutes practiced and counting. On the real clock, as a live total counts from it. The Live Activity's
+/// previews show the same session.
+func previewSession(paused: Bool) -> PracticeSession {
     var session = PracticeSession(startedAt: .now - 95 * 60)
     try? session.pause(at: .now - 70 * 60)
     if !paused { try? session.resume(at: .now - 60 * 60) }

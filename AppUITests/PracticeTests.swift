@@ -184,6 +184,32 @@ final class PracticeTests: UITestCase {
         assertStoppedAtTheCap(app)
     }
 
+    /// GLN-1: the Live Activity's Pause, Resume and Stop run intents in the app's process, which change the session
+    /// through the same model as the taps on Practice, so Practice agrees with the Lock Screen. The activity itself
+    /// can't be reached from XCUITest, and a simulator may not show one at all, so the app performs each intent at
+    /// launch and Practice shows the result; the device checklist (L1–L9) covers the activity and its buttons.
+    @MainActor
+    func testTheLiveActivitysButtonsPauseResumeAndStop() throws {
+        var app = launch(at: start, reset: true, intent: "start")
+        XCTAssertEqual(text(app, "practice.status"), "Practicing")
+        kill(app)
+
+        app = launch(at: start + 10 * 60, intent: "pause")
+        XCTAssertEqual(text(app, "practice.status"), "Paused", "The intent didn't pause the session")
+        XCTAssertEqual(elapsed(app), "10 minutes")
+        attachScreenshot(of: app, named: "Paused by the Live Activity's intent")
+        kill(app)
+
+        app = launch(at: start + 15 * 60, intent: "resume")
+        XCTAssertEqual(text(app, "practice.status"), "Practicing", "The intent didn't resume the session")
+        kill(app)
+
+        app = launch(at: start + 25 * 60, intent: "stop")
+        XCTAssertEqual(text(app, "practice.status"), "Ready to practice", "The intent didn't stop the session")
+        XCTAssertEqual(text(app, "practice.last-session"), "Last session: 20:00")
+        attachScreenshot(of: app, named: "Stopped by the Live Activity's intent")
+    }
+
     /// SES-4: with the app left open, as on a music stand, the session ends itself when it reaches the cap,
     /// shortened to 12 seconds on the real clock, over the 10 s a session needs to be kept (SES-1). Nothing is
     /// checked while it runs, so a slow simulator can't miss it.

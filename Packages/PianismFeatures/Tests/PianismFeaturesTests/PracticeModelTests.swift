@@ -116,6 +116,63 @@ struct PracticeModelTests {
         #expect(model.lastSession == nil)
     }
 
+    @Test("SES-4, GLN-1: a Pause or Stop after the cap ends the session at the cap instead", arguments: [false, true])
+    func aLateCommandCapsTheSession(stopping: Bool) {
+        let history = InMemorySessionHistory()
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
+        model.start()
+        let start = clock.now
+        clock.advance(by: 1_000)
+
+        if stopping { model.stop() } else { model.pause() }
+
+        #expect(model.session == nil)
+        #expect(history.sessions().map(\.endedAt) == [start + 600])
+        #expect(model.lastSessionReachedCap)
+        #expect(glance.shownSessions.suffix(1) == [nil])
+    }
+
+    @Test("GLN-1: a timer session is shown with the cap, so its clock stops there, and a MIDI session with none")
+    func aMIDISessionIsShownWithNoCap() {
+        let model = makeModel()
+        model.start()
+        #expect(glance.shownCaps.suffix(1) == [14_400])
+        clock.advance(by: 600)
+        model.stop()
+
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+
+        #expect(model.session?.source == .midi)
+        #expect(glance.shownSessions.suffix(1) == [model.session])
+        #expect(glance.shownCaps.suffix(1) == [nil])
+    }
+
+    @Test("GLN-1: the shown session is nil after Stop, after the cap and after a too-short session")
+    func nothingIsShownOnceTheSessionIsOver() {
+        let store = InMemoryRunningSessionStore()
+        let model = makeModel(over: store)
+        model.start()
+        clock.advance(by: 600)
+        model.stop()
+        #expect(model.lastSession != nil)
+        #expect(glance.shownSessions.suffix(1) == [nil])
+
+        model.start()
+        clock.advance(by: 20_000)
+        model.refresh()
+        #expect(model.lastSessionReachedCap)
+        #expect(glance.shownSessions.suffix(1) == [nil])
+
+        model.start()
+        clock.advance(by: 5)
+        model.stop()
+        #expect(model.lastSession == nil)
+        #expect(glance.shownSessions.suffix(1) == [nil])
+        #expect(store.current() == nil)
+    }
+
     @Test("SES-3: Practice asks once a running session's practice passes the nudge, and not while it's paused")
     func asksPastTheNudge() {
         let model = PracticeModel(

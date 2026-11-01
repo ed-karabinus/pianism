@@ -265,6 +265,46 @@ struct PracticeSessionTests {
         #expect(session.endedAt.map { $0.timeIntervalSince(session.practiceOrigin) } == 400)
     }
 
+    // MARK: GLN-1: what a clock outside the app counts over
+
+    @Test("GLN-1: a capped session's clock counts from its practice origin to the moment practice reaches the cap")
+    func practiceClockEndsAtTheCap() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start)
+        #expect(session.practiceClock(cap: 600) == start...(start + 600))
+
+        try session.pause(at: start + 100)
+        try session.resume(at: start + 400)
+
+        #expect(session.practiceClock(cap: 600) == (start + 300)...(start + 900))
+        #expect(session.practiceClock(cap: 600).upperBound == session.whenPracticeReaches(600))
+    }
+
+    @Test("GLN-1: a session with no cap, as a MIDI session, has a clock with no end")
+    func practiceClockWithoutACap() {
+        let start = clock.now
+        let session = PracticeSession(startedAt: start, source: .midi)
+
+        #expect(session.practiceClock(cap: nil) == start...Date.distantFuture)
+    }
+
+    @Test("GLN-1: a session is paused at its last pause while it is, and not while running or ended")
+    func pausedAtIsTheOpenPause() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start)
+        #expect(session.pausedAt == nil)
+
+        try session.pause(at: start + 100)
+        #expect(session.pausedAt == start + 100)
+
+        try session.resume(at: start + 200)
+        #expect(session.pausedAt == nil)
+
+        try session.pause(at: start + 300)
+        try session.stop(at: start + 400)
+        #expect(session.pausedAt == nil)
+    }
+
     // MARK: Invalid changes are rejected and leave the session untouched
 
     @Test("Changes in the wrong state are rejected", arguments: InvalidChange.allCases)
