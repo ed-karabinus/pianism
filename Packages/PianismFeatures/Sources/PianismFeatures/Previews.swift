@@ -29,7 +29,7 @@ extension PracticeModel {
         let clock = PreviewClock(now: previewNow.addingTimeInterval(25 * 60 + 3))
         let model = PracticeModel(
             store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
-            nudges: PreviewNudges(), defaults: .standard, nudge: 90 * 60, cap: 4 * 60 * 60)
+            nudges: PreviewNudges(), glance: PreviewGlance(), defaults: .standard, nudge: 90 * 60, cap: 4 * 60 * 60)
         if state == .paused {
             model.pause()
         } else if state == .tooShort {
@@ -156,6 +156,7 @@ private struct PreviewNudges: PracticeNudges {
 /// Shows nothing: previews have no widget.
 private struct PreviewGlance: PracticeGlance {
     func show(_: PracticeTotals) {}
+    func show(_: PracticeSession?) {}
 }
 
 private struct PreviewClock: WallClock {

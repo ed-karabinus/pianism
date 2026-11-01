@@ -152,11 +152,7 @@ final class PracticeTests: UITestCase {
         kill(app)
 
         app = launch(at: start + 9 * 60 * 60)
-        XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
-        XCTAssertEqual(
-            text(app, "practice.capped"),
-            "Pianism stopped your session at 4 hours of practice, in case the timer was left running.")
-        attachScreenshot(of: app, named: "Stopped at the cap")
+        assertStoppedAtTheCap(app)
         tap(app, "practice.capped-edit")
         XCTAssertTrue(app.navigationBars["Edit session"].waitForExistence(timeout: 5), "The editor didn't open")
         attachScreenshot(of: app, named: "Editing the session the cap stopped")
@@ -168,6 +164,24 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.staticTexts["practice.last-session"].waitForExistence(timeout: 5))
         XCTAssertEqual(text(app, "practice.last-session"), "Last session: 4:00:00")
         XCTAssertFalse(app.staticTexts["practice.capped"].exists, "Edit should hide the banner")
+    }
+
+    /// GLN-2: the widget's Start runs an intent in the app's process, which starts the session through the same model
+    /// as a tap, so the nudge asks and the cap stops it as for any session. The widget can't be tapped on a simulator
+    /// (ADR 0010), so the app performs the intent at launch instead; the device checklist covers the tap itself.
+    @MainActor
+    func testTheWidgetsIntentStartsASessionAndTheAppPicksItUp() throws {
+        var app = launch(at: start, reset: true, intent: "start")
+        XCTAssertEqual(text(app, "practice.status"), "Practicing", "The intent didn't start a session")
+        attachScreenshot(of: app, named: "Started by the widget's intent")
+        kill(app)
+
+        app = launch(at: start + 95 * 60)
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 5), "It didn't ask")
+        kill(app)
+
+        app = launch(at: start + 9 * 60 * 60)
+        assertStoppedAtTheCap(app)
     }
 
     /// SES-4: with the app left open, as on a music stand, the session ends itself when it reaches the cap,
@@ -1055,6 +1069,16 @@ final class PracticeTests: UITestCase {
         XCTAssertLessThanOrEqual(max(stop.maxY, other.maxY), bottom, "A button is under the tab bar at \(size)")
     }
 
+    /// Asserts the session ended itself at 4 hours and the banner says so (SES-4).
+    @MainActor
+    private func assertStoppedAtTheCap(_ app: XCUIApplication) {
+        XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
+        XCTAssertEqual(
+            text(app, "practice.capped"),
+            "Pianism stopped your session at 4 hours of practice, in case the timer was left running.")
+        attachScreenshot(of: app, named: "Stopped at the cap")
+    }
+
     @MainActor
     private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
         app.descendants(matching: .any)[identifier].firstMatch
@@ -1066,7 +1090,7 @@ final class PracticeTests: UITestCase {
         at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, unshowableSessions: Int? = nil,
         undoSeconds: Int? = nil, nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false,
         textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
-        midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil
+        midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil, intent: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -1120,6 +1144,9 @@ final class PracticeTests: UITestCase {
         }
         if let midiMinimumSeconds {
             app.launchEnvironment["PIANISM_MIDI_MINIMUM_SECONDS"] = String(midiMinimumSeconds)
+        }
+        if let intent {
+            app.launchEnvironment["PIANISM_INTENT"] = intent
         }
         app.launch()
         XCTAssertTrue(app.staticTexts["practice.status"].waitForExistence(timeout: 10))

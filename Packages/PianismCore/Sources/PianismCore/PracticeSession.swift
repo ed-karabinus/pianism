@@ -79,6 +79,14 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         return end.timeIntervalSince(startedAt) - paused
     }
 
+    /// The moment a clock counting only practice would have started, so `now - practiceOrigin` is the practice so
+    /// far while the session runs, and a clock stopped at the pause, or at the end, reads the same (GLN-2). Later
+    /// than `startedAt` by the pauses so far (SES-2).
+    public var practiceOrigin: Date {
+        let at = endedAt ?? latestEvent
+        return at.addingTimeInterval(-elapsed(at: at))
+    }
+
     /// When a running session's practice time reaches `practice`, if it keeps running, or `nil` if it's paused
     /// or ended (SES-4). A moment in the past means it already has. One already past it when it last resumed, as
     /// when Pause came after the cap but before the app noticed, reaches it then, so it can still stop there.

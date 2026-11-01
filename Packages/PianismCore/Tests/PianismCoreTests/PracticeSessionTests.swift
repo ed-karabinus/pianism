@@ -226,6 +226,45 @@ struct PracticeSessionTests {
         #expect(session.whenPracticeReaches(600) == start + 800)
     }
 
+    // MARK: GLN-2: where a live clock counts from
+
+    @Test("GLN-2: a running session's practice counts from its start, and from later by each pause's length")
+    func practiceOriginIsTheStartUntilAPause() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start)
+        #expect(session.practiceOrigin == start)
+
+        try session.pause(at: start + 100)
+        try session.resume(at: start + 400)
+        clock.advance(by: 1_000)
+
+        #expect(session.practiceOrigin == start + 300)
+        #expect(clock.now.timeIntervalSince(session.practiceOrigin) == session.elapsed(at: clock.now))
+    }
+
+    @Test("GLN-2: a paused session's clock, stopped at the pause, reads the practice so far")
+    func practiceOriginWhilePaused() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start)
+        try session.pause(at: start + 100)
+        try session.resume(at: start + 400)
+        try session.pause(at: start + 1_000)
+
+        #expect(session.latestEvent.timeIntervalSince(session.practiceOrigin) == 700)
+        #expect(session.elapsed(at: start + 5_000) == 700)
+    }
+
+    @Test("GLN-2: an ended session's clock, stopped at its end, reads its practice")
+    func practiceOriginOnceEnded() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start)
+        try session.pause(at: start + 100)
+        try session.resume(at: start + 200)
+        try session.stop(at: start + 500)
+
+        #expect(session.endedAt.map { $0.timeIntervalSince(session.practiceOrigin) } == 400)
+    }
+
     // MARK: Invalid changes are rejected and leave the session untouched
 
     @Test("Changes in the wrong state are rejected", arguments: InvalidChange.allCases)

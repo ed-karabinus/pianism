@@ -1,13 +1,22 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Paused" : {
+
+    },
     "Practice" : {
       "comment" : "The widget's name in the widget gallery"
+    },
+    "Practicing" : {
+
+    },
+    "Start" : {
+      "comment" : "The widget's button, shown as a play symbol; VoiceOver reads this"
     },
     "Today" : {
 
     },
-    "Today's practice time." : {
+    "Today's practice time, and a button to start." : {
       "comment" : "The widget's description in the widget gallery"
     }
   },
