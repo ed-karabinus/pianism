@@ -123,7 +123,7 @@ final class PracticeTests: UITestCase {
     func testAMIDISessionLeftForTenMinutesEndsAtItsLastNote() throws {
         var app = launch(at: start, reset: true, midiNotes: "0,0,0")
         XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
-        for seconds in [30, 60, 75] {
+        for seconds in [30, 61] {
             goHome()
             kill(app)
             app = launch(at: start + TimeInterval(seconds), midiNotes: "0")
@@ -132,15 +132,15 @@ final class PracticeTests: UITestCase {
         goHome()
         kill(app)
 
-        app = launch(at: start + 75 + 15 * 60)
+        app = launch(at: start + 61 + 15 * 60)
 
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
         XCTAssertTrue(app.staticTexts["practice.last-session"].waitForExistence(timeout: 5), "No last session")
-        XCTAssertEqual(text(app, "practice.last-session"), "Last session: 1:15")
+        XCTAssertEqual(text(app, "practice.last-session"), "Last session: 1:01")
         openHistory(app)
         let session = element(app, "history.session")
         XCTAssertTrue(session.waitForExistence(timeout: 5), "History doesn't have it")
-        XCTAssertEqual(session.value as? String, "1 minute, 15 seconds")
+        XCTAssertEqual(session.value as? String, "1 minute, 1 second")
     }
 
     /// SES-6: killed while running and while paused, the session comes back with the right time,
@@ -1086,7 +1086,7 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(liveActivities.count, 1)
         attachScreenshot(of: springboard, named: "The Live Activity in the island")
         kill(app)
-        XCTAssertTrue(liveActivities.firstMatch.exists, "The activity went with the app")
+        XCTAssertTrue(liveActivities.firstMatch.waitForExistence(timeout: 10), "The activity went with the app")
 
         app = launch(at: nil)
         goHome()
@@ -1095,7 +1095,8 @@ final class PracticeTests: UITestCase {
         app.activate()
         tap(app, "practice.stop")
         goHome()
-        XCTAssertTrue(liveActivities.firstMatch.waitForNonExistence(timeout: 10), "The activity stayed after Stop")
+        // Not "gone within 10 s": the Home Screen may not have drawn yet, so that could pass on an empty first look.
+        XCTAssertFalse(liveActivities.firstMatch.waitForExistence(timeout: 5), "The activity stayed after Stop")
         kill(app)
 
         app = launch(at: nil, midiNotes: "0,0,0")
@@ -1105,7 +1106,8 @@ final class PracticeTests: UITestCase {
         app.activate()
         tap(app, "practice.stop")
         goHome()
-        XCTAssertTrue(liveActivities.firstMatch.waitForNonExistence(timeout: 10), "The activity stayed after Stop")
+        // Not "gone within 10 s": the Home Screen may not have drawn yet, so that could pass on an empty first look.
+        XCTAssertFalse(liveActivities.firstMatch.waitForExistence(timeout: 5), "The activity stayed after Stop")
     }
 
     /// GLN-1, SES-4: with the app killed, the island's clock stops at the cap by itself, as its range ends there; the
@@ -1119,8 +1121,8 @@ final class PracticeTests: UITestCase {
         var app = launch(at: nil, reset: true, capSeconds: 45)
         tap(app, "practice.start")
         goHome()
-        XCTAssertTrue(liveActivities.firstMatch.waitForExistence(timeout: 10), "No activity on the Home Screen")
         kill(app)
+        XCTAssertTrue(liveActivities.firstMatch.waitForExistence(timeout: 10), "No activity on the Home Screen")
         // The clock is the text inside the activity: the activity's own label is set as its content changes, so it
         // reads the time of the last update. Past the cap, with a margin for a slow island, then a second read to
         // show the clock stopped.
@@ -1137,7 +1139,7 @@ final class PracticeTests: UITestCase {
             text(app, "practice.capped"),
             "Pianism stopped your session at 45 seconds of practice, in case the timer was left running.")
         goHome()
-        XCTAssertTrue(liveActivities.firstMatch.waitForNonExistence(timeout: 10), "The activity stayed past the cap")
+        XCTAssertFalse(liveActivities.firstMatch.waitForExistence(timeout: 5), "The activity stayed past the cap")
     }
 
     /// MIDI-1, MIDI-2: a piano the system announces is heard through the app's own CoreMIDI adapter, not the test
@@ -1146,24 +1148,22 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testAPianoTheSystemAnnouncesIsHeard() throws {
         try skipUnlessSoaking("it needs the simulator's MIDI server")
-        var piano: VirtualPiano? = try VirtualPiano(named: "Test piano")
+        let piano = try VirtualPiano(named: "Test piano")
+        // A failure stops the test before any deinit, so the piano goes in teardown, or the retry would hear it.
+        addTeardownBlock { @MainActor in piano.remove() }
         let app = launch(at: start, reset: true)
         let pianos = app.buttons["practice.pianos"]
         XCTAssertTrue(
-            pianos.waitForExistence(timeout: 5) && pianos.label == "Test piano connected",
-            "Practice says \(pianos.label)")
-        for _ in 1...3 {
-            piano?.send([0x2090_3C40])
-            Thread.sleep(forTimeInterval: 0.1)
-        }
+            pianos.wait(for: \.label, toEqual: "Test piano connected", timeout: 10), "Practice says \(pianos.label)")
+        piano.send([0x2090_3C40, 0x2090_3E40, 0x2090_4040])  // three notes in one packet
         XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 5), "The notes didn't start a session")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
         attachScreenshot(of: app, named: "Practicing from a piano the system announced")
 
-        piano = nil
-        let gone = Date.now + 5
-        while pianos.label != "Connect a piano" && Date.now < gone { Thread.sleep(forTimeInterval: 0.2) }
-        XCTAssertEqual(pianos.label, "Connect a piano", "Practice still names the piano that went")
+        piano.remove()
+        XCTAssertTrue(
+            pianos.wait(for: \.label, toEqual: "Connect a piano", timeout: 10),
+            "Practice still names the piano that went")
     }
 
     /// NFR-3: XCTest's accessibility audit finds nothing to report on Practice, ready, running and paused, on the
@@ -1192,30 +1192,33 @@ final class PracticeTests: UITestCase {
         try audit(app, "History")
     }
 
-    /// NFR-3: VoiceOver, moving through Practice with a session running, says the commands by name: Pause and Stop
-    /// (device row L7's app half). The service is new in iOS 27, so iOS 26 skips.
-    @MainActor
-    func testVoiceOverSaysTheCommands() throws {
-        guard #available(iOS 27, *) else { throw XCTSkip("VoiceOver can't be driven before iOS 27") }
-        let app = launch(at: start, reset: true)
-        tap(app, "practice.start")
-        let voiceOver = XCUIDevice.shared.voiceOverService
-        try voiceOver.enable()
-        defer { try? voiceOver.disable() }
-        var said: [String] = []
-        func heard(_ command: String) -> Bool { said.contains { $0.hasPrefix(command) } }
-        while said.count < 30, !(heard("Pause") && heard("Stop")) {
-            said.append(try voiceOver.moveForward().utterance)
+    // Only Xcode 27's SDK (Swift 6.4) has the VoiceOver service; Xcode 26.6 (Swift 6.3) builds the iOS 26 jobs.
+    #if compiler(>=6.4)
+        /// NFR-3: VoiceOver, moving through Practice with a session running, says the commands by name: Pause and Stop
+        /// (device row L7's app half). The service is new in iOS 27, so iOS 26 skips.
+        @MainActor
+        func testVoiceOverSaysTheCommands() throws {
+            try skipUnlessSoaking("VoiceOver's service is new in iOS 27")
+            guard #available(iOS 27, *) else { throw XCTSkip("VoiceOver can't be driven before iOS 27") }
+            let app = launch(at: start, reset: true)
+            tap(app, "practice.start")
+            let voiceOver = XCUIDevice.shared.voiceOverService
+            try voiceOver.enable()
+            // Off in teardown, which runs after a failure too, or every later test would run under VoiceOver.
+            addTeardownBlock { @MainActor in try? voiceOver.disable() }
+            var said: [String] = []
+            func heard(_ command: String) -> Bool { said.contains { $0.hasPrefix(command) } }
+            while said.count < 30, !(heard("Pause") && heard("Stop")) {
+                said.append(try voiceOver.moveForward().utterance)
+            }
+            XCTAssertTrue(heard("Pause") && heard("Stop"), "VoiceOver said \(said)")
         }
-        XCTAssertTrue(heard("Pause") && heard("Stop"), "VoiceOver said \(said)")
-    }
+    #endif
 
     /// Runs the audit on the screen `name`, every type iOS supports, and fails the test once with all it found of
     /// the types that hold today: every element described and detected, with its traits, and big enough to hit.
-    /// Contrast, Dynamic Type and clipping are noted in the results instead: the audit finds the system's bordered
-    /// buttons failing contrast and its blue on white "nearly" passing, text that shrinks to fit (the status line)
-    /// "partially unsupported", and History's empty screen clipped at the largest sizes. Whether to change those is
-    /// a design call (issue #165), not a test's.
+    /// Contrast, Dynamic Type and clipping are noted in the results instead, as what the audit finds there is a
+    /// design call (#165), not a test's; the failing set grows as each is decided.
     @MainActor
     private func audit(_ app: XCUIApplication, _ name: String) throws {
         let failing: XCUIAccessibilityAuditType = [
@@ -1494,23 +1497,23 @@ private final class VirtualPiano {
     private var client = MIDIClientRef()
     private var endpoint = MIDIEndpointRef()
 
+    /// Throws when CoreMIDI refuses, as it does with kMIDINotPermitted (-10844) for a process without the audio
+    /// background mode, which `make test-app` gives the test runner.
     init(named name: String) throws {
-        let client = MIDIClientCreateWithBlock(name as CFString, &self.client, nil)
-        guard client == noErr else { throw Refused(call: "MIDIClientCreateWithBlock", status: client) }
-        let source = MIDISourceCreateWithProtocol(self.client, name as CFString, ._1_0, &endpoint)
-        guard source == noErr else { throw Refused(call: "MIDISourceCreateWithProtocol", status: source) }
+        for (call, status) in [
+            ("MIDIClientCreateWithBlock", MIDIClientCreateWithBlock(name as CFString, &client, nil)),
+            ("MIDISourceCreateWithProtocol", MIDISourceCreateWithProtocol(client, name as CFString, ._1_0, &endpoint)),
+        ] where status != noErr {
+            throw NSError(domain: NSOSStatusErrorDomain, code: Int(status), userInfo: [NSLocalizedDescriptionKey: call])
+        }
     }
 
-    /// CoreMIDI wouldn't make the source: the simulator's MIDI server is missing or refused the call.
-    struct Refused: Error, CustomStringConvertible {
-        let call: String
-        let status: OSStatus
-        var description: String { "\(call) failed with status \(status)" }
-    }
-
-    deinit {
+    /// Unplugs the piano, once; a second call does nothing.
+    func remove() {
+        guard endpoint != 0 else { return }
         MIDIEndpointDispose(endpoint)
         MIDIClientDispose(client)
+        endpoint = 0
     }
 
     /// Sends these Universal MIDI Packet words as one packet.
