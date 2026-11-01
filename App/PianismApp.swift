@@ -1,3 +1,4 @@
+import AppIntents
 import Foundation
 import PianismCore
 import PianismFeatures
@@ -157,11 +158,15 @@ struct PianismApp: App {
         #else
             let nudges = notifications
         #endif
+        let glance = SystemPracticeGlance(file: totals)
         let practice = PracticeModel(
-            store: store, history: sessions, outbox: outbox, clock: clock, nudges: nudges, defaults: .standard,
-            nudge: nudge, cap: cap, midi: midiSettings)
+            store: store, history: sessions, outbox: outbox, clock: clock, nudges: nudges, glance: glance,
+            defaults: .standard, nudge: nudge, cap: cap, midi: midiSettings)
         answering.practice = practice
         self.practice = practice
+        // The widget's Start runs in this process as an intent, which finds the model through this (ADR 0010).
+        let commands = GlanceCommands(start: { practice.start() })
+        AppDependencyManager.shared.add(dependency: commands)
         #if DEBUG
             // End-to-end tests play notes with PIANISM_MIDI_NOTES, as seconds after launch separated by commas, as the
             // simulator has no piano. Each is dated the clock's launch time plus its offset, so on a fixed clock
@@ -181,6 +186,15 @@ struct PianismApp: App {
             if let piano = environment["PIANISM_MIDI_PIANO"] {
                 practice.connectedPianos = [piano]
             }
+            // They start a session as the widget's Start does, with PIANISM_INTENT=start, which performs the intent
+            // here, as the widget can't be tapped on a simulator (ADR 0010). Only the system's perform flow injects
+            // an intent's dependencies (a plain perform() traps on reading one, 2026-10-31), so the hook sets the
+            // commands by hand; that the system finds them is a device check (W4). Release builds ignore it.
+            if environment["PIANISM_INTENT"] == "start" {
+                let intent = StartPracticeIntent()
+                intent.$commands.wrappedValue = commands
+                Task { _ = try? await intent.perform() }
+            }
         #endif
         // Hears every piano connected over USB or Bluetooth (MIDI-1); the simulator has none. A scripted end-to-end
         // test hears only its script.
@@ -191,8 +205,7 @@ struct PianismApp: App {
         #endif
         tags = TagPickerModel(practice: practice, library: library)
         let history = HistoryModel(
-            history: sessions, tags: library, outbox: outbox, running: store, clock: clock,
-            glance: SystemPracticeGlance(file: totals))
+            history: sessions, tags: library, outbox: outbox, running: store, clock: clock, glance: glance)
         #if DEBUG
             // End-to-end tests lengthen Undo with PIANISM_UNDO_SECONDS. Release builds ignore it.
             if let seconds = ProcessInfo.processInfo.environment["PIANISM_UNDO_SECONDS"].flatMap(Int.init) {
@@ -233,6 +246,11 @@ struct PianismApp: App {
                 }
         }
     }
+}
+
+/// Where the app's intents live, for Xcode's metadata processor (ADR 0010).
+struct PianismAppIntents: AppIntentsPackage {
+    static var includedPackages: [any AppIntentsPackage.Type] { [PianismGlanceIntents.self] }
 }
 
 /// The model the notification's answers reach, which is made after the notification.

@@ -55,6 +55,7 @@ public final class PracticeModel: TagTarget {
     private let history: any SessionHistory
     private let outbox: any SessionOutbox
     private let nudges: any PracticeNudges
+    private let glance: any PracticeGlance
     private let defaults: UserDefaults
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "practice")
     /// The key under which the banner's `@AppStorage` kept the answer, so answers given before stay given.
@@ -62,8 +63,8 @@ public final class PracticeModel: TagTarget {
 
     public init(
         store: any RunningSessionStore, history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock,
-        nudges: any PracticeNudges, defaults: UserDefaults, nudge: TimeInterval, cap: TimeInterval,
-        midi: MIDISettings = .init()
+        nudges: any PracticeNudges, glance: any PracticeGlance, defaults: UserDefaults, nudge: TimeInterval,
+        cap: TimeInterval, midi: MIDISettings = .init()
     ) {
         self.recorder = SessionRecorder(store: store, clock: clock, midi: midi)
         self.detector = MIDIDetector(midi)
@@ -71,6 +72,7 @@ public final class PracticeModel: TagTarget {
         self.outbox = outbox
         self.clock = clock
         self.nudges = nudges
+        self.glance = glance
         self.defaults = defaults
         self.nudge = nudge
         self.cap = cap
@@ -80,7 +82,8 @@ public final class PracticeModel: TagTarget {
         cameToFront()
     }
 
-    func start() {
+    /// Starts a session (SES-1). Public for the widget's Start, which the app runs through this model (ADR 0010).
+    public func start() {
         perform {
             try recorder.start()
             lastSession = nil
@@ -310,6 +313,7 @@ public final class PracticeModel: TagTarget {
             isShowingStorageError = true
         }
         detector.sync(with: session)
+        glance.show(session)
         isPastNudge = timerSession?.whenPracticeReaches(nudge).map { $0 <= clock.now } ?? false
         // The notification waits for the running session to reach the nudge. A pause, a stop or a session already
         // past it cancels it, so it comes at most once per session.

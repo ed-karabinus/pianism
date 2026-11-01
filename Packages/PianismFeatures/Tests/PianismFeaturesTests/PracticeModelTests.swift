@@ -10,6 +10,7 @@ import Testing
 struct PracticeModelTests {
     let clock = ManualClock()
     let nudges = InMemoryNudges()
+    let glance = InMemoryPracticeGlance()
     /// Stands in for the device's settings, emptied before each test.
     let defaults = UserDefaults(suiteName: "PracticeModelTests") ?? .standard
 
@@ -22,7 +23,7 @@ struct PracticeModelTests {
         let history = FlakyHistory()
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
-            nudges: nudges, defaults: defaults, nudge: 90 * 60, cap: 4 * 60 * 60)
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 4 * 60 * 60)
         model.start()
         clock.advance(by: 600)
 
@@ -45,13 +46,13 @@ struct PracticeModelTests {
         let start = clock.now
         PracticeModel(
             store: store, history: history, outbox: InMemorySessionHistory(), clock: clock, nudges: nudges,
-            defaults: defaults, nudge: 90 * 60, cap: 600
+            glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600
         ).start()
         clock.advance(by: 36_000)
 
         let reopened = PracticeModel(
             store: store, history: history, outbox: InMemorySessionHistory(), clock: clock, nudges: nudges,
-            defaults: defaults, nudge: 90 * 60, cap: 600)
+            glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
 
         #expect(reopened.session == nil)
         #expect(history.sessions().map(\.endedAt) == [start + 600])
@@ -67,7 +68,7 @@ struct PracticeModelTests {
     func capBannerOnlyForCappedSessions() {
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudges: nudges, defaults: defaults, nudge: 90 * 60, cap: 600)
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
         #expect(!model.lastSessionReachedCap)
         model.start()
         clock.advance(by: 599)
@@ -87,11 +88,39 @@ struct PracticeModelTests {
         #expect(model.lastSession?.endedAt == clock.now)
     }
 
+    @Test("GLN-2: each refresh shows the stored session outside the app, and nothing once it's archived or dropped")
+    func showsTheStoredSessionOutsideTheApp() throws {
+        let model = makeModel()
+        #expect(glance.shownSessions == [nil])
+
+        model.start()
+        let session = try #require(model.session)
+        #expect(glance.shownSessions.suffix(1) == [session])
+
+        clock.advance(by: 600)
+        model.pause()
+        let paused = try #require(model.session)
+        #expect(paused.state == .paused && paused.id == session.id)
+        #expect(glance.shownSessions.suffix(1) == [paused])
+
+        model.resume()
+        clock.advance(by: 600)
+        model.stop()
+        #expect(glance.shownSessions.suffix(1) == [nil])
+        #expect(model.lastSession?.id == session.id)
+
+        // Under 10 s of practice is dropped rather than archived (SES-1); it's gone from the widget all the same.
+        model.start()
+        model.stop()
+        #expect(glance.shownSessions.suffix(1) == [nil])
+        #expect(model.lastSession == nil)
+    }
+
     @Test("SES-3: Practice asks once a running session's practice passes the nudge, and not while it's paused")
     func asksPastTheNudge() {
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudges: nudges, defaults: defaults, nudge: 600, cap: 3_600)
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 600, cap: 3_600)
         model.start()
         clock.advance(by: 599)
         model.refresh()
@@ -114,7 +143,7 @@ struct PracticeModelTests {
         let start = clock.now
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudges: nudges, defaults: defaults, nudge: 600, cap: 3_600)
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 600, cap: 3_600)
         #expect(model.nextRefresh == nil)
         model.start()
 
@@ -137,7 +166,7 @@ struct PracticeModelTests {
         clock.advance(by: startSeconds)
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudges: nudges, defaults: defaults, nudge: 600, cap: 14_400)
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 600, cap: 14_400)
         model.start()
         clock.advance(by: 5_400)  // 90 minutes in
 
@@ -154,7 +183,7 @@ struct PracticeModelTests {
         clock.advance(by: 50)
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudges: nudges, defaults: defaults, nudge: 600, cap: 3_600)
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 600, cap: 3_600)
         model.start()
         clock.advance(by: 1_950)  // now is 33:20 past the minute
 
@@ -168,7 +197,7 @@ struct PracticeModelTests {
         let start = clock.now
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudges: nudges, defaults: defaults, nudge: 600, cap: 3_600)
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 600, cap: 3_600)
         model.start()
         clock.advance(by: 100)
         model.pause()
@@ -187,7 +216,7 @@ struct PracticeModelTests {
         let start = clock.now
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudges: nudges, defaults: defaults, nudge: 600, cap: 3_600)
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 600, cap: 3_600)
         model.start()
         clock.advance(by: 100)
         model.pause()
@@ -364,7 +393,7 @@ struct PracticeModelTests {
         let history = InMemorySessionHistory()
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
-            nudges: nudges, defaults: defaults, nudge: 5_400, cap: 14_400)
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 5_400, cap: 14_400)
         for _ in 1...3 { model.noteOn(at: clock.now) }
         clock.advance(by: 59)
         model.noteOn(at: clock.now)
@@ -400,7 +429,7 @@ struct PracticeModelTests {
     func aFailedArchiveIsntTooShort() {
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: FlakyHistory(), outbox: UnavailableOutbox(), clock: clock,
-            nudges: nudges, defaults: defaults, nudge: 5_400, cap: 14_400)
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 5_400, cap: 14_400)
         for _ in 1...3 { model.noteOn(at: clock.now) }
         // Notes under a minute apart, so no silence pauses the session first.
         for _ in 1...3 {
@@ -572,7 +601,7 @@ struct PracticeModelTests {
     func theShownTimeCountsUntilTheTickWouldStopIt() {
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudges: nudges, defaults: defaults, nudge: 90 * 60, cap: 600)
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
         for _ in 1...3 { model.noteOn(at: clock.now) }
         clock.advance(by: 18)
         model.noteOn(at: clock.now)
@@ -642,7 +671,7 @@ struct PracticeModelTests {
         let history = InMemorySessionHistory()
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
-            nudges: nudges, defaults: defaults, nudge: 5_400, cap: 14_400)
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 5_400, cap: 14_400)
         for _ in 1...3 { model.noteOn(at: clock.now) }
         clock.advance(by: 600)
 
@@ -662,7 +691,7 @@ struct PracticeModelTests {
         let history = InMemorySessionHistory()
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
-            nudges: nudges, defaults: defaults, nudge: 5_400, cap: 14_400, midi: settings)
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 5_400, cap: 14_400, midi: settings)
         let start = clock.now
         for _ in 1...3 { model.noteOn(at: start) }
         clock.advance(by: 3)
@@ -680,7 +709,7 @@ struct PracticeModelTests {
     func aMIDISessionIsntAskedStillPracticingOrCapped() {
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
-            clock: clock, nudges: nudges, defaults: defaults, nudge: 100, cap: 200)
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 100, cap: 200)
         let start = clock.now
         for _ in 1...3 { model.noteOn(at: start) }
         #expect(nudges.pending == nil)
@@ -804,6 +833,6 @@ struct PracticeModelTests {
     private func makeModel(over store: InMemoryRunningSessionStore = InMemoryRunningSessionStore()) -> PracticeModel {
         PracticeModel(
             store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
-            nudges: nudges, defaults: defaults, nudge: 5_400, cap: 14_400)
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 5_400, cap: 14_400)
     }
 }

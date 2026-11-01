@@ -1,3 +1,5 @@
+import AppIntents
+import PianismGlance
 import SwiftUI
 import WidgetKit
 
@@ -7,4 +9,9 @@ struct PianismWidgets: WidgetBundle {
     var body: some Widget {
         PracticeWidget()
     }
+}
+
+/// Where the widget's intents live, for Xcode's metadata processor (ADR 0010).
+struct PianismWidgetsIntents: AppIntentsPackage {
+    static var includedPackages: [any AppIntentsPackage.Type] { [PianismGlanceIntents.self] }
 }

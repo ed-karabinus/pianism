@@ -18,14 +18,9 @@ public struct PracticeTotals: Sendable, Hashable, Codable {
         self.init(day: calendar.startOfDay(for: now), finished: today?.total ?? 0)
     }
 
-    /// Today's practice at `now`: the finished total if it's for `now`'s day, plus `running`'s practice so far if
-    /// it started on that day and hasn't ended. A session counts toward the day it started (ADR 0004), and one that
-    /// has ended is counted once history has it.
-    public func today(at now: Date, running: PracticeSession?, in calendar: Calendar) -> TimeInterval {
-        var total = calendar.isDate(day, inSameDayAs: now) ? finished : 0
-        if let running, running.state != .ended, calendar.isDate(running.startedAt, inSameDayAs: now) {
-            total += running.elapsed(at: now)
-        }
-        return total
+    /// Today's finished practice at `now`: the finished total if it's for `now`'s day, else 0, as past midnight a new
+    /// day starts with none. The widget counts the running session on top itself.
+    public func today(at now: Date, in calendar: Calendar) -> TimeInterval {
+        calendar.isDate(day, inSameDayAs: now) ? finished : 0
     }
 }
