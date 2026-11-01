@@ -295,12 +295,15 @@ final class PracticeTests: UITestCase {
     /// SES-3: the banner offers the notification, which then asks "Still practicing?" while the app is away, unless
     /// the session is paused. Its "Still practicing" answers for the session, and its "I stopped earlier" opens
     /// Practice to pick the end. A nudge that passes while History shows is asked when Practice is back. The clock
-    /// is real and the nudge 10 s, as the system's notification needs time to pass.
+    /// is real and the nudge 20 s, as the system's notification needs time to pass.
     @MainActor
     func testNotificationAsksStillPracticing() throws {
-        let app = launch(at: nil, reset: true, nudgeSeconds: 10)
+        // 20 s, as the app has to be away before the nudge: a tick at the nudge with the app in front asks there and
+        // cancels the notification. Starting, opening History and swiping home took 10 s on CI's iPhone Duo once the
+        // Live Activity started alongside (2026-11-01), and had under a second to spare on a Mac with 10 s.
+        let app = launch(at: nil, reset: true, nudgeSeconds: 20)
         tap(app, "practice.start")
-        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 20), "It didn't ask")
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 30), "It didn't ask")
         // The system asks once per install, so a retry on the same simulator finds the notification allowed.
         let remind = app.buttons["practice.remind-me"]
         if remind.waitForExistence(timeout: 3) {
@@ -339,7 +342,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.start")
         openHistory(app)
         // Real time has to pass the nudge, with nothing in History to wait for.
-        Thread.sleep(forTimeInterval: 12)
+        Thread.sleep(forTimeInterval: 22)
         openPractice(app)
         XCTAssertTrue(
             app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 3), "It didn't ask on Practice")
