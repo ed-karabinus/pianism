@@ -1172,7 +1172,7 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testTheScreensPassTheAccessibilityAudit() throws {
         continueAfterFailure = true  // every screen reports, not just the first with an issue
-        executionTimeAllowance = 5 * 60  // about 80 s on CI; one iPad (iOS 26) audit hung until the 15-min default
+        executionTimeAllowance = 5 * 60  // about 80 s on CI; a stalled audit then costs 5 min, not the default 15
         var app = launch(at: start, reset: true)
         try audit(app, "Practice, ready")
         tap(app, "practice.pianos")
@@ -1222,13 +1222,21 @@ final class PracticeTests: UITestCase {
     /// design call (#165), not a test's; the failing set grows as each is decided. An iPad shows a `sheet` in the
     /// middle of the screen with the dimmed screen still readable around it; that text is out of VoiceOver's reach
     /// while the sheet is up, by design, and the audit reports it as inaccessible, so a sheet's audit notes element
-    /// detection there instead.
+    /// detection there instead, and on iOS 26 it is skipped, with the reason in the results.
     @MainActor
     private func audit(_ app: XCUIApplication, _ name: String, sheet: Bool = false) throws {
         var failing: XCUIAccessibilityAuditType = [
             .hitRegion, .sufficientElementDescription, .elementDetection, .trait,
         ]
-        if sheet, UIDevice.current.userInterfaceIdiom == .pad { failing.remove(.elementDetection) }
+        if sheet, UIDevice.current.userInterfaceIdiom == .pad {
+            if #unavailable(iOS 27) {
+                // The sheet's audit stalled in two of five CI runs on an iPad with iOS 26 (#136), never on another
+                // simulator, and a stalled test isn't retried, so there the other three simulators cover the sheet.
+                XCTContext.runActivity(named: "\(name), not audited: the audit stalls on an iPad with iOS 26") { _ in }
+                return
+            }
+            failing.remove(.elementDetection)
+        }
         var found: [String] = []
         var noted: [String] = []
         try XCTContext.runActivity(named: "Audit \(name)") { _ in
