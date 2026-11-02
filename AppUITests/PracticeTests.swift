@@ -1172,11 +1172,12 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testTheScreensPassTheAccessibilityAudit() throws {
         continueAfterFailure = true  // every screen reports, not just the first with an issue
+        executionTimeAllowance = 5 * 60  // about 80 s on CI; one iPad (iOS 26) audit hung until the 15-min default
         var app = launch(at: start, reset: true)
         try audit(app, "Practice, ready")
         tap(app, "practice.pianos")
         XCTAssertTrue(app.buttons["pianos.done"].waitForExistence(timeout: 5), "The piano sheet didn't open")
-        try audit(app, "Connect a piano")
+        try audit(app, "Connect a piano", sheet: true)
         tap(app, "pianos.done")
         tap(app, "practice.start")
         try audit(app, "Practice, running")
@@ -1218,12 +1219,16 @@ final class PracticeTests: UITestCase {
     /// Runs the audit on the screen `name`, every type iOS supports, and fails the test once with all it found of
     /// the types that hold today: every element described and detected, with its traits, and big enough to hit.
     /// Contrast, Dynamic Type and clipping are noted in the results instead, as what the audit finds there is a
-    /// design call (#165), not a test's; the failing set grows as each is decided.
+    /// design call (#165), not a test's; the failing set grows as each is decided. An iPad shows a `sheet` in the
+    /// middle of the screen with the dimmed screen still readable around it; that text is out of VoiceOver's reach
+    /// while the sheet is up, by design, and the audit reports it as inaccessible, so a sheet's audit notes element
+    /// detection there instead.
     @MainActor
-    private func audit(_ app: XCUIApplication, _ name: String) throws {
-        let failing: XCUIAccessibilityAuditType = [
+    private func audit(_ app: XCUIApplication, _ name: String, sheet: Bool = false) throws {
+        var failing: XCUIAccessibilityAuditType = [
             .hitRegion, .sufficientElementDescription, .elementDetection, .trait,
         ]
+        if sheet, UIDevice.current.userInterfaceIdiom == .pad { failing.remove(.elementDetection) }
         var found: [String] = []
         var noted: [String] = []
         try XCTContext.runActivity(named: "Audit \(name)") { _ in
@@ -1268,18 +1273,22 @@ final class PracticeTests: UITestCase {
     /// Goes to the Home Screen and checks the app left the screen. iPhone swipes up from the bottom edge, as a person
     /// does: on the iPhone Duo simulator (iOS 27.1), XCUIDevice's Home button press takes 5 s and leaves the app in
     /// front. iPad presses Home, as a swipe there can open the app switcher instead. The swipe assumes a Face ID
-    /// iPhone: on one with a Home button, it would open Control Center.
+    /// iPhone: on one with a Home button, it would open Control Center. A busy CI simulator can take over 5 s to
+    /// report the app in the background, or miss the gesture, so it waits 10 s and tries once more.
     @MainActor
     private func goHome() {
         let app = XCUIApplication()
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            XCUIDevice.shared.press(.home)
-        } else {
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.999)).press(
-                forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)),
-                withVelocity: .fast, thenHoldForDuration: 0)
+        for _ in 0..<2 {
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                XCUIDevice.shared.press(.home)
+            } else {
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.999)).press(
+                    forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)),
+                    withVelocity: .fast, thenHoldForDuration: 0)
+            }
+            if app.wait(for: .runningBackground, timeout: 10) { return }
         }
-        XCTAssertTrue(app.wait(for: .runningBackground, timeout: 5), "The app stayed in front after leaving it")
+        XCTFail("The app stayed in front after leaving it twice")
     }
 
     /// Leaves the app and answers its "Still practicing?" notification with the button titled `answer`. The system
