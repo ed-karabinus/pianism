@@ -1167,8 +1167,8 @@ final class PracticeTests: UITestCase {
     }
 
     /// NFR-3: XCTest's accessibility audit finds nothing to report on Practice, ready, running and paused, on the
-    /// piano sheet, and on History with a session: every element described, text that scales and isn't clipped,
-    /// targets big enough to hit.
+    /// piano sheet, and on History with a session: every element described and detected, with its traits, targets
+    /// big enough to hit, and, on Practice, enough contrast.
     @MainActor
     func testTheScreensPassTheAccessibilityAudit() throws {
         continueAfterFailure = true  // every screen reports, not just the first with an issue
@@ -1177,7 +1177,7 @@ final class PracticeTests: UITestCase {
         try audit(app, "Practice, ready")
         tap(app, "practice.pianos")
         XCTAssertTrue(app.buttons["pianos.done"].waitForExistence(timeout: 5), "The piano sheet didn't open")
-        try audit(app, "Connect a piano", sheet: true)
+        try audit(app, "Connect a piano", sheet: true, contrast: false)
         tap(app, "pianos.done")
         tap(app, "practice.start")
         try audit(app, "Practice, running")
@@ -1190,7 +1190,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         openHistory(app)
         XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5), "No session in History")
-        try audit(app, "History")
+        try audit(app, "History", contrast: false)
     }
 
     // Only Xcode 27's SDK (Swift 6.4) has the VoiceOver service; Xcode 26.6 (Swift 6.3) builds the iOS 26 jobs.
@@ -1217,17 +1217,20 @@ final class PracticeTests: UITestCase {
     #endif
 
     /// Runs the audit on the screen `name`, every type iOS supports, and fails the test once with all it found of
-    /// the types that hold today: every element described and detected, with its traits, and big enough to hit.
-    /// Contrast, Dynamic Type and clipping are noted in the results instead, as what the audit finds there is a
-    /// design call (#165), not a test's; the failing set grows as each is decided. An iPad shows a `sheet` in the
+    /// the types that hold today: every element described and detected, with its traits, big enough to hit, and,
+    /// unless `contrast` is false, with enough contrast (#165). The piano sheet and History pass `contrast: false`,
+    /// as the system's gray secondary text there nearly fails it. Dynamic Type and clipping are noted in the
+    /// results instead, as what the audit finds there is a design call (#165). An iPad shows a `sheet` in the
     /// middle of the screen with the dimmed screen still readable around it; that text is out of VoiceOver's reach
     /// while the sheet is up, by design, and the audit reports it as inaccessible, so a sheet's audit notes element
     /// detection there instead, and on iOS 26 it is skipped, with the reason in the results.
     @MainActor
-    private func audit(_ app: XCUIApplication, _ name: String, sheet: Bool = false) throws {
+    private func audit(_ app: XCUIApplication, _ name: String, sheet: Bool = false, contrast: Bool = true) throws {
+        attachScreenshot(of: app, named: name)
         var failing: XCUIAccessibilityAuditType = [
             .hitRegion, .sufficientElementDescription, .elementDetection, .trait,
         ]
+        if contrast { failing.insert(.contrast) }
         if sheet, UIDevice.current.userInterfaceIdiom == .pad {
             if #unavailable(iOS 27) {
                 // The sheet's audit stalled in two of five CI runs on an iPad with iOS 26 (#136), never on another
