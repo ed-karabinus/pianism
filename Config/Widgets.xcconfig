@@ -12,4 +12,7 @@ INFOPLIST_KEY_CFBundleDisplayName = Pianism
 SKIP_INSTALL = YES
 APPLICATION_EXTENSION_API_ONLY = YES
 ENABLE_PREVIEWS = YES
+// The app's darker blue, so the widget's Start and the Live Activity's buttons match it and pass the contrast
+// check the app's own buttons are held to (#165).
+ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor
 LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks @executable_path/../../Frameworks

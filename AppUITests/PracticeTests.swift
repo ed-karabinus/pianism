@@ -1167,8 +1167,8 @@ final class PracticeTests: UITestCase {
     }
 
     /// NFR-3: XCTest's accessibility audit finds nothing to report on Practice, ready, running and paused, on the
-    /// piano sheet, and on History with a session: every element described, text that scales and isn't clipped,
-    /// targets big enough to hit.
+    /// piano sheet, and on History with a session: every element described and detected, with its traits, targets
+    /// big enough to hit, and, on Practice, enough contrast.
     @MainActor
     func testTheScreensPassTheAccessibilityAudit() throws {
         continueAfterFailure = true  // every screen reports, not just the first with an issue
@@ -1218,9 +1218,9 @@ final class PracticeTests: UITestCase {
 
     /// Runs the audit on the screen `name`, every type iOS supports, and fails the test once with all it found of
     /// the types that hold today: every element described and detected, with its traits, big enough to hit, and,
-    /// where the app's own colors draw the screen, with enough `contrast` (#165). The piano sheet and History pass
-    /// `contrast: false`, as the system's gray secondary text there nearly fails it. Dynamic Type and clipping are
-    /// noted in the results instead, as what the audit finds there is a design call (#165). An iPad shows a `sheet` in the
+    /// unless `contrast` is false, with enough contrast (#165). The piano sheet and History pass `contrast: false`,
+    /// as the system's gray secondary text there nearly fails it. Dynamic Type and clipping are noted in the
+    /// results instead, as what the audit finds there is a design call (#165). An iPad shows a `sheet` in the
     /// middle of the screen with the dimmed screen still readable around it; that text is out of VoiceOver's reach
     /// while the sheet is up, by design, and the audit reports it as inaccessible, so a sheet's audit notes element
     /// detection there instead, and on iOS 26 it is skipped, with the reason in the results.
