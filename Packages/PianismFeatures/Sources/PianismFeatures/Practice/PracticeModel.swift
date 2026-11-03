@@ -47,10 +47,22 @@ public final class PracticeModel: TagTarget {
     @ObservationIgnored private var detector: MIDIDetector
 
     let clock: any WallClock
-    /// The practice time after which Practice asks "Still practicing?" (SES-3).
-    let nudge: TimeInterval
-    /// The practice time that ends a running session by itself, in case it was left running (SES-4).
-    let cap: TimeInterval
+    /// The practice time after which Practice asks "Still practicing?" (SES-3). Set in Settings, where a change
+    /// applies to the running session at once (SET-1).
+    var nudge: TimeInterval {
+        didSet {
+            defaults.set(nudge, forKey: SettingsKey.stillPracticingAfter)
+            refresh()
+        }
+    }
+    /// The practice time that ends a running session by itself, in case it was left running (SES-4). Set in
+    /// Settings, but not while a timer session runs (SET-1).
+    var cap: TimeInterval {
+        didSet {
+            defaults.set(cap, forKey: SettingsKey.automaticCapAfter)
+            refresh()
+        }
+    }
     private let recorder: SessionRecorder
     private let history: any SessionHistory
     private let outbox: any SessionOutbox
@@ -235,8 +247,15 @@ public final class PracticeModel: TagTarget {
     /// Practice ticks then (SES-3, SES-4, MIDI-1).
     var nextRefresh: Date? {
         let now = clock.now
-        return ([nudge, cap].map { timerSession?.whenPracticeReaches($0) } + [detector.nextDeadline]).compactMap { $0 }
-            .filter { $0 > now }.min()
+        return deadlines.filter { $0 > now }.min()
+    }
+
+    /// The earliest of those, passed or not, which the wake-up waits on: it moves only when a deadline does, as when
+    /// Settings changes the nudge, and not as one passes, which would skip it (SET-1).
+    var firstDeadline: Date? { deadlines.min() }
+
+    private var deadlines: [Date] {
+        ([nudge, cap].map { timerSession?.whenPracticeReaches($0) } + [detector.nextDeadline]).compactMap { $0 }
     }
 
     /// The session, unless it's a MIDI session: the piano shows the user is there, and a silence ends it, so it
@@ -274,6 +293,41 @@ public final class PracticeModel: TagTarget {
     /// pauses it there (MIDI-1).
     func isPausedAtLastNote(at now: Date) -> Bool {
         session?.state == .paused && detector.isPausedBySilence || detector.pauseDue(at: now) != nil
+    }
+
+    /// The nudge set in Settings, or 90 minutes, for the app to launch with (SET-1, SES-3).
+    public static func storedNudge(in defaults: UserDefaults) -> TimeInterval {
+        stored(SettingsKey.stillPracticingAfter, in: defaults) ?? 90 * 60
+    }
+
+    /// The cap set in Settings, or 4 hours, for the app to launch with (SET-1, SES-4).
+    public static func storedCap(in defaults: UserDefaults) -> TimeInterval {
+        stored(SettingsKey.automaticCapAfter, in: defaults) ?? 4 * 60 * 60
+    }
+
+    private static func stored(_ key: String, in defaults: UserDefaults) -> TimeInterval? {
+        defaults.object(forKey: key) as? TimeInterval
+    }
+
+    /// The nudges Settings offers: every half hour up to 4 hours, below the cap, so Practice asks before it stops
+    /// a session (SET-1, decided with Ed, 2026-11-02).
+    var nudgeChoices: [TimeInterval] {
+        Self.choices(stride(from: 30 * 60, through: 4 * 60 * 60, by: 30 * 60).filter { $0 < cap }, with: nudge)
+    }
+
+    /// The caps Settings offers: every hour from 1 to 8, above the nudge (SET-1, decided with Ed, 2026-11-02).
+    var capChoices: [TimeInterval] {
+        Self.choices(stride(from: 60 * 60, through: 8 * 60 * 60, by: 60 * 60).filter { $0 > nudge }, with: cap)
+    }
+
+    /// Whether Settings can change the cap: not while a timer session runs, which a new cap would end or stretch
+    /// (SET-1, decided with Ed, 2026-11-02).
+    var canChangeCap: Bool { timerSession == nil }
+
+    /// `values` with `current` among them, as when a test launches with a nudge or cap of seconds, so the picker
+    /// shows it.
+    private static func choices(_ values: [TimeInterval], with current: TimeInterval) -> [TimeInterval] {
+        Set(values + [current]).sorted()
     }
 
     /// Whether the last session ended itself at the cap, which a banner explains until the next start (SES-4).

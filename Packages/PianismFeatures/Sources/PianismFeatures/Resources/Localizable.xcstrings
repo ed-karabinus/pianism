@@ -43,6 +43,9 @@
     "Arpeggios" : {
       "comment" : "A built-in skill"
     },
+    "Ask “Still practicing?” after" : {
+
+    },
     "Bluetooth" : {
 
     },
@@ -256,6 +259,9 @@
     "Stop" : {
 
     },
+    "Stop a session left running after" : {
+
+    },
     "Stop at this time" : {
 
     },
@@ -299,6 +305,9 @@
 
     },
     "Yesterday" : {
+
+    },
+    "You can change when a session stops once this one ends." : {
 
     },
     "Your history isn't syncing. In the Settings app, sign in to iCloud and turn it on for Pianism." : {

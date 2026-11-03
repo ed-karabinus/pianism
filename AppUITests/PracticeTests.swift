@@ -186,6 +186,39 @@ final class PracticeTests: UITestCase {
         XCTAssertFalse(app.staticTexts["practice.capped"].exists, "Edit should hide the banner")
     }
 
+    /// SET-1: the nudge and the cap come from Settings. Set to 30 minutes and 1 hour there, a session asks at 30
+    /// minutes and stops at 1 hour. The cap can't change while the session runs, and once it's stopped, a new cap
+    /// leaves the banner naming the one that stopped it.
+    @MainActor
+    func testTheNudgeAndCapComeFromSettings() throws {
+        var app = launch(at: start, reset: true)
+        openSettings(app)
+        XCTAssertEqual(chosen(app, "settings.nudge"), "1 hour, 30 minutes")
+        XCTAssertEqual(chosen(app, "settings.cap"), "4 hours")
+        choose(app, "settings.nudge", "30 minutes")
+        choose(app, "settings.cap", "1 hour")
+        attachScreenshot(of: app, named: "Settings, 30 minutes and 1 hour")
+        openPractice(app)
+        tap(app, "practice.start")
+        openSettings(app)
+        XCTAssertFalse(element(app, "settings.cap").isEnabled, "The cap could change with a session running")
+        attachScreenshot(of: app, named: "Settings, a session running")
+        kill(app)
+
+        app = launch(at: start + 35 * 60)
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 5), "It didn't ask")
+        kill(app)
+
+        app = launch(at: start + 3 * 60 * 60)
+        let stopped = "Pianism stopped your session at 1 hour of practice, in case the timer was left running."
+        XCTAssertEqual(text(app, "practice.capped"), stopped)
+        openSettings(app)
+        XCTAssertEqual(chosen(app, "settings.nudge"), "30 minutes")
+        choose(app, "settings.cap", "2 hours")
+        openPractice(app)
+        XCTAssertEqual(text(app, "practice.capped"), stopped, "The banner should name the cap that stopped it")
+    }
+
     /// GLN-2: the widget's Start runs an intent in the app's process, which starts the session through the same model
     /// as a tap, so the nudge asks and the cap stops it as for any session. The widget can't be tapped on a simulator
     /// (ADR 0010), so the app performs the intent at launch instead; the device checklist covers the tap itself.
@@ -1501,6 +1534,23 @@ final class PracticeTests: UITestCase {
         tab.tap()
         if !history.waitForNonExistence(timeout: 3) { tab.tap() }
         XCTAssertTrue(app.staticTexts["practice.status"].waitForExistence(timeout: 5), "Practice didn't open")
+    }
+
+    /// Picks `choice` from the menu of the picker `identifier`, and checks the picker shows it.
+    @MainActor
+    private func choose(_ app: XCUIApplication, _ identifier: String, _ choice: String) {
+        tap(app, identifier)
+        let item = app.buttons[choice].firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 5), "\(identifier) doesn't offer \(choice)")
+        item.tap()
+        XCTAssertEqual(chosen(app, identifier), choice)
+    }
+
+    /// What the picker `identifier` shows, which a menu picker puts after its label and a comma. Its label has none,
+    /// but the choice may ("1 hour, 30 minutes").
+    @MainActor
+    private func chosen(_ app: XCUIApplication, _ identifier: String) -> String? {
+        element(app, identifier).label.components(separatedBy: ", ").dropFirst().joined(separator: ", ")
     }
 
     /// Taps Delete session in the confirmation, which iOS nests in a button with the same frame and identifier.

@@ -1,15 +1,16 @@
 import SwiftUI
 
-/// The Settings tab: connecting a piano (MIDI-2) and the overlap warning (SES-5) for now; SET-1's other settings
-/// join it one section at a time.
+/// The Settings tab: connecting a piano (MIDI-2), when Practice asks "Still practicing?" and stops a session (SES-3,
+/// SES-4), and the overlap warning (SES-5) for now; SET-1's other settings join it one section at a time.
 struct SettingsView: View {
-    let pianos: [String]
+    @Bindable var practice: PracticeModel
 
     @AppStorage(SettingsKey.showsOverlapWarning) private var showsOverlapWarning = true
 
     var body: some View {
         NavigationStack {
             Form {
+                let pianos = practice.connectedPianos
                 Section {
                     NavigationLink {
                         ConnectPianoView(pianos: pianos)
@@ -23,6 +24,27 @@ struct SettingsView: View {
                     .accessibilityIdentifier(AccessibilityID.settingsPianos)
                 } header: {
                     Text("Piano", bundle: .module)
+                }
+                Section {
+                    Picker(selection: $practice.nudge) {
+                        times(practice.nudgeChoices)
+                    } label: {
+                        Text("Ask “Still practicing?” after", bundle: .module)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.settingsNudge)
+                    Picker(selection: $practice.cap) {
+                        times(practice.capChoices)
+                    } label: {
+                        Text("Stop a session left running after", bundle: .module)
+                    }
+                    .disabled(!practice.canChangeCap)
+                    .accessibilityIdentifier(AccessibilityID.settingsCap)
+                } header: {
+                    Text("Practice", bundle: .module)
+                } footer: {
+                    if !practice.canChangeCap {
+                        Text("You can change when a session stops once this one ends.", bundle: .module)
+                    }
                 }
                 Section {
                     Toggle(isOn: $showsOverlapWarning) {
@@ -40,21 +62,20 @@ struct SettingsView: View {
             .navigationTitle(Text("Settings", bundle: .module))
         }
     }
-}
 
-/// The keys under which settings are kept on this device, in the app's own defaults (SET-1, decided with Ed,
-/// 2026-11-02). A key's name is permanent: renaming one loses what was set under it.
-enum SettingsKey {
-    /// Kept since SES-5 by the editor's "Don't show again".
-    static let showsOverlapWarning = "showsOverlapWarning"
+    private func times(_ choices: [TimeInterval]) -> some View {
+        ForEach(choices, id: \.self) { Text(ElapsedTime.spoken($0)).tag($0) }
+    }
 }
 
 #Preview("No piano") {
-    SettingsView(pianos: [])
+    SettingsView(practice: .preview(.ready))
 }
 
-#Preview("A piano, dark, AX5") {
-    SettingsView(pianos: ["MIDI KEYBOARD"])
+#Preview("A session running, a piano, dark, AX5") {
+    let practice = PracticeModel.preview(.running)
+    practice.connectedPianos = ["MIDI KEYBOARD"]
+    return SettingsView(practice: practice)
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }

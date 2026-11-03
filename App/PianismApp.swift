@@ -32,10 +32,11 @@ struct PianismApp: App {
             fatalError("Missing the \(AppGroup.identifier) App Group entitlement.")
         }
         var clock: any WallClock = SystemClock()
-        // After this much practice Practice asks "Still practicing?" (SES-3), and after this much a running session
-        // ends itself, in case it was left running (SES-4).
-        var nudge: TimeInterval = 90 * 60
-        var cap: TimeInterval = 4 * 60 * 60
+        // After how much practice Practice asks "Still practicing?" (SES-3), and after how much a running session
+        // ends itself, in case it was left running (SES-4): as set in Settings, unless a test sets them below for
+        // this launch only (SET-1).
+        var nudge: TimeInterval?
+        var cap: TimeInterval?
         // A MIDI session pauses after a minute of silence, ends after 10, and is dropped under a minute played
         // (MIDI-1).
         var midiSettings = MIDISettings()
@@ -161,7 +162,8 @@ struct PianismApp: App {
         let glance = SystemPracticeGlance(file: totals)
         let practice = PracticeModel(
             store: store, history: sessions, outbox: outbox, clock: clock, nudges: nudges, glance: glance,
-            defaults: .standard, nudge: nudge, cap: cap, midi: midiSettings)
+            defaults: .standard, nudge: nudge ?? PracticeModel.storedNudge(in: .standard),
+            cap: cap ?? PracticeModel.storedCap(in: .standard), midi: midiSettings)
         answering.practice = practice
         self.practice = practice
         // The widget's and the Live Activity's buttons run in this process as intents, which find the model through
