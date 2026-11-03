@@ -90,6 +90,15 @@ class UITestCase: XCTestCase {
         super.record(issue)
     }
 
+    /// Skips a test that only the nightly and manual CI runs take, with `reason` saying what it leans on: real time
+    /// or a simulator service a pull request's run shouldn't wait on until the test has passed nightly for a week.
+    /// Those runs set `TEST_RUNNER_PIANISM_SOAKING=1` (`.github/workflows/ci.yml`), which xcodebuild hands the test
+    /// runner as `PIANISM_SOAKING`; a local run sets it the same way.
+    func skipUnlessSoaking(_ reason: String) throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["PIANISM_SOAKING"] == "1", "Nightly and manual runs only: \(reason)")
+    }
+
     /// Keeps a screenshot in the test results as visual evidence for PR review.
     /// `make evidence` exports these from the last run.
     @MainActor

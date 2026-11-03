@@ -109,6 +109,10 @@ jobs:
       - name: Select the newest stable Xcode
         run: scripts/select-xcode.sh
       - name: End-to-end tests
+        # Nightly and manual runs also take the tests that lean on real time or a simulator service
+        # (`UITestCase.skipUnlessSoaking`), which a pull request's run skips until they've passed nightly for a week.
+        env:
+          TEST_RUNNER_PIANISM_SOAKING: ${{ github.event_name != 'pull_request' && '1' || '' }}
         run: make test-app DEVICES=${{ matrix.device }} IOS=${{ matrix.ios }} QUIET=
       - name: Export screenshots
         if: always()

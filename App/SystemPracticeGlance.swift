@@ -66,7 +66,8 @@ final class SystemPracticeGlance: PracticeGlance {
     /// Brings the system's activities in line with the stored session: the session's live activity is updated when
     /// what it shows changed, any other, such as one that outlived a killed app, is ended, and a session with none
     /// gets one. Starting one can fail, as when Live Activities are off in Settings, and that never fails the session.
-    /// Nothing automated reaches this (ADR 0010); the device checklist's L rows do.
+    /// The end-to-end tests read the island it leaves on the Home Screen (`testTheLiveActivity…`); the device
+    /// checklist's L rows cover the Lock Screen and the buttons.
     private func reconcileActivities(with session: PracticeSession?, cappedAt cap: TimeInterval?) async {
         let content = session.map {
             ActivityContent(state: PracticeAttributes.ContentState(session: $0, cappedAt: cap), staleDate: nil)

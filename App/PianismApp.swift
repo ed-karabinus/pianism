@@ -219,8 +219,8 @@ struct PianismApp: App {
                 }
             }
         #endif
-        // Hears every piano connected over USB or Bluetooth (MIDI-1); the simulator has none. A scripted end-to-end
-        // test hears only its script.
+        // Hears every piano connected over USB or Bluetooth (MIDI-1); the simulator has none unless a test makes one
+        // in software (`testAPianoTheSystemAnnouncesIsHeard`). A scripted end-to-end test hears only its script.
         #if DEBUG
             midi = environment["PIANISM_MIDI_NOTES"] == nil ? CoreMIDINotes(clock: clock) : nil
         #else
