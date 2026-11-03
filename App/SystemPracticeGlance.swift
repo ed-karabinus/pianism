@@ -13,6 +13,8 @@ import os
 final class SystemPracticeGlance: PracticeGlance {
     private let file: FilePracticeTotals
     private let lastWritten = Mutex<PracticeTotals?>(nil)
+    /// The cap last shown with a session, written into the totals file so the widget's clock stops there too (#164).
+    private let lastCap = Mutex<TimeInterval?>(nil)
     private let lastShown = Mutex<PracticeSession?>(nil)
     /// The last change sent to ActivityKit. Each waits for the one before, so a pause can't land after the resume
     /// that followed it.
@@ -24,8 +26,12 @@ final class SystemPracticeGlance: PracticeGlance {
     }
 
     func show(_ totals: PracticeTotals) {
-        // History refreshes on every return to the foreground, and most of those change nothing; the widget's
-        // reload budget is spent only when the total did.
+        write(totals.capped(at: lastCap.withLock { $0 }))
+    }
+
+    /// Writes `totals` for the widget, unless they're what it already has: History refreshes on every return to the
+    /// foreground, and most of those change nothing; the widget's reload budget is spent only when the total did.
+    private func write(_ totals: PracticeTotals) {
         guard lastWritten.withLock({ $0 != totals }) else { return }
         do {
             try file.write(totals)
@@ -40,6 +46,20 @@ final class SystemPracticeGlance: PracticeGlance {
     func show(_ session: PracticeSession?, cappedAt cap: TimeInterval?) {
         // An ended session still stored, as when neither history nor the outbox could take it, isn't being practiced.
         let session = session?.state == .ended ? nil : session
+        // The cap lives in the app, so the widget learns it from here: the totals file carries it (#164). The widget
+        // reads it only with a session, so the cap is kept while none runs, and a change is written only on the
+        // first session of a launch, or when a session with another cap starts. A launch for the widget's Start
+        // runs no History, so the file on disk is what the cap goes into then.
+        let capChanged =
+            session != nil
+            && lastCap.withLock { last in
+                guard last != cap else { return false }
+                last = cap
+                return true
+            }
+        if capChanged, let written = lastWritten.withLock({ $0 }) ?? file.read() {
+            write(written.capped(at: cap))
+        }
         pending.withLock { previous in
             previous = Task { [previous] in
                 await previous?.value

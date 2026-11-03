@@ -6,10 +6,19 @@ public struct PracticeTotals: Sendable, Hashable, Codable {
     public let day: Date
     /// Practice time of the sessions that started that day and have ended, excluding pauses (SES-2).
     public let finished: TimeInterval
+    /// The practice time at which a running session ends itself (SES-4), so the widget's clock can stop there with
+    /// no process running, or `nil` when the app hasn't said: a file an older build wrote, or no cap.
+    public let cap: TimeInterval?
 
-    public init(day: Date, finished: TimeInterval) {
+    public init(day: Date, finished: TimeInterval, cap: TimeInterval? = nil) {
         self.day = day
         self.finished = finished
+        self.cap = cap
+    }
+
+    /// The same totals with `cap`, which the app knows and History, which works the totals out, doesn't.
+    public func capped(at cap: TimeInterval?) -> PracticeTotals {
+        PracticeTotals(day: day, finished: finished, cap: cap)
     }
 
     /// The totals of the day `now` falls in, from `days` as History groups them.

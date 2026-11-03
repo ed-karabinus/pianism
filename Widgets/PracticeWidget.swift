@@ -22,6 +22,8 @@ struct PracticeEntry: TimelineEntry {
     let finished: TimeInterval
     /// The running or paused session, which the widget counts on top of `finished` itself.
     let session: PracticeSession?
+    /// The practice time at which the session ends itself, if the app has said (SES-4).
+    var cap: TimeInterval?
 }
 
 /// Reads the two App Group files the app writes: the running session (ADR 0003) and the day's finished practice
@@ -53,7 +55,8 @@ struct PracticeProvider: TimelineProvider {
         // An ended session still stored, as when neither history nor the outbox could take it, isn't being practiced.
         let session = stored?.state == .ended ? nil : stored
         return PracticeEntry(
-            date: date, finished: totals?.today(at: date, in: .autoupdatingCurrent) ?? 0, session: session)
+            date: date, finished: totals?.today(at: date, in: .autoupdatingCurrent) ?? 0, session: session,
+            cap: totals?.cap)
     }
 }
 
@@ -93,11 +96,13 @@ struct PracticeWidgetView: View {
 
     /// Today's finished practice in whole minutes, rounded down as the app's clock is, so the widget never shows
     /// more than was practiced; or, with a session, today's total counting by itself from where the session's
-    /// practice started, stopped at the pause while it's paused, so no process needs to run.
+    /// practice started, stopped at the pause while it's paused and at the cap, where the session ends itself, so
+    /// no process needs to run (#164).
     @ViewBuilder private var time: some View {
         if let session = entry.session {
+            let clock = session.practiceClock(cap: entry.cap)
             Text(
-                timerInterval: (session.practiceOrigin - entry.finished)...Date.distantFuture,
+                timerInterval: (clock.lowerBound - entry.finished)...clock.upperBound,
                 pauseTime: session.pausedAt, countsDown: false)
         } else {
             let duration = Duration.seconds(Int(entry.finished / 60) * 60)

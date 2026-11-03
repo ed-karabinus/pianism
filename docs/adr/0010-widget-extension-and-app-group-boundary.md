@@ -58,8 +58,8 @@ extension, and the package stays out of `make test-adapters`, since ActivityKit 
   extension, and Apple's samples use one extension for both. No other extension.
 - **The extension only reads.** It links `PianismGlance`, `PianismCore` and `PianismPersistence`
   to read two App Group files: the running session (ADR 0003) and a totals file the app writes,
-  `practice-totals.json`, holding today's finished practice. It adds the running session to that
-  total itself. It never links `PianismFeatures` (whose views use app-only API), never opens the
+  `practice-totals.json`, holding today's finished practice and the cap (#164). It adds the
+  running session to that total itself, and its clock stops at the cap. It never links `PianismFeatures` (whose views use app-only API), never opens the
   SwiftData store (ADR 0004) and never writes.
 - **Every button is a `LiveActivityIntent`**, so the system runs it in the app's process, launched
   in the background if need be. The intents hold no rules: each calls a command the app registers
@@ -101,9 +101,9 @@ extension, and the package stays out of `make test-adapters`, since ActivityKit 
   shows in the widget only after the app next opens, and after a time-zone change the widget may
   show 0 until the app next writes.
 - Bad: a cap reached while no process is running is only applied when the app next runs. The
-  Lock Screen clock stops by itself at 4:00:00, because its range ends at the cap, but the
-  session is ended and archived at 4 h only then, and the app shows the cap banner for a session
-  archived at exactly the cap (decided with the owner, 2026-10-31).
+  Lock Screen and widget clocks stop by themselves at the cap, because their ranges end there,
+  but the session is ended and archived at 4 h only then, and the app shows the cap banner for a
+  session archived at exactly the cap (decided with the owner, 2026-10-31).
 - Accepted: no new background mode; `remote-notification` stays the only one (NFR-9, as amended
   2026-10-20). Widget buttons need an unlocked phone (Apple). A Live Activity lasts at most
   8 hours, which holds the 4-hour cap (SES-4); a session paused overnight outlives its activity,
