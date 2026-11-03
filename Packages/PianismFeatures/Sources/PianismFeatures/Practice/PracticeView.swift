@@ -90,7 +90,7 @@ struct PracticeView: View {
                     .accessibilityIdentifier(AccessibilityID.practiceTooShort)
             } else if model.session == nil, let last = model.lastSession {
                 if model.lastSessionReachedCap {
-                    capBanner(last.id)
+                    capBanner(last)
                 } else {
                     let duration = ElapsedTime.display(last.elapsed(at: model.clock.now))
                     Text("Last session: \(duration)", bundle: .module)
@@ -205,10 +205,11 @@ struct PracticeView: View {
         pickingEndOf = session
     }
 
-    /// Says the last session ended itself at the cap, and offers to fix it in History (SES-4).
-    private func capBanner(_ id: UUID) -> some View {
+    /// Says the last session ended itself at the cap, and offers to fix it in History (SES-4). The cap is the
+    /// session's practice time, as Settings may have changed the cap since (SET-1).
+    private func capBanner(_ last: PracticeSession) -> some View {
         VStack(alignment: .trailing, spacing: 12) {
-            let cap = ElapsedTime.spoken(model.cap)
+            let cap = ElapsedTime.spoken(last.elapsed(at: model.clock.now))
             Text(
                 "Pianism stopped your session at \(cap) of practice, in case the timer was left running.",
                 bundle: .module
@@ -217,7 +218,7 @@ struct PracticeView: View {
             .accessibilityIdentifier(AccessibilityID.practiceCapped)
             Button(LocalizedStringResource("Edit", bundle: .module)) {
                 model.dismissCapBanner()
-                edit(id)
+                edit(last.id)
             }
             .buttonStyle(.bordered)
             .accessibilityLabel(Text("Edit session", bundle: .module))

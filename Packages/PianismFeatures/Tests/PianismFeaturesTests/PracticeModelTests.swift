@@ -885,6 +885,66 @@ struct PracticeModelTests {
     }
 
     /// A model over `store`, with the app's nudge and cap.
+    @Test("SET-1: nothing stored reads as 90 minutes and 4 hours, and a nudge and cap set in Settings are kept")
+    func nudgeAndCapAreKept() {
+        #expect(PracticeModel.storedNudge(in: defaults) == 5_400)
+        #expect(PracticeModel.storedCap(in: defaults) == 14_400)
+        let model = makeModel()
+
+        model.nudge = 1_800
+        model.cap = 3_600
+
+        #expect(PracticeModel.storedNudge(in: defaults) == 1_800)
+        #expect(PracticeModel.storedCap(in: defaults) == 3_600)
+    }
+
+    @Test("SET-1, SES-3: a new nudge reschedules the running session's notification, or asks at once if past it")
+    func newNudgeAppliesAtOnce() {
+        // Typed, as #expect compares an optional with a bare literal as unequal.
+        let quarterHour: TimeInterval = 15 * 60
+        let model = makeModel()
+        model.start()
+        clock.advance(by: 45 * 60)
+
+        model.nudge = 60 * 60
+
+        #expect(nudges.pending?.delay == quarterHour)
+        #expect(model.nextRefresh == clock.now + quarterHour)
+        #expect(!model.isAskingStillPracticing)
+
+        model.nudge = 30 * 60
+
+        #expect(nudges.pending == nil)
+        #expect(model.isAskingStillPracticing)
+    }
+
+    @Test(
+        "SET-1: the nudges offered stop below the cap, the caps start above the nudge, and a running timer locks the cap"
+    )
+    func choicesKeepTheNudgeBelowTheCap() {
+        let model = makeModel()
+
+        #expect(model.nudgeChoices == stride(from: 1_800, through: 12_600, by: 1_800).map(TimeInterval.init))
+        #expect(model.capChoices == stride(from: 7_200, through: 28_800, by: 3_600).map(TimeInterval.init))
+        #expect(model.canChangeCap)
+
+        model.start()
+        #expect(!model.canChangeCap)
+
+        model.stop()
+        #expect(model.canChangeCap)
+    }
+
+    @Test("SET-1: a nudge and cap a test launches with are offered, so Settings shows them")
+    func launchedValuesAreOffered() {
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 3, cap: 20)
+
+        #expect(model.nudgeChoices == [3])
+        #expect(model.capChoices == [20] + stride(from: 3_600, through: 28_800, by: 3_600).map(TimeInterval.init))
+    }
+
     private func makeModel(over store: InMemoryRunningSessionStore = InMemoryRunningSessionStore()) -> PracticeModel {
         PracticeModel(
             store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
