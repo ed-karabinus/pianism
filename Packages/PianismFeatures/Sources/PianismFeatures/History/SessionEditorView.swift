@@ -14,7 +14,7 @@ struct SessionEditorView: View {
     @State private var isConfirmingDiscard = false
     @State private var isConfirmingDelete = false
     /// Off once the user asks not to be warned about overlapping sessions again, on this device.
-    @AppStorage("showsOverlapWarning") private var showsOverlapWarning = true
+    @AppStorage(SettingsKey.showsOverlapWarning) private var showsOverlapWarning = true
 
     var body: some View {
         NavigationStack {

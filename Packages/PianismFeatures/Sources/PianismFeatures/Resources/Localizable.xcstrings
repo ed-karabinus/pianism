@@ -163,6 +163,9 @@
     "Note" : {
 
     },
+    "Overlap warning" : {
+
+    },
     "Pair a Bluetooth piano" : {
 
     },
@@ -179,6 +182,9 @@
 
     },
     "Pianism stopped your session at %@ of practice, in case the timer was left running." : {
+
+    },
+    "Piano" : {
 
     },
     "Piece" : {
@@ -226,7 +232,7 @@
     "Sessions you finish appear here." : {
 
     },
-    "Shows tips and Bluetooth pairing" : {
+    "Settings" : {
 
     },
     "Sight-reading" : {
@@ -289,10 +295,13 @@
     "USB" : {
 
     },
+    "Warns when a session you add or edit shares practice time with another. The day's total counts that time twice." : {
+
+    },
     "Yesterday" : {
 
     },
-    "Your history isn't syncing. In Settings, sign in to iCloud and turn it on for Pianism." : {
+    "Your history isn't syncing. In the Settings app, sign in to iCloud and turn it on for Pianism." : {
 
     },
     "^[%lld session](inflect: true) couldn't be shown. Try updating Pianism." : {

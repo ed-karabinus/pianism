@@ -168,7 +168,7 @@ struct HistoryView: View {
     private var notSyncingNotice: some View {
         Label(
             LocalizedStringResource(
-                "Your history isn't syncing. In Settings, sign in to iCloud and turn it on for Pianism.",
+                "Your history isn't syncing. In the Settings app, sign in to iCloud and turn it on for Pianism.",
                 bundle: .module),
             systemImage: "icloud.slash"
         )

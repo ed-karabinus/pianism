@@ -9,7 +9,6 @@ struct PracticeView: View {
     let edit: (UUID) -> Void
 
     @State private var isPickingTags = false
-    @State private var isConnectingPiano = false
     /// The session as it was when "I stopped earlier" was tapped, while its end is picked, and the end picked so
     /// far (SES-3). Keyed by the whole session, so a pause, a resume or a session stopped another way goes back
     /// to the question rather than keeping an end from before. The date isn't optional: a binding unwrapping one
@@ -28,9 +27,6 @@ struct PracticeView: View {
             content()
             content(compactTime: true)
             ScrollView { content(compactTime: true).frame(maxWidth: .infinity) }
-        }
-        .sheet(isPresented: $isConnectingPiano) {
-            ConnectPianoView(pianos: model.connectedPianos)
         }
         .sheet(isPresented: $isPickingTags) {
             // Tagging stores the session, so its failure shows over the picker, which covers this screen.
@@ -109,27 +105,14 @@ struct PracticeView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier(AccessibilityID.practiceWaiting)
             }
-            // An option, not a warning, for the many who time their practice without one (decided with Ed,
-            // 2026-10-28).
-            Button {
-                isConnectingPiano = true
-            } label: {
-                Group {
-                    if model.connectedPianos.isEmpty {
-                        Text("Connect a piano", bundle: .module)
-                    } else {
-                        Text("\(model.connectedPianos.formatted(.list(type: .and))) connected", bundle: .module)
-                    }
-                }
-                // On the label, not the button: the label is what's tapped and what VoiceOver measures, and a
-                // footnote alone is too small for either (XCTest's audit, 2026-11-01). The shape makes the whole
-                // 44 points take the tap, not just the text.
-                .frame(minHeight: 44)
-                .contentShape(.rect)
+            // The piano Pianism hears, if any (MIDI-2). Nothing without one: connecting one is in Settings, an option
+            // for the many who time their practice without a piano (decided with Ed, 2026-10-28 and 2026-11-02).
+            if !model.connectedPianos.isEmpty {
+                Text("\(model.connectedPianos.formatted(.list(type: .and))) connected", bundle: .module)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(AccessibilityID.practicePianos)
             }
-            .font(.footnote)
-            .accessibilityHint(Text("Shows tips and Bluetooth pairing", bundle: .module))
-            .accessibilityIdentifier(AccessibilityID.practicePianos)
             if model.showsLowBattery {
                 Label {
                     Text("Low battery. The screen stays on while your piano is connected, so plug in.", bundle: .module)
