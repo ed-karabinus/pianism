@@ -19,16 +19,7 @@ final class PracticeTests: UITestCase {
     func testStartPauseResumeStop() throws {
         let app = launch(at: start, reset: true)
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
-        // MIDI-2: the line opens how to connect a piano, with the tip for a piano that doesn't show up over USB.
-        XCTAssertEqual(app.buttons["practice.pianos"].label, "Connect a piano")
-        tap(app, "practice.pianos")
-        XCTAssertTrue(app.buttons["pianos.pair"].waitForExistence(timeout: 5), "No way to pair a Bluetooth piano")
-        XCTAssertEqual(
-            text(app, "pianos.replug"),
-            "If your piano doesn't show up, unplug the cable at the piano's end and plug it back in.")
-        attachScreenshot(of: app, named: "Connect a piano")
-        tap(app, "pianos.done")
-        XCTAssertTrue(app.buttons["pianos.pair"].waitForNonExistence(timeout: 5), "The sheet didn't close")
+        XCTAssertFalse(element(app, "practice.pianos").exists, "Practice names a piano with none connected")  // MIDI-2
 
         tap(app, "practice.start")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
@@ -60,7 +51,7 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true, midiNotes: "0,0,0", midiPiano: "MIDI KEYBOARD")
         XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
-        XCTAssertEqual(app.buttons["practice.pianos"].label, "MIDI KEYBOARD connected")  // MIDI-2
+        XCTAssertEqual(text(app, "practice.pianos"), "MIDI KEYBOARD connected")  // MIDI-2
         attachScreenshot(of: app, named: "A MIDI session, with the piano connected")
 
         tap(app, "practice.stop")
@@ -885,6 +876,51 @@ final class PracticeTests: UITestCase {
         let practiceTime = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Practice time'"))
         XCTAssertEqual(practiceTime.firstMatch.value as? String, "45 minutes")
         XCTAssertFalse(element(app, "editor.overlap").exists)
+
+        // SET-1: Settings turns it back on, and the same session warns again.
+        tap(app, "editor.cancel")
+        let discard = app.buttons["Discard"]
+        XCTAssertTrue(discard.waitForExistence(timeout: 5), "Cancel didn't ask to discard the new session")
+        discard.tap()
+        XCTAssertTrue(app.buttons["editor.save"].waitForNonExistence(timeout: 5))
+        openSettings(app)
+        let warning = app.switches["settings.overlap-warning"]
+        XCTAssertTrue(warning.waitForExistence(timeout: 5), "No overlap warning in Settings")
+        XCTAssertEqual(warning.value as? String, "0", "Settings shows the warning on after Don't Show Again")
+        warning.tap()
+        // A switch in a Form sometimes takes the tap only on its own control.
+        if warning.value as? String != "1" { warning.switches.firstMatch.tap() }
+        XCTAssertEqual(warning.value as? String, "1", "The warning didn't turn back on")
+        openHistory(app)
+        tap(app, "history.add")
+        XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
+        setEndMinute(app, to: "45", title: "Add session")
+        XCTAssertTrue(element(app, "editor.overlap").waitForExistence(timeout: 5), "The warning stayed off")
+    }
+
+    /// MIDI-2, SET-1: Settings says no piano is connected and opens how to connect one, with the tip for a piano that
+    /// doesn't show up over USB and Apple's Bluetooth pairing; with a piano, it names it.
+    @MainActor
+    func testSettingsConnectsAPiano() throws {
+        var app = launch(at: start, reset: true)
+        openSettings(app)
+        let pianos = app.buttons["settings.pianos"]
+        XCTAssertTrue(pianos.waitForExistence(timeout: 5), "No piano row in Settings")
+        XCTAssertEqual(pianos.label, "Connect a piano")
+        pianos.tap()
+        XCTAssertTrue(app.buttons["pianos.pair"].waitForExistence(timeout: 5), "No way to pair a Bluetooth piano")
+        XCTAssertEqual(
+            text(app, "pianos.replug"),
+            "If your piano doesn't show up, unplug the cable at the piano's end and plug it back in.")
+        attachScreenshot(of: app, named: "Connect a piano")
+        kill(app)
+
+        app = launch(at: start, midiPiano: "MIDI KEYBOARD")
+        XCTAssertEqual(text(app, "practice.pianos"), "MIDI KEYBOARD connected")
+        openSettings(app)
+        XCTAssertTrue(app.buttons["settings.pianos"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["settings.pianos"].label, "MIDI KEYBOARD connected")
+        attachScreenshot(of: app, named: "Settings, a piano connected")
     }
 
     /// SES-5: a session is deleted with a swipe or from the editor, each confirmed first. Undo brings it
@@ -982,7 +1018,7 @@ final class PracticeTests: UITestCase {
         )
         XCTAssertTrue(
             notice.label.contains(
-                "Your history isn't syncing. In Settings, sign in to iCloud and turn it on for Pianism."),
+                "Your history isn't syncing. In the Settings app, sign in to iCloud and turn it on for Pianism."),
             "It said \(notice.label)")
         attachScreenshot(of: app, named: "History, not syncing")
 
@@ -1143,8 +1179,8 @@ final class PracticeTests: UITestCase {
     }
 
     /// MIDI-1, MIDI-2: a piano the system announces is heard through the app's own CoreMIDI adapter, not the test
-    /// script: Practice names it, three notes start a session, and it reads "Connect a piano" again once the piano
-    /// goes (device rows M1, M3 and P1, with a piano in software).
+    /// script: Practice names it, three notes start a session, and the name goes with the piano (device rows M1, M3
+    /// and P1, with a piano in software).
     @MainActor
     func testAPianoTheSystemAnnouncesIsHeard() throws {
         try skipUnlessSoaking("it needs the simulator's MIDI server")
@@ -1152,7 +1188,7 @@ final class PracticeTests: UITestCase {
         // A failure stops the test before any deinit, so the piano goes in teardown, or the retry would hear it.
         addTeardownBlock { @MainActor in piano.remove() }
         let app = launch(at: start, reset: true)
-        let pianos = app.buttons["practice.pianos"]
+        let pianos = app.staticTexts["practice.pianos"]
         XCTAssertTrue(
             pianos.wait(for: \.label, toEqual: "Test piano connected", timeout: 10), "Practice says \(pianos.label)")
         piano.send([0x2090_3C40, 0x2090_3E40, 0x2090_4040])  // three notes in one packet
@@ -1161,13 +1197,11 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "Practicing from a piano the system announced")
 
         piano.remove()
-        XCTAssertTrue(
-            pianos.wait(for: \.label, toEqual: "Connect a piano", timeout: 10),
-            "Practice still names the piano that went")
+        XCTAssertTrue(pianos.waitForNonExistence(timeout: 10), "Practice still names the piano that went")
     }
 
-    /// NFR-3: XCTest's accessibility audit finds nothing to report on Practice, ready, running and paused, on the
-    /// piano sheet, and on History with a session: every element described and detected, with its traits, targets
+    /// NFR-3: XCTest's accessibility audit finds nothing to report on Practice, ready, running and paused, on
+    /// History with a session, on Settings and on Connect a piano: every element described and detected, with its traits, targets
     /// big enough to hit, and, on Practice, enough contrast.
     @MainActor
     func testTheScreensPassTheAccessibilityAudit() throws {
@@ -1175,10 +1209,6 @@ final class PracticeTests: UITestCase {
         executionTimeAllowance = 5 * 60  // about 80 s on CI; a stalled audit then costs 5 min, not the default 15
         var app = launch(at: start, reset: true)
         try audit(app, "Practice, ready")
-        tap(app, "practice.pianos")
-        XCTAssertTrue(app.buttons["pianos.done"].waitForExistence(timeout: 5), "The piano sheet didn't open")
-        try audit(app, "Connect a piano", sheet: true, contrast: false)
-        tap(app, "pianos.done")
         tap(app, "practice.start")
         try audit(app, "Practice, running")
         tap(app, "practice.pause")
@@ -1191,6 +1221,11 @@ final class PracticeTests: UITestCase {
         openHistory(app)
         XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5), "No session in History")
         try audit(app, "History", contrast: false)
+        openSettings(app)
+        try audit(app, "Settings", contrast: false)
+        tap(app, "settings.pianos")
+        XCTAssertTrue(app.buttons["pianos.pair"].waitForExistence(timeout: 5), "Connect a piano didn't open")
+        try audit(app, "Connect a piano", contrast: false)
     }
 
     // Only Xcode 27's SDK (Swift 6.4) has the VoiceOver service; Xcode 26.6 (Swift 6.3) builds the iOS 26 jobs.
@@ -1218,28 +1253,16 @@ final class PracticeTests: UITestCase {
 
     /// Runs the audit on the screen `name`, every type iOS supports, and fails the test once with all it found of
     /// the types that hold today: every element described and detected, with its traits, big enough to hit, and,
-    /// unless `contrast` is false, with enough contrast (#165). The piano sheet and History pass `contrast: false`,
-    /// as the system's gray secondary text there nearly fails it. Dynamic Type and clipping are noted in the
-    /// results instead, as what the audit finds there is a design call (#165). An iPad shows a `sheet` in the
-    /// middle of the screen with the dimmed screen still readable around it; that text is out of VoiceOver's reach
-    /// while the sheet is up, by design, and the audit reports it as inaccessible, so a sheet's audit notes element
-    /// detection there instead, and on iOS 26 it is skipped, with the reason in the results.
+    /// unless `contrast` is false, with enough contrast (#165). History, Settings and Connect a piano pass
+    /// `contrast: false`, as the system's gray secondary text there nearly fails it. Dynamic Type and clipping are
+    /// noted in the results instead, as what the audit finds there is a design call (#165).
     @MainActor
-    private func audit(_ app: XCUIApplication, _ name: String, sheet: Bool = false, contrast: Bool = true) throws {
+    private func audit(_ app: XCUIApplication, _ name: String, contrast: Bool = true) throws {
         attachScreenshot(of: app, named: name)
         var failing: XCUIAccessibilityAuditType = [
             .hitRegion, .sufficientElementDescription, .elementDetection, .trait,
         ]
         if contrast { failing.insert(.contrast) }
-        if sheet, UIDevice.current.userInterfaceIdiom == .pad {
-            if #unavailable(iOS 27) {
-                // The sheet's audit stalled in two of five CI runs on an iPad with iOS 26 (#136), never on another
-                // simulator, and a stalled test isn't retried, so there the other three simulators cover the sheet.
-                XCTContext.runActivity(named: "\(name), not audited: the audit stalls on an iPad with iOS 26") { _ in }
-                return
-            }
-            failing.remove(.elementDetection)
-        }
         var found: [String] = []
         var noted: [String] = []
         try XCTContext.runActivity(named: "Audit \(name)") { _ in
@@ -1442,6 +1465,16 @@ final class PracticeTests: UITestCase {
         tab.tap()
         if !history.waitForExistence(timeout: 3) { tab.tap() }
         XCTAssertTrue(history.waitForExistence(timeout: 5), "History didn't open")
+    }
+
+    /// Opens Settings, tapping again if the tab bar swallowed the tap, as with History.
+    @MainActor
+    private func openSettings(_ app: XCUIApplication) {
+        let tab = app.buttons["Settings"].firstMatch
+        let settings = app.navigationBars["Settings"]
+        tab.tap()
+        if !settings.waitForExistence(timeout: 3) { tab.tap() }
+        XCTAssertTrue(settings.waitForExistence(timeout: 5), "Settings didn't open")
     }
 
     /// Opens Practice from History, tapping again if the tab bar swallowed the tap, as iOS 26's sometimes does

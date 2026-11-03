@@ -34,6 +34,9 @@ public struct RootView: View {
             Tab(LocalizedStringResource("History", bundle: .module), systemImage: "calendar", value: .history) {
                 HistoryView(model: history)
             }
+            Tab(LocalizedStringResource("Settings", bundle: .module), systemImage: "gearshape", value: .settings) {
+                SettingsView(pianos: practice.connectedPianos)
+            }
         }
         // Asks "Still practicing?", ends a timer session at the cap, and pauses or ends a silent MIDI session, while
         // the app is on screen on any tab, as on an iPad on a music stand (SES-3, SES-4, MIDI-1). Only while the app
@@ -117,7 +120,6 @@ enum AccessibilityID {
     static let practiceCapped = "practice.capped"
     static let practiceCappedEdit = "practice.capped-edit"
     static let pianosPair = "pianos.pair"
-    static let pianosDone = "pianos.done"
     static let pianosReplug = "pianos.replug"
     static let tagsAddPiece = "tags.add-piece"
     static let tagsAddSkill = "tags.add-skill"
@@ -151,11 +153,13 @@ enum AccessibilityID {
     static let historyDelete = "history.delete"
     static let historyUndo = "history.undo"
     static let deleteConfirm = "delete.confirm"
+    static let settingsPianos = "settings.pianos"
+    static let settingsOverlapWarning = "settings.overlap-warning"
 }
 
 /// The app's tabs, so the cap banner's Edit can switch to History (SES-4).
 private enum AppTab {
-    case practice, history
+    case practice, history, settings
 }
 
 #Preview {
