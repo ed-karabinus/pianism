@@ -1225,10 +1225,10 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5), "No session in History")
         try audit(app, "History", contrast: false)
         openSettings(app)
-        try audit(app, "Settings", contrast: false)
+        try audit(app, "Settings", contrast: false, stallsOnIPadIOS26: true)
         tap(app, "settings.pianos")
         XCTAssertTrue(app.buttons["pianos.pair"].waitForExistence(timeout: 5), "Connect a piano didn't open")
-        try audit(app, "Connect a piano", contrast: false)
+        try audit(app, "Connect a piano", contrast: false, stallsOnIPadIOS26: true)
     }
 
     // Only Xcode 27's SDK (Swift 6.4) has the VoiceOver service; Xcode 26.6 (Swift 6.3) builds the iOS 26 jobs.
@@ -1258,10 +1258,22 @@ final class PracticeTests: UITestCase {
     /// the types that hold today: every element described and detected, with its traits, big enough to hit, and,
     /// unless `contrast` is false, with enough contrast (#165). History, Settings and Connect a piano pass
     /// `contrast: false`, as the system's gray secondary text there nearly fails it. Dynamic Type and clipping are
-    /// noted in the results instead, as what the audit finds there is a design call (#165).
+    /// noted in the results instead, as what the audit finds there is a design call (#165). A screen that
+    /// `stallsOnIPadIOS26` is skipped there, with the reason in the results.
     @MainActor
-    private func audit(_ app: XCUIApplication, _ name: String, contrast: Bool = true) throws {
+    private func audit(
+        _ app: XCUIApplication, _ name: String, contrast: Bool = true, stallsOnIPadIOS26: Bool = false
+    ) throws {
         attachScreenshot(of: app, named: name)
+        if stallsOnIPadIOS26, UIDevice.current.userInterfaceIdiom == .pad {
+            if #unavailable(iOS 27) {
+                // The audit of the settings forms stalled on an iPad with iOS 26 (#136): the piano sheet in two of
+                // five CI runs, and Settings once since. Never on another simulator, and a stalled test isn't
+                // retried, so there the other three simulators cover these screens.
+                XCTContext.runActivity(named: "\(name), not audited: the audit stalls on an iPad with iOS 26") { _ in }
+                return
+            }
+        }
         var failing: XCUIAccessibilityAuditType = [
             .hitRegion, .sufficientElementDescription, .elementDetection, .trait,
         ]
