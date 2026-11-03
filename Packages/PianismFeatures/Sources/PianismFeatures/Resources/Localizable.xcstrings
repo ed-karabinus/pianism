@@ -295,19 +295,19 @@
     "USB" : {
 
     },
-    "When a session you edit or add shares practice time with another, say so, as the day's total counts it twice." : {
+    "Warns when a session you add or edit shares practice time with another. The day's total counts that time twice." : {
 
     },
     "Yesterday" : {
+
+    },
+    "Your history isn't syncing. In the Settings app, sign in to iCloud and turn it on for Pianism." : {
 
     },
     "^[%lld session](inflect: true) couldn't be shown. Try updating Pianism." : {
 
     },
     "^[%lld session](inflect: true) waiting to be saved" : {
-
-    },
-    "Your history isn't syncing. In the Settings app, sign in to iCloud and turn it on for Pianism." : {
 
     }
   },

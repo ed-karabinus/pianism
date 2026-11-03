@@ -33,7 +33,7 @@ struct SettingsView: View {
                     Text("History", bundle: .module)
                 } footer: {
                     Text(
-                        "When a session you edit or add shares practice time with another, say so, as the day's total counts it twice.",
+                        "Warns when a session you add or edit shares practice time with another. The day's total counts that time twice.",
                         bundle: .module)
                 }
             }

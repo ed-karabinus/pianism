@@ -844,7 +844,7 @@ final class PracticeTests: UITestCase {
     }
 
     /// SES-5: a session that shares practice with another says so, but can still be saved. "Don't Show
-    /// Again" turns the warning off for good, even after a relaunch.
+    /// Again" turns the warning off, even after a relaunch, and Settings turns it back on (SET-1).
     @MainActor
     func testOverlapWarningCanBeTurnedOff() throws {
         var app = launch(at: start, reset: true)
@@ -887,10 +887,13 @@ final class PracticeTests: UITestCase {
         let warning = app.switches["settings.overlap-warning"]
         XCTAssertTrue(warning.waitForExistence(timeout: 5), "No overlap warning in Settings")
         XCTAssertEqual(warning.value as? String, "0", "Settings shows the warning on after Don't Show Again")
+        let on = app.switches.matching(NSPredicate(format: "identifier == 'settings.overlap-warning' AND value == '1'"))
+            .firstMatch
         warning.tap()
-        // A switch in a Form sometimes takes the tap only on its own control.
-        if warning.value as? String != "1" { warning.switches.firstMatch.tap() }
-        XCTAssertEqual(warning.value as? String, "1", "The warning didn't turn back on")
+        // A switch in a Form sometimes takes the tap only on its own control; waiting first means a tap that took
+        // but hadn't shown yet isn't undone.
+        if !on.waitForExistence(timeout: 2) { warning.switches.firstMatch.tap() }
+        XCTAssertTrue(on.waitForExistence(timeout: 5), "The warning didn't turn back on")
         openHistory(app)
         tap(app, "history.add")
         XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
