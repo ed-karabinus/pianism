@@ -7,7 +7,8 @@ import Testing
 final class FilePracticeTotalsTests {
     let directory: URL
     let file: FilePracticeTotals
-    let totals = PracticeTotals(day: Date(timeIntervalSince1970: 1_798_761_600), finished: 25 * 60 + 3.5)
+    let totals = PracticeTotals(
+        day: Date(timeIntervalSince1970: 1_798_761_600), finished: 25 * 60 + 3.5, cap: 4 * 60 * 60)
 
     init() throws {
         directory = FileManager.default.temporaryDirectory.appending(path: "FilePracticeTotalsTests-\(UUID())")

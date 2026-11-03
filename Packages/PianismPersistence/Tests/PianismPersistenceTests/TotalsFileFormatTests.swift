@@ -22,6 +22,16 @@ final class TotalsFileFormatTests {
                 == PracticeTotals(day: Date(timeIntervalSinceReferenceDate: 820_396_800), finished: 1503.5))
     }
 
+    @Test("GLN-2, SES-4 (#164): totals with the cap, as written since the widget's clock stops at it, read")
+    func totalsWithCapRead() throws {
+        let written = #"{"day":820396800,"finished":1503.5,"cap":14400}"#
+
+        #expect(
+            try totals(from: written)
+                == PracticeTotals(
+                    day: Date(timeIntervalSinceReferenceDate: 820_396_800), finished: 1503.5, cap: 4 * 60 * 60))
+    }
+
     /// Reads `json` as the totals file.
     private func totals(from json: String) throws -> PracticeTotals? {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

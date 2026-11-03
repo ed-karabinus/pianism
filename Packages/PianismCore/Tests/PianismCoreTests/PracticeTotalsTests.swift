@@ -27,6 +27,20 @@ struct PracticeTotalsTests {
                 == PracticeTotals(day: try date(2026, 10, 16, 0, 0), finished: 0))
     }
 
+    @Test("GLN-2, SES-4 (#164): totals worked out from history carry no cap until the app adds it, keeping the rest")
+    func capIsAddedToTotals() throws {
+        let today = try session(at: date(2026, 10, 15, 8, 0), minutes: 30)
+        let totals = PracticeTotals(from: PracticeDay.group([today], in: calendar), at: today.startedAt, in: calendar)
+
+        #expect(totals.cap == nil)
+        // A `TimeInterval` to compare with: inside `#expect`, an optional against a bare literal compares false.
+        let cap: TimeInterval = 4 * 60 * 60
+        #expect(totals.capped(at: cap).cap == cap)
+        #expect(
+            totals.capped(at: 4 * 60 * 60)
+                == PracticeTotals(day: try date(2026, 10, 15, 0, 0), finished: 30 * 60, cap: 4 * 60 * 60))
+    }
+
     @Test("GLN-2: past midnight, yesterday's totals count for 0")
     func midnightStartsOver() throws {
         let totals = PracticeTotals(day: try date(2026, 10, 14, 0, 0), finished: 30 * 60)
