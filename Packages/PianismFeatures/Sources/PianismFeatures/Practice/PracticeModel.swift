@@ -247,8 +247,15 @@ public final class PracticeModel: TagTarget {
     /// Practice ticks then (SES-3, SES-4, MIDI-1).
     var nextRefresh: Date? {
         let now = clock.now
-        return ([nudge, cap].map { timerSession?.whenPracticeReaches($0) } + [detector.nextDeadline]).compactMap { $0 }
-            .filter { $0 > now }.min()
+        return deadlines.filter { $0 > now }.min()
+    }
+
+    /// The earliest of those, passed or not, which the wake-up waits on: it moves only when a deadline does, as when
+    /// Settings changes the nudge, and not as one passes, which would skip it (SET-1).
+    var firstDeadline: Date? { deadlines.min() }
+
+    private var deadlines: [Date] {
+        ([nudge, cap].map { timerSession?.whenPracticeReaches($0) } + [detector.nextDeadline]).compactMap { $0 }
     }
 
     /// The session, unless it's a MIDI session: the piano shows the user is there, and a silence ends it, so it
@@ -290,12 +297,16 @@ public final class PracticeModel: TagTarget {
 
     /// The nudge set in Settings, or 90 minutes, for the app to launch with (SET-1, SES-3).
     public static func storedNudge(in defaults: UserDefaults) -> TimeInterval {
-        defaults.object(forKey: SettingsKey.stillPracticingAfter) as? TimeInterval ?? 90 * 60
+        stored(SettingsKey.stillPracticingAfter, in: defaults) ?? 90 * 60
     }
 
     /// The cap set in Settings, or 4 hours, for the app to launch with (SET-1, SES-4).
     public static func storedCap(in defaults: UserDefaults) -> TimeInterval {
-        defaults.object(forKey: SettingsKey.automaticCapAfter) as? TimeInterval ?? 4 * 60 * 60
+        stored(SettingsKey.automaticCapAfter, in: defaults) ?? 4 * 60 * 60
+    }
+
+    private static func stored(_ key: String, in defaults: UserDefaults) -> TimeInterval? {
+        defaults.object(forKey: key) as? TimeInterval
     }
 
     /// The nudges Settings offers: every half hour up to 4 hours, below the cap, so Practice asks before it stops

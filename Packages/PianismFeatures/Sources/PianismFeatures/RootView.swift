@@ -42,9 +42,9 @@ public struct RootView: View {
         // the app is on screen on any tab, as on an iPad on a music stand (SES-3, SES-4, MIDI-1). Only while the app
         // is in front: away, the notification asks, and a refresh at the nudge would cancel it as it arrives. The
         // tolerance keeps each wake within a second: with none, a long sleep may wake late by a share of its length,
-        // and a MIDI session saved itself up to half a minute after its 10 minutes. The wait starts over when the
-        // next deadline moves, as when Settings changes the nudge (SET-1).
-        .task(id: scenePhase == .active ? practice.nextRefresh : nil) {
+        // and a MIDI session saved itself up to half a minute after its 10 minutes. The wait starts over when a
+        // deadline moves, as when Settings changes the nudge (SET-1).
+        .task(id: scenePhase == .active ? practice.firstDeadline : nil) {
             guard scenePhase == .active else { return }
             while let next = practice.nextRefresh,
                 (try? await Task.sleep(

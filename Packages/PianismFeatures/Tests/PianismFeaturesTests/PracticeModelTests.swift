@@ -903,6 +903,7 @@ struct PracticeModelTests {
         // Typed, as #expect compares an optional with a bare literal as unequal.
         let quarterHour: TimeInterval = 15 * 60
         let model = makeModel()
+        let start = clock.now
         model.start()
         clock.advance(by: 45 * 60)
 
@@ -916,6 +917,8 @@ struct PracticeModelTests {
 
         #expect(nudges.pending == nil)
         #expect(model.isAskingStillPracticing)
+        // The wake-up keys on the passed nudge, so it doesn't start over as a deadline passes.
+        #expect(model.firstDeadline == start + 30 * 60)
     }
 
     @Test(
@@ -931,8 +934,15 @@ struct PracticeModelTests {
         model.start()
         #expect(!model.canChangeCap)
 
+        model.pause()
+        #expect(!model.canChangeCap, "A paused timer session still runs into the cap once resumed")
+
         model.stop()
         #expect(model.canChangeCap)
+
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        #expect(model.session?.source == .midi)
+        #expect(model.canChangeCap, "A MIDI session isn't capped")
     }
 
     @Test("SET-1: a nudge and cap a test launches with are offered, so Settings shows them")

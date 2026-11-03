@@ -193,6 +193,8 @@ final class PracticeTests: UITestCase {
     func testTheNudgeAndCapComeFromSettings() throws {
         var app = launch(at: start, reset: true)
         openSettings(app)
+        XCTAssertEqual(chosen(app, "settings.nudge"), "1 hour, 30 minutes")
+        XCTAssertEqual(chosen(app, "settings.cap"), "4 hours")
         choose(app, "settings.nudge", "30 minutes")
         choose(app, "settings.cap", "1 hour")
         attachScreenshot(of: app, named: "Settings, 30 minutes and 1 hour")
@@ -1525,6 +1527,15 @@ final class PracticeTests: UITestCase {
 
     /// Opens Practice from History, tapping again if the tab bar swallowed the tap, as iOS 26's sometimes does
     /// (#80): before a kill, a swallowed tap lost the deletion that leaving History saves.
+    @MainActor
+    private func openPractice(_ app: XCUIApplication) {
+        let tab = app.buttons["Practice"].firstMatch
+        let history = app.navigationBars["History"]
+        tab.tap()
+        if !history.waitForNonExistence(timeout: 3) { tab.tap() }
+        XCTAssertTrue(app.staticTexts["practice.status"].waitForExistence(timeout: 5), "Practice didn't open")
+    }
+
     /// Picks `choice` from the menu of the picker `identifier`, and checks the picker shows it.
     @MainActor
     private func choose(_ app: XCUIApplication, _ identifier: String, _ choice: String) {
@@ -1535,19 +1546,11 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(chosen(app, identifier), choice)
     }
 
-    /// What the picker `identifier` shows, which a menu picker puts after its label.
+    /// What the picker `identifier` shows, which a menu picker puts after its label and a comma. Its label has none,
+    /// but the choice may ("1 hour, 30 minutes").
     @MainActor
     private func chosen(_ app: XCUIApplication, _ identifier: String) -> String? {
-        element(app, identifier).label.components(separatedBy: ", ").last
-    }
-
-    @MainActor
-    private func openPractice(_ app: XCUIApplication) {
-        let tab = app.buttons["Practice"].firstMatch
-        let history = app.navigationBars["History"]
-        tab.tap()
-        if !history.waitForNonExistence(timeout: 3) { tab.tap() }
-        XCTAssertTrue(app.staticTexts["practice.status"].waitForExistence(timeout: 5), "Practice didn't open")
+        element(app, identifier).label.components(separatedBy: ", ").dropFirst().joined(separator: ", ")
     }
 
     /// Taps Delete session in the confirmation, which iOS nests in a button with the same frame and identifier.
