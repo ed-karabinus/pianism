@@ -7,6 +7,7 @@ top="$(git rev-parse --show-toplevel 2>/dev/null)" || fail "not in a git checkou
 [[ "$PWD" == "$top"* ]] || fail "not inside $top"
 pgrep -f "xcodebuild.*test" >/dev/null && fail "another xcodebuild test run is going; wait for it"
 xcrun simctl list devices booted 2>/dev/null | grep -q Booted && fail "a simulator is booted; another run may be using it"
-free=$(vm_stat | awk '/Pages free|Pages speculative/ {sum += $NF} END {print int(sum * 16384 / 1048576)}')
+# Free counts what macOS hands back at once: unused, speculative, inactive and purgeable pages.
+free=$(vm_stat | awk '/Pages (free|speculative|inactive|purgeable)/ {sum += $NF} END {print int(sum * 16384 / 1048576)}')
 (( free >= ${AGENT_CHECK_MIN_FREE_MB:-1500} )) || fail "only ${free} MB free; wait for another job to finish"
 print "agent-check: ok (${free} MB free)"
