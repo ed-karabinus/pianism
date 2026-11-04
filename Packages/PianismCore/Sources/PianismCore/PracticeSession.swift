@@ -92,17 +92,18 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         state == .paused ? latestEvent : nil
     }
 
-    /// Where a clock outside the app stops: at the pause, or, while a MIDI session is played, at its last note the
-    /// app heard, as nothing hears the piano while the app is away (MIDI-1, GLN-1, decided with Ed, 2026-11-03). A
-    /// resume since that note counts as one, as it does for the detector, so a tapped Resume isn't lost.
+    /// Where a clock outside the app stops: at the pause, or, while a MIDI session runs, at its last note the app
+    /// heard, as nothing hears the piano while the app is away (MIDI-1, GLN-1, decided with Ed, 2026-11-03). A start
+    /// or resume since that note counts as one, as it does for the detector, so a tapped Resume isn't lost. The app
+    /// stores the note whenever it leaves the screen, so this is never shown out of date.
     public var pausedAwayAt: Date? {
-        pausedAt ?? (countsOnlyInApp ? lastNoteAt.map { max($0, latestEvent) } : nil)
+        pausedAt ?? (countsOnlyInApp ? lastNoteAt.map { max($0, latestEvent) } ?? latestEvent : nil)
     }
 
-    /// Whether a clock outside the app waits for the app to count on: a MIDI session played until the app left
-    /// shows paused at its last note there, and counts again once the app is open and hears the piano.
+    /// Whether a clock outside the app waits for the app to count on: a running MIDI session shows paused at its
+    /// last note there, and counts again once the app is open and hears the piano.
     public var countsOnlyInApp: Bool {
-        source == .midi && state == .running && lastNoteAt != nil
+        source == .midi && state == .running
     }
 
     /// When the session ends itself with no process running, so a clock outside the app is out of date from then:

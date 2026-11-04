@@ -22,8 +22,10 @@ struct PracticeLiveActivity: Widget {
                         .font(.title2)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    PracticeNote(state: context.state, isStale: context.isStale)
-                    PracticeButtons(state: context.state, isStale: context.isStale)
+                    VStack {
+                        PracticeNote(state: context.state, isStale: context.isStale)
+                        PracticeButtons(state: context.state, isStale: context.isStale)
+                    }
                 }
             } compactLeading: {
                 Image(systemName: "pianokeys")

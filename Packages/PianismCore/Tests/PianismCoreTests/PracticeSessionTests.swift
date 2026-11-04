@@ -311,9 +311,9 @@ struct PracticeSessionTests {
     func aMIDISessionAwayStopsAtItsLastNote() throws {
         let start = clock.now
         var session = PracticeSession(startedAt: start, source: .midi)
-        #expect(session.pausedAwayAt == nil, "Played in the app, nothing is stored yet")
-        #expect(!session.countsOnlyInApp)
-        #expect(session.endsByItself(cap: nil, saveAfter: 600) == nil)
+        #expect(session.pausedAwayAt == start, "With no note stored yet, it stops at its start")
+        #expect(session.countsOnlyInApp)
+        #expect(session.endsByItself(cap: nil, saveAfter: 600) == start + 600)
 
         try session.noteLastPlayed(at: start + 70)
 

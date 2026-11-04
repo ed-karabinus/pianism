@@ -136,6 +136,27 @@ struct PracticeModelTests {
         #expect(glance.shownSaveAfter == 300, "The Live Activity goes stale when the new save would end it")
     }
 
+    @Test("GLN-1, MIDI-1: a silence-paused MIDI session resumed from the Lock Screen shows stopped at the resume")
+    func aMIDISessionResumedWhileAwayShowsStoppedAtTheResume() throws {
+        let model = makeModel()
+        let first = clock.now
+        for _ in 1...3 { model.noteOn(at: first) }
+        model.noteOn(at: first + 30)
+        clock.advance(by: 90)
+        model.tick()
+        #expect(model.session?.state == .paused, "A minute's silence pauses it")
+        // Paused, so the app stores no note as it leaves.
+        model.leaveForeground()
+        clock.advance(by: 100)
+
+        model.resume()
+
+        let shown = try #require(glance.shownSessions.last ?? nil)
+        #expect(shown.countsOnlyInApp)
+        #expect(shown.pausedAwayAt == first + 190)
+        #expect(shown.endsByItself(cap: nil, saveAfter: 600) == first + 790)
+    }
+
     @Test(
         "SES-4, GLN-1: a Pause, Stop or tag change after the cap ends the session at the cap instead, dropping the tag",
         arguments: ["pause", "stop", "setTags"])
