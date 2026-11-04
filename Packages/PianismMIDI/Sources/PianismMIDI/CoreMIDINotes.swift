@@ -72,11 +72,14 @@ public final class CoreMIDINotes: Sendable {
 
     /// Connects every source that's online and lets go of each that went, then says which pianos it hears if that
     /// changed. A piano unplugged and plugged back in may keep its endpoint while its old connection hears nothing, so
-    /// it's connected again.
+    /// it's connected again. iOS lists its network MIDI session, "Network Session 1", as a source with no piano behind
+    /// it (device checks, 2026-11-03), so that one is left out.
     private func connectAll() {
+        let network = MIDINetworkSession.default().sourceEndpoint()
         midi.withLock { midi in
             let online = Set(
                 (0..<MIDIGetNumberOfSources()).map(MIDIGetSource).filter { source in
+                    guard source != network else { return false }
                     var offline: Int32 = 0
                     MIDIObjectGetIntegerProperty(source, kMIDIPropertyOffline, &offline)
                     return offline == 0
