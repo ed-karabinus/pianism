@@ -1,8 +1,8 @@
 import Foundation
 
 /// Turns a connected piano's notes into changes to a MIDI session (MIDI-1): three notes within 10 s, or as many as
-/// set, start one at the first of them. A silence pauses it at its last note, and a note resumes it. A longer silence ends it
-/// 5 s after its last note, and so does Stop, unless tapped sooner (MIDI-R4).
+/// set, start one at the first of them. A silence pauses it at its last note, and a note resumes it. A longer silence
+/// ends it 5 s after its last note, and so does Stop, unless tapped sooner (MIDI-R4).
 ///
 /// It reads no clock and stores nothing. Each event carries its date, each effect is dated for
 /// ``SessionRecorder`` to store, and ``sync(with:)`` puts it back where the stored session says after any
@@ -18,7 +18,7 @@ public struct MIDIDetector: Sendable {
     }
 
     public enum Effect: Sendable, Equatable {
-        /// Start a MIDI session at the first note of the three.
+        /// Start a MIDI session at the first of the notes that started it.
         case start(at: Date)
         /// Pause the session at its last note, after a silence.
         case pause(at: Date)

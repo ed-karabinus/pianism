@@ -220,7 +220,8 @@ final class PracticeTests: UITestCase {
     }
 
     /// SET-1, MIDI-1: how a piano starts, pauses and saves a session comes from Settings. Set to 1 note there, one
-    /// note starts a session after a relaunch, and the silences set are the ones the relaunched app plays by.
+    /// note starts a session after a relaunch, and the silences set are kept across it. The model tests check that the
+    /// silences reach the detector.
     @MainActor
     func testOneNoteStartsASessionWhenSettingsSaySo() throws {
         var app = launch(at: start, reset: true)

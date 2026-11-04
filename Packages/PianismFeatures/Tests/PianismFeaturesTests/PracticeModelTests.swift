@@ -996,6 +996,25 @@ struct PracticeModelTests {
         #expect(model.isPausedAtLastNote(at: clock.now))
     }
 
+    @Test("SET-1, MIDI-1: a shorter save ends a session paused by a silence already that long, and saves it")
+    func newSaveAppliesAtOnce() {
+        let model = makeModel()
+        let first = clock.now
+        // Played for 100 s, over the minute a MIDI session needs to be kept.
+        for _ in 1...3 { model.noteOn(at: first) }
+        model.noteOn(at: first + 50)
+        model.noteOn(at: first + 100)
+        clock.advance(by: 230)
+        model.tick()
+        #expect(model.session?.state == .paused)
+        #expect(model.firstDeadline == first + 100 + 600)
+
+        model.saveAfter = 120
+
+        #expect(model.session == nil)
+        #expect(model.lastSession?.endedAt == first + 105, "Ended and saved 5 s after its last note")
+    }
+
     @Test("SET-1: the pauses offered stay below the save, and the saves above the pause")
     func choicesKeepThePauseBelowTheSave() {
         let model = makeModel()

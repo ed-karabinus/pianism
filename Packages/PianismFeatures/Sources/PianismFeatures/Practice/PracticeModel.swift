@@ -130,9 +130,9 @@ public final class PracticeModel: TagTarget {
         }
     }
 
-    /// Counts a note played on a connected piano (MIDI-1). Three within 10 s, or as many as set, start a MIDI session. On a session
-    /// started by tapping, notes only show the user is there, so past the nudge they answer "Still practicing?" as
-    /// a Pause does (MIDI-R4, SES-3).
+    /// Counts a note played on a connected piano (MIDI-1). Three within 10 s, or as many as set, start a MIDI
+    /// session. On a session started by tapping, notes only show the user is there, so past the nudge they answer
+    /// "Still practicing?" as a Pause does (MIDI-R4, SES-3).
     public func noteOn(at date: Date) {
         if session?.source != .midi {  // mutate:ignore - in a session it'd only refresh at each note; its end sets it
             readyUntil = max(readyUntil ?? .distantPast, date + Self.readyAwake)
@@ -146,7 +146,8 @@ public final class PracticeModel: TagTarget {
         if case .start = effects.first {
             // NFR-5 allows 250 ms from the note that starts a session; a device run reads this line.
             let latency = clock.now.timeIntervalSince(date) * 1000
-            logger.info("MIDI session started \(latency, format: .fixed(precision: 0)) ms after its third note")
+            logger.info(
+                "MIDI session started \(latency, format: .fixed(precision: 0)) ms after the note that set it off")
         }
     }
 
@@ -283,7 +284,8 @@ public final class PracticeModel: TagTarget {
 
     private var deadlines: [Date] {
         // The silences are read here as well as by the detector, which isn't observed, so RootView's wake-up moves
-        // when one changes in Settings.
+        // when one changes in Settings. The refresh a change runs doesn't move it: an unchanged session notifies no
+        // one (a planted bug without this line was caught).
         _ = (pauseAfter, saveAfter)
         return ([nudge, cap].map { timerSession?.whenPracticeReaches($0) } + [detector.nextDeadline]).compactMap { $0 }
     }
