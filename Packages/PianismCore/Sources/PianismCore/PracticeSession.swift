@@ -92,6 +92,26 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         state == .paused ? latestEvent : nil
     }
 
+    /// Where a clock outside the app stops: at the pause, or, while a MIDI session is played, at its last note the
+    /// app heard, as nothing hears the piano while the app is away (MIDI-1, GLN-1, decided with Ed, 2026-11-03).
+    public var pausedAwayAt: Date? {
+        pausedAt ?? (countsOnlyInApp ? lastNoteAt : nil)
+    }
+
+    /// Whether a clock outside the app waits for the app to count on: a MIDI session played until the app left
+    /// shows paused at its last note there, and counts again once the app is open and hears the piano.
+    public var countsOnlyInApp: Bool {
+        source == .midi && state == .running && lastNoteAt != nil
+    }
+
+    /// When the session ends itself with no process running, so a clock outside the app is out of date from then:
+    /// a timer session when its practice reaches `cap` (SES-4), a MIDI session `saveAfter` after its last note or
+    /// pause (MIDI-1). `nil` while nothing would end it, as for a paused timer session.
+    public func endsByItself(cap: TimeInterval?, saveAfter: TimeInterval) -> Date? {
+        if source == .midi { return pausedAwayAt.map { $0 + saveAfter } }
+        return cap.flatMap(whenPracticeReaches)
+    }
+
     /// What a clock showing only practice counts over: from ``practiceOrigin`` to the moment practice reaches `cap`,
     /// if it keeps running, or without end when there's no cap (GLN-1). A clock that stops at the range's end, like
     /// the Live Activity's, stops at the cap by itself, with no process running (SES-4).

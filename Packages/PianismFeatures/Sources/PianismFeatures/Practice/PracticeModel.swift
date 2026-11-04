@@ -423,7 +423,7 @@ public final class PracticeModel: TagTarget {
             isShowingStorageError = true
         }
         detector.sync(with: session)
-        glance.show(session, cappedAt: timerSession == nil ? nil : cap)
+        glance.show(session, cappedAt: timerSession == nil ? nil : cap, saveAfter: saveAfter)
         isPastNudge = timerSession?.whenPracticeReaches(nudge).map { $0 <= clock.now } ?? false
         // The notification waits for the running session to reach the nudge. A pause, a stop or a session already
         // past it cancels it, so it comes at most once per session.

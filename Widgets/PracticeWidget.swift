@@ -89,7 +89,7 @@ struct PracticeWidgetView: View {
     private var title: LocalizedStringKey {
         switch entry.session?.state {
         case nil, .ended: "Today"
-        case .running: "Practicing"
+        case .running: entry.session?.countsOnlyInApp == true ? "Paused" : "Practicing"
         case .paused: "Paused"
         }
     }
@@ -97,13 +97,13 @@ struct PracticeWidgetView: View {
     /// Today's finished practice in whole minutes, rounded down as the app's clock is, so the widget never shows
     /// more than was practiced; or, with a session, today's total counting by itself from where the session's
     /// practice started, stopped at the pause while it's paused and at the cap, where the session ends itself, so
-    /// no process needs to run (#164).
+    /// no process needs to run (#164). A MIDI session stops at its last note, as only the open app hears the piano.
     @ViewBuilder private var time: some View {
         if let session = entry.session {
             let clock = session.practiceClock(cap: entry.cap)
             Text(
                 timerInterval: (clock.lowerBound - entry.finished)...clock.upperBound,
-                pauseTime: session.pausedAt, countsDown: false)
+                pauseTime: session.pausedAwayAt, countsDown: false)
         } else {
             let duration = Duration.seconds(Int(entry.finished / 60) * 60)
             Text(duration.formatted(.units(allowed: [.hours, .minutes], width: .narrow)))
@@ -119,6 +119,13 @@ func previewSession(paused: Bool) -> PracticeSession {
     var session = PracticeSession(startedAt: .now - 95 * 60)
     try? session.pause(at: .now - 70 * 60)
     if !paused { try? session.resume(at: .now - 60 * 60) }
+    return session
+}
+
+/// A preview piano session, played for 18 minutes until the app left 2 minutes ago.
+func previewPianoSession() -> PracticeSession {
+    var session = PracticeSession(startedAt: .now - 20 * 60, source: .midi)
+    try? session.noteLastPlayed(at: .now - 2 * 60)
     return session
 }
 
@@ -144,6 +151,12 @@ func previewSession(paused: Bool) -> PracticeSession {
     PracticeWidget()
 } timeline: {
     PracticeEntry(date: .now, finished: 0, session: previewSession(paused: true))
+}
+
+#Preview("A piano session, stopped at its last note while the app is away", as: .systemSmall) {
+    PracticeWidget()
+} timeline: {
+    PracticeEntry(date: .now, finished: 0, session: previewPianoSession())
 }
 
 // The widget previews above take no modifiers, so dark and AX5 preview the view in a small widget's frame.

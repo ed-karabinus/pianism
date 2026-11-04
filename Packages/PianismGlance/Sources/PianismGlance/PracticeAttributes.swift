@@ -11,12 +11,15 @@ public struct PracticeAttributes: ActivityAttributes, Sendable {
         /// What the clock counts over: from when the session's practice was zero to the moment it reaches the cap, so
         /// the clock stops at 4:00:00 by itself with no process running (SES-4).
         public let timer: ClosedRange<Date>
-        /// While paused, the moment the clock stopped.
+        /// While paused, or while a MIDI session waits for the app to hear it, the moment the clock stopped.
         public let pausedAt: Date?
+        /// Whether the clock waits for the app to count on, as for a MIDI session played until the app left.
+        public let countsOnlyInApp: Bool
 
         public init(session: PracticeSession, cappedAt cap: TimeInterval?) {
             timer = session.practiceClock(cap: cap)
-            pausedAt = session.pausedAt
+            pausedAt = session.pausedAwayAt
+            countsOnlyInApp = session.countsOnlyInApp
         }
     }
 

@@ -4,8 +4,9 @@ import Synchronization
 
 /// A ``PracticeGlance`` that only remembers what it was shown, for tests.
 public final class InMemoryPracticeGlance: PracticeGlance {
-    private let state = Mutex<(totals: [PracticeTotals], sessions: [PracticeSession?], caps: [TimeInterval?])>(
-        ([], [], []))
+    private let state = Mutex<
+        (totals: [PracticeTotals], sessions: [PracticeSession?], caps: [TimeInterval?], saveAfter: TimeInterval?)
+    >(([], [], [], nil))
 
     public init() {}
 
@@ -22,10 +23,14 @@ public final class InMemoryPracticeGlance: PracticeGlance {
         state.withLock { $0.totals.append(totals) }
     }
 
-    public func show(_ session: PracticeSession?, cappedAt cap: TimeInterval?) {
+    /// The MIDI save shown with the last session.
+    public var shownSaveAfter: TimeInterval? { state.withLock { $0.saveAfter } }
+
+    public func show(_ session: PracticeSession?, cappedAt cap: TimeInterval?, saveAfter: TimeInterval) {
         state.withLock {
             $0.sessions.append(session)
             $0.caps.append(cap)
+            $0.saveAfter = saveAfter
         }
     }
 }

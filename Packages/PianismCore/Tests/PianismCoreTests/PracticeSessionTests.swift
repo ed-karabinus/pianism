@@ -305,6 +305,51 @@ struct PracticeSessionTests {
         #expect(session.pausedAt == nil)
     }
 
+    // MARK: GLN-1, MIDI-1: a clock outside the app, which hears no piano
+
+    @Test("GLN-1, MIDI-1: a MIDI session played until the app left stops outside it at its last note, and ends then")
+    func aMIDISessionAwayStopsAtItsLastNote() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start, source: .midi)
+        #expect(session.pausedAwayAt == nil, "Played in the app, nothing is stored yet")
+        #expect(!session.countsOnlyInApp)
+        #expect(session.endsByItself(cap: nil, saveAfter: 600) == nil)
+
+        try session.noteLastPlayed(at: start + 70)
+
+        #expect(session.pausedAwayAt == start + 70)
+        #expect(session.countsOnlyInApp)
+        #expect(session.endsByItself(cap: nil, saveAfter: 600) == start + 670)
+    }
+
+    @Test("GLN-1, MIDI-1: a paused MIDI session stops at its pause, which needs no app, and ends a save after it")
+    func aPausedMIDISessionStopsAtItsPause() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start, source: .midi)
+        try session.noteLastPlayed(at: start + 70)
+
+        try session.pause(at: start + 70)
+
+        #expect(session.pausedAwayAt == start + 70)
+        #expect(!session.countsOnlyInApp)
+        #expect(session.endsByItself(cap: nil, saveAfter: 300) == start + 370)
+    }
+
+    @Test("GLN-1, SES-4: a timer session counts outside the app, and ends at the cap while running, never while paused")
+    func aTimerSessionAwayCountsOnUntilTheCap() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start)
+        #expect(session.pausedAwayAt == nil)
+        #expect(!session.countsOnlyInApp)
+        #expect(session.endsByItself(cap: 3_600, saveAfter: 600) == start + 3_600)
+        #expect(session.endsByItself(cap: nil, saveAfter: 600) == nil)
+
+        try session.pause(at: start + 100)
+
+        #expect(session.pausedAwayAt == start + 100)
+        #expect(session.endsByItself(cap: 3_600, saveAfter: 600) == nil)
+    }
+
     // MARK: Invalid changes are rejected and leave the session untouched
 
     @Test("Changes in the wrong state are rejected", arguments: InvalidChange.allCases)
