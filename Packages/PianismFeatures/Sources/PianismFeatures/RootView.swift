@@ -85,7 +85,8 @@ public struct RootView: View {
         // Shows changes made while the app was away, and moves "today" along after midnight. Leaving the screen,
         // inactive included, stores a MIDI session's last note (MIDI-1): swiped away in the app switcher, the app
         // is killed without reaching the background. Reaching the background ends a deletion's undo (SES-5).
-        .onChange(of: scenePhase) {
+        // From launch too, so the glance learns the app is on screen (GLN-1).
+        .onChange(of: scenePhase, initial: true) {
             if scenePhase == .active {
                 practice.cameToFront()
                 history.refresh()

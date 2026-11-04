@@ -92,6 +92,36 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         state == .paused ? latestEvent : nil
     }
 
+    /// Where a clock outside the app stops: at the pause, or, while a MIDI session runs, at its last note the app
+    /// heard, as nothing hears the piano while the app is away (MIDI-1, GLN-1, decided with Ed, 2026-11-03). A start
+    /// or resume since that note counts as one, as it does for the detector, so a tapped Resume isn't lost. The app
+    /// stores the note whenever it leaves the screen, so this is never shown out of date.
+    public var pausedAwayAt: Date? {
+        pausedAt ?? (countsOnlyInApp ? lastNoteAt.map { max($0, latestEvent) } ?? latestEvent : nil)
+    }
+
+    /// Whether a clock outside the app waits for the app to count on: a running MIDI session shows paused at its
+    /// last note there, and counts again once the app is open and hears the piano.
+    public var countsOnlyInApp: Bool {
+        source == .midi && state == .running
+    }
+
+    /// Where a clock outside the app stops, with the app open on screen or away. A Live Activity shows on a paired
+    /// Watch or a Mac while the app is open, and then only a pause stops it, as the app hears the piano and keeps
+    /// the clock up to date.
+    public func pausedOutside(appOnScreen: Bool) -> Date? {
+        appOnScreen ? pausedAt : pausedAwayAt
+    }
+
+    /// When the session ends itself with no process running, so a clock outside the app is out of date from then:
+    /// a timer session when its practice reaches `cap` (SES-4), a MIDI session `saveAfter` after where its clock
+    /// stops (MIDI-1). `nil` while nothing would end it, as for a paused timer session, or a MIDI session played
+    /// with the app on screen, which ends it itself.
+    public func endsByItself(cap: TimeInterval?, saveAfter: TimeInterval, appOnScreen: Bool) -> Date? {
+        if source == .midi { return pausedOutside(appOnScreen: appOnScreen).map { $0 + saveAfter } }
+        return cap.flatMap(whenPracticeReaches)
+    }
+
     /// What a clock showing only practice counts over: from ``practiceOrigin`` to the moment practice reaches `cap`,
     /// if it keeps running, or without end when there's no cap (GLN-1). A clock that stops at the range's end, like
     /// the Live Activity's, stops at the cap by itself, with no process running (SES-4).

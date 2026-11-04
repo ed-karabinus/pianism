@@ -43,13 +43,14 @@ final class SystemPracticeGlance: PracticeGlance {
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetKind.practice)
     }
 
-    func show(_ session: PracticeSession?, cappedAt cap: TimeInterval?) {
+    func show(_ session: PracticeSession?, cappedAt cap: TimeInterval?, saveAfter: TimeInterval, appOnScreen: Bool) {
         // An ended session still stored, as when neither history nor the outbox could take it, isn't being practiced.
         let session = session?.state == .ended ? nil : session
         // The cap lives in the app, so the widget learns it from here: the totals file carries it (#164). The widget
         // reads it only with a session, so the cap is kept while none runs, and a change is written only on the
         // first session of a launch, or when a session with another cap starts. A launch for the widget's Start
-        // runs no History, so the file on disk is what the cap goes into then.
+        // runs no History, so the file on disk is what the cap goes into then, or, with none readable, a day with
+        // nothing finished yet, which History corrects when it next runs.
         let capChanged =
             session != nil
             && lastCap.withLock { last in
@@ -57,19 +58,27 @@ final class SystemPracticeGlance: PracticeGlance {
                 last = cap
                 return true
             }
-        if capChanged, let written = lastWritten.withLock({ $0 }) ?? file.read() {
+        if capChanged, let session {
+            let written =
+                lastWritten.withLock { $0 } ?? file.read()
+                ?? PracticeTotals(day: Calendar.autoupdatingCurrent.startOfDay(for: session.startedAt), finished: 0)
             write(written.capped(at: cap))
         }
         pending.withLock { previous in
             previous = Task { [previous] in
                 await previous?.value
-                await self.reconcileActivities(with: session, cappedAt: cap)
+                await self.reconcileActivities(
+                    with: session, cappedAt: cap, saveAfter: saveAfter, appOnScreen: appOnScreen)
             }
         }
         // Practice refreshes at every tick and tag change too; the widget reads the session's file itself, so it
-        // only needs a reload when what it draws from changed: a new session, or one paused, resumed or gone.
+        // only needs a reload when what it draws from changed: a new session, one paused, resumed or gone, or a piano
+        // session's clock stopped at a new last note as the app leaves.
         let changed = lastShown.withLock { last in
-            guard last?.id != session?.id || last?.state != session?.state else { return false }
+            guard
+                last?.id != session?.id || last?.state != session?.state
+                    || last?.pausedAwayAt != session?.pausedAwayAt
+            else { return false }
             last = session
             return true
         }
@@ -88,9 +97,14 @@ final class SystemPracticeGlance: PracticeGlance {
     /// gets one. Starting one can fail, as when Live Activities are off in Settings, and that never fails the session.
     /// The end-to-end tests read the island it leaves on the Home Screen (`testTheLiveActivity…`); the device
     /// checklist's L rows cover the Lock Screen and the buttons.
-    private func reconcileActivities(with session: PracticeSession?, cappedAt cap: TimeInterval?) async {
+    private func reconcileActivities(
+        with session: PracticeSession?, cappedAt cap: TimeInterval?, saveAfter: TimeInterval, appOnScreen: Bool
+    ) async {
+        // Out of date once the session has ended itself with no process running, so the activity says so.
         let content = session.map {
-            ActivityContent(state: PracticeAttributes.ContentState(session: $0, cappedAt: cap), staleDate: nil)
+            ActivityContent(
+                state: PracticeAttributes.ContentState(session: $0, cappedAt: cap, appOnScreen: appOnScreen),
+                staleDate: $0.endsByItself(cap: cap, saveAfter: saveAfter, appOnScreen: appOnScreen))
         }
         var shown = false
         for activity in Activity<PracticeAttributes>.activities {
@@ -100,7 +114,7 @@ final class SystemPracticeGlance: PracticeGlance {
             let live = [.active, .stale].contains(activity.activityState)
             if let session, let content, activity.attributes.sessionID == session.id, live, !shown {
                 shown = true
-                if activity.content.state != content.state {
+                if activity.content.state != content.state || activity.content.staleDate != content.staleDate {
                     await activity.update(content)
                 }
             } else {
