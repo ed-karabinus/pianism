@@ -131,3 +131,19 @@ struct WeekView: View {
         }
     }
 }
+
+// WeekView's body is a Section, so its previews wrap it in a List, as HistoryView does.
+
+#Preview("This week, with tags") {
+    List { WeekView(model: .preview()) { _ in } }
+}
+
+#Preview("This week, with tags, dark, AX5") {
+    List { WeekView(model: .preview()) { _ in } }
+        .preferredColorScheme(.dark)
+        .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("Empty week") {
+    List { WeekView(model: .preview(empty: true)) { _ in } }
+}

@@ -631,6 +631,15 @@ struct HistoryModelTests {
         #expect(model.waitingIDs.isEmpty)
     }
 
+    @Test("HIS-2: the preview model is already loaded, so WeekView in a List shows this week's practice")
+    func previewIsLoaded() {
+        let model = HistoryModel.preview()
+
+        #expect(!model.week.days.flatMap(\.sessions).isEmpty)
+        #expect(model.week.total > 0)
+        #expect(HistoryModel.preview(empty: true).week.total == 0)
+    }
+
     private func endedSession(startingAfter seconds: TimeInterval) throws -> PracticeSession {
         var session = PracticeSession(startedAt: clock.now + seconds)
         try session.stop(at: clock.now + seconds + 600)

@@ -104,10 +104,9 @@ extension HistoryModel {
             running: PreviewStore(nil), clock: PreviewClock(now: midnight.addingTimeInterval(20 * hour)),
             glance: PreviewGlance())
         model.isNotSyncing = notSyncing
-        if deleting {
-            model.refresh()
-            if let newest = model.days.first?.sessions.first { model.delete(newest) }
-        }
+        // Loaded, so a view shown without HistoryView's onAppear (such as WeekView in a List) still has its days.
+        model.refresh()
+        if deleting, let newest = model.days.first?.sessions.first { model.delete(newest) }
         return model
     }
 }
