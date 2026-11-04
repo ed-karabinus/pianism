@@ -2,8 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <!-- The privacy manifest App Store Connect requires (NFR-2). Pianism tracks nothing and collects
-     nothing; telemetry adds its data types when it lands (#19), and the widget adds 1C8F.1 and a
-     manifest of its own. `make build` checks it's in the app. -->
+     nothing; telemetry adds its data types when it lands (#19). The widget needs none: it calls no
+     required-reason API, reading only the App Group files' contents (ADR 0010). `make build`
+     checks this one is in the app. -->
 <dict>
 	<key>NSPrivacyTracking</key>
 	<false/>
