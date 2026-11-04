@@ -95,9 +95,10 @@ Agents write code quickly, so the main risk is code that works but shouldn't exi
    ADR if it changes the architecture) approved by the owner before you write code.
 4. Estimate the production lines before you start, and report the estimate and the actual in the
    PR. More than 1.5 times the estimate needs a sentence explaining why.
-5. Each PR that changes code is reviewed by agents that didn't write it (#180). The author applies
-   each finding or says why not in the PR's Review section, which ends with a count: findings,
-   applied, not applied. A disagreement goes to the owner, not back and forth.
+5. Every PR is reviewed by agents that didn't write it (#180). A review stays on the PR: it isn't a
+   re-audit, and it doesn't propose again anything settled in `docs/decisions.md` without something
+   new. The author applies each finding or says why not in the PR's Review section, which ends with
+   a count: findings, applied, not applied. A disagreement goes to the owner, not back and forth.
    - **The other agent** (the building and reviewing agents review each other's PRs): once the
      draft's code is final, ask on its row in the queue (#179) and with a note in the local mailbox
      (`~/Developer/pianism-mail/`, see its README). The review is one PR comment headed "Review by
