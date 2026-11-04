@@ -162,14 +162,14 @@ struct PianismApp: App {
             let nudges = notifications
         #endif
         let glance = SystemPracticeGlance(file: totals)
-        var midi = PracticeModel.storedMIDI(in: .standard)
-        midi.pauseAfter = midiPause ?? midi.pauseAfter
-        midi.saveAfter = midiSave ?? midi.saveAfter
-        midi.minimumPlayed = midiMinimum ?? midi.minimumPlayed
+        var midiSettings = PracticeModel.storedMIDI(in: .standard)
+        midiSettings.pauseAfter = midiPause ?? midiSettings.pauseAfter
+        midiSettings.saveAfter = midiSave ?? midiSettings.saveAfter
+        midiSettings.minimumPlayed = midiMinimum ?? midiSettings.minimumPlayed
         let practice = PracticeModel(
             store: store, history: sessions, outbox: outbox, clock: clock, nudges: nudges, glance: glance,
             defaults: .standard, nudge: nudge ?? PracticeModel.storedNudge(in: .standard),
-            cap: cap ?? PracticeModel.storedCap(in: .standard), midi: midi)
+            cap: cap ?? PracticeModel.storedCap(in: .standard), midi: midiSettings)
         answering.practice = practice
         self.practice = practice
         // The widget's and the Live Activity's buttons run in this process as intents, which find the model through
