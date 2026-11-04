@@ -335,6 +335,21 @@ struct PracticeSessionTests {
         #expect(session.endsByItself(cap: nil, saveAfter: 300) == start + 370)
     }
 
+    @Test("GLN-1, MIDI-1: a MIDI session resumed by a tap after its last note stops outside the app at the resume")
+    func aResumedMIDISessionStopsAtTheResume() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start, source: .midi)
+        try session.noteLastPlayed(at: start + 70)
+        try session.pause(at: start + 70)
+
+        // As from the Lock Screen's Resume, with no note since and the app away.
+        try session.resume(at: start + 200)
+
+        #expect(session.countsOnlyInApp)
+        #expect(session.pausedAwayAt == start + 200)
+        #expect(session.endsByItself(cap: nil, saveAfter: 600) == start + 800)
+    }
+
     @Test("GLN-1, SES-4: a timer session counts outside the app, and ends at the cap while running, never while paused")
     func aTimerSessionAwayCountsOnUntilTheCap() throws {
         let start = clock.now

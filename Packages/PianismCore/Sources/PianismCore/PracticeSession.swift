@@ -93,9 +93,10 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
     }
 
     /// Where a clock outside the app stops: at the pause, or, while a MIDI session is played, at its last note the
-    /// app heard, as nothing hears the piano while the app is away (MIDI-1, GLN-1, decided with Ed, 2026-11-03).
+    /// app heard, as nothing hears the piano while the app is away (MIDI-1, GLN-1, decided with Ed, 2026-11-03). A
+    /// resume since that note counts as one, as it does for the detector, so a tapped Resume isn't lost.
     public var pausedAwayAt: Date? {
-        pausedAt ?? (countsOnlyInApp ? lastNoteAt : nil)
+        pausedAt ?? (countsOnlyInApp ? lastNoteAt.map { max($0, latestEvent) } : nil)
     }
 
     /// Whether a clock outside the app waits for the app to count on: a MIDI session played until the app left

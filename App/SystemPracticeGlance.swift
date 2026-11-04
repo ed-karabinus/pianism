@@ -71,9 +71,13 @@ final class SystemPracticeGlance: PracticeGlance {
             }
         }
         // Practice refreshes at every tick and tag change too; the widget reads the session's file itself, so it
-        // only needs a reload when what it draws from changed: a new session, or one paused, resumed or gone.
+        // only needs a reload when what it draws from changed: a new session, one paused, resumed or gone, or a piano
+        // session's clock stopped at a new last note as the app leaves.
         let changed = lastShown.withLock { last in
-            guard last?.id != session?.id || last?.state != session?.state else { return false }
+            guard
+                last?.id != session?.id || last?.state != session?.state
+                    || last?.pausedAwayAt != session?.pausedAwayAt
+            else { return false }
             last = session
             return true
         }
