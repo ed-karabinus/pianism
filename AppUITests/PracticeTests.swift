@@ -1290,6 +1290,31 @@ final class PracticeTests: UITestCase {
 
     // Only Xcode 27's SDK (Swift 6.4) has the VoiceOver service; Xcode 26.6 (Swift 6.3) builds the iOS 26 jobs.
     #if compiler(>=6.4)
+        /// MIDI-1, NFR-3: when a silence pauses a piano session, VoiceOver says so with the time, unasked, as the drop
+        /// back is otherwise only seen (device row M5's VoiceOver half). The service is new in iOS 27, so iOS 26 skips.
+        @MainActor
+        func testVoiceOverSaysTheSilencePause() throws {
+            try skipUnlessSoaking("VoiceOver's service is new in iOS 27")
+            guard #available(iOS 27, *) else { throw XCTSkip("VoiceOver can't be driven before iOS 27") }
+            let voiceOver = XCUIDevice.shared.voiceOverService
+            try voiceOver.enable()
+            // Off in teardown, which runs after a failure too, or every later test would run under VoiceOver.
+            addTeardownBlock { @MainActor in try? voiceOver.disable() }
+            let app = launch(
+                at: nil, reset: true, midiNotes: "0.5,0.8,1.1,2.5,4", midiPauseSeconds: 10, midiSaveSeconds: 60,
+                midiMinimumSeconds: 2)
+            XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 20), "No session from the notes")
+            // Played from the first note to the last, 3.5 s. Asked often, as the service only reports what's being said.
+            let line = "Paused at your last note, 3 seconds"
+            var said: [String] = []
+            let deadline = Date.now + 40
+            while !said.contains(line), Date.now < deadline {
+                if let speech = try? voiceOver.currentSpeech().utterance, said.last != speech { said.append(speech) }
+                RunLoop.current.run(until: Date.now + 0.25)
+            }
+            XCTAssertTrue(said.contains(line), "VoiceOver said \(said)")
+        }
+
         /// NFR-3: VoiceOver, moving through Practice with a session running, says the commands by name: Pause and Stop
         /// (device row L7's app half). The service is new in iOS 27, so iOS 26 skips.
         @MainActor
