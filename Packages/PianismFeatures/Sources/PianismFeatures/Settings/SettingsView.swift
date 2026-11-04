@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The Settings tab: connecting a piano (MIDI-2), when Practice asks "Still practicing?" and stops a session (SES-3,
-/// SES-4), and the overlap warning (SES-5) for now; SET-1's other settings join it one section at a time.
+/// The Settings tab: connecting a piano (MIDI-2) and how it starts, pauses and saves a session (MIDI-1), when Practice
+/// asks "Still practicing?" and stops a session (SES-3, SES-4), and the overlap warning (SES-5) for now; SET-1's other
+/// settings join it one section at a time.
 struct SettingsView: View {
     @Bindable var practice: PracticeModel
 
@@ -22,8 +23,28 @@ struct SettingsView: View {
                         }
                     }
                     .accessibilityIdentifier(AccessibilityID.settingsPianos)
+                    Picker(selection: $practice.startNotes) {
+                        ForEach(1...10, id: \.self) { Text($0, format: .number).tag($0) }
+                    } label: {
+                        Text("Notes that start a session", bundle: .module)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.settingsStartNotes)
+                    Picker(selection: $practice.pauseAfter) {
+                        times(practice.pauseChoices)
+                    } label: {
+                        Text("Pause after a silence of", bundle: .module)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.settingsPauseAfter)
+                    Picker(selection: $practice.saveAfter) {
+                        times(practice.saveChoices)
+                    } label: {
+                        Text("Save after a silence of", bundle: .module)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.settingsSaveAfter)
                 } header: {
                     Text("Piano", bundle: .module)
+                } footer: {
+                    Text("Pianism hears your piano while it's open on screen.", bundle: .module)
                 }
                 Section {
                     Picker(selection: $practice.nudge) {

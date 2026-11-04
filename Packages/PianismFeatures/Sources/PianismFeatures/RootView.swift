@@ -158,6 +158,9 @@ enum AccessibilityID {
     static let settingsOverlapWarning = "settings.overlap-warning"
     static let settingsNudge = "settings.nudge"
     static let settingsCap = "settings.cap"
+    static let settingsStartNotes = "settings.startNotes"
+    static let settingsPauseAfter = "settings.pauseAfter"
+    static let settingsSaveAfter = "settings.saveAfter"
 }
 
 /// The app's tabs, so the cap banner's Edit can switch to History (SES-4).

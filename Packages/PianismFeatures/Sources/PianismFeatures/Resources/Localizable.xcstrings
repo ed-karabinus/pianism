@@ -166,6 +166,9 @@
     "Note" : {
 
     },
+    "Notes that start a session" : {
+
+    },
     "Overlap warning" : {
 
     },
@@ -175,6 +178,9 @@
     "Pause" : {
 
     },
+    "Pause after a silence of" : {
+
+    },
     "Paused" : {
 
     },
@@ -182,6 +188,9 @@
 
     },
     "Pianism couldn't reach its storage. Try again in a moment." : {
+
+    },
+    "Pianism hears your piano while it's open on screen." : {
 
     },
     "Pianism stopped your session at %@ of practice, in case the timer was left running." : {
@@ -224,6 +233,9 @@
 
     },
     "Save" : {
+
+    },
+    "Save after a silence of" : {
 
     },
     "Scales" : {

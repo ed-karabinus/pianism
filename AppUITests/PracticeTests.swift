@@ -219,6 +219,30 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(text(app, "practice.capped"), stopped, "The banner should name the cap that stopped it")
     }
 
+    /// SET-1, MIDI-1: how a piano starts, pauses and saves a session comes from Settings. Set to 1 note there, one
+    /// note starts a session after a relaunch, and the silences set are kept across it. The model tests check that the
+    /// silences reach the detector.
+    @MainActor
+    func testOneNoteStartsASessionWhenSettingsSaySo() throws {
+        var app = launch(at: start, reset: true)
+        openSettings(app)
+        XCTAssertEqual(chosen(app, "settings.startNotes"), "3")
+        XCTAssertEqual(chosen(app, "settings.pauseAfter"), "1 minute")
+        XCTAssertEqual(chosen(app, "settings.saveAfter"), "10 minutes")
+        choose(app, "settings.startNotes", "1")
+        choose(app, "settings.pauseAfter", "30 seconds")
+        choose(app, "settings.saveAfter", "5 minutes")
+        attachScreenshot(of: app, named: "Settings, 1 note, 30 seconds and 5 minutes")
+        kill(app)
+
+        app = launch(at: start + 60, midiNotes: "0")
+
+        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "One note didn't start a session")
+        openSettings(app)
+        XCTAssertEqual(chosen(app, "settings.pauseAfter"), "30 seconds")
+        XCTAssertEqual(chosen(app, "settings.saveAfter"), "5 minutes")
+    }
+
     /// GLN-2: the widget's Start runs an intent in the app's process, which starts the session through the same model
     /// as a tap, so the nudge asks and the cap stops it as for any session. The widget can't be tapped on a simulator
     /// (ADR 0010), so the app performs the intent at launch instead; the device checklist covers the tap itself.
