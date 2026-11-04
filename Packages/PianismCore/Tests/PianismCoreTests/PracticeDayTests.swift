@@ -21,6 +21,21 @@ struct PracticeDayTests {
         #expect(days.map(\.total) == [45 * 60, 20 * 60])
     }
 
+    @Test("HIS-1: a day's total adds the whole seconds its rows show, so a row's fraction can't make them disagree")
+    func totalAddsWholeSeconds() throws {
+        let calendar = try calendar("America/Los_Angeles")
+        let start = try date(2026, 11, 4, 15, 0, in: calendar)
+        var sessions: [PracticeSession] = []
+        // As the owner saw on 2026-11-04: rows of 1:33, 2:35 and 1:01 under a total of 5:11 rather than 5:09.
+        for (minute, played) in [(0, 93.4), (10, 155.9), (20, 61.9)] {
+            var session = PracticeSession(startedAt: start + Double(minute) * 60)
+            try session.stop(at: session.startedAt + played)
+            sessions.append(session)
+        }
+
+        #expect(PracticeDay.group(sessions, in: calendar).map(\.total) == [5 * 60 + 9])
+    }
+
     @Test("HIS-1: a session that runs past midnight counts toward the day it started")
     func lateSessionCountsTowardStartDay() throws {
         let calendar = try calendar("America/Los_Angeles")
