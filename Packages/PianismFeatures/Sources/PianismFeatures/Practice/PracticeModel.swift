@@ -122,8 +122,10 @@ public final class PracticeModel: TagTarget {
         saveAfter = midi.saveAfter
         answeredID = defaults.string(forKey: Self.answeredKey).flatMap(UUID.init(uuidString:))
         // Loads the stored session now, so the first frame after a relaunch already shows it, with the silence
-        // since its last change applied.
-        cameToFront()
+        // since its last change applied. As `cameToFront()`, but not yet on screen: a Live Activity's button can
+        // launch the app in the background.
+        readyUntil = clock.now + Self.readyAwake
+        tick()
     }
 
     /// Starts a session (SES-1). Public for the widget's Start, which the app runs through this model (ADR 0010).
@@ -223,17 +225,23 @@ public final class PracticeModel: TagTarget {
     /// Ticks as the app comes to the front, at launch or back from elsewhere, which keeps the screen on a while longer
     /// with a piano connected (MIDI-R5).
     func cameToFront() {
+        isOnScreen = true
         readyUntil = clock.now + Self.readyAwake
         tick()
     }
 
     /// Stores the MIDI session's last note as the app leaves the screen, so if it's killed while away, the silence
-    /// counts from that note, not from the last change (MIDI-1).
+    /// counts from that note, not from the last change (MIDI-1). Either way, the glance learns the app has gone.
     func leaveForeground() {
+        isOnScreen = false
         // The detector has a last note only while a MIDI session is playing.
-        guard let lastNote = detector.lastNote else { return }
+        guard let lastNote = detector.lastNote else { return refresh() }
         perform { try recorder.noteLastPlayed(at: lastNote) }
     }
+
+    /// Whether the app is open on screen, hearing the piano, so a MIDI session's clock outside it counts on (GLN-1).
+    /// Not until it comes to the front, as a Live Activity's button can launch it in the background.
+    private var isOnScreen = false
 
     /// Says `line` over whatever VoiceOver is saying, which otherwise drops it, as when it's naming the app that opened.
     public static func tellVoiceOver(_ line: String) {
@@ -440,7 +448,8 @@ public final class PracticeModel: TagTarget {
             isShowingStorageError = true
         }
         detector.sync(with: session)
-        glance.show(session, cappedAt: timerSession == nil ? nil : cap)
+        glance.show(
+            session, cappedAt: timerSession == nil ? nil : cap, saveAfter: saveAfter, appOnScreen: isOnScreen)
         isPastNudge = timerSession?.whenPracticeReaches(nudge).map { $0 <= clock.now } ?? false
         // The notification waits for the running session to reach the nudge. A pause, a stop or a session already
         // past it cancels it, so it comes at most once per session.

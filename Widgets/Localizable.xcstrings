@@ -1,6 +1,15 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Ended" : {
+      "comment" : "The Live Activity's title once the session has ended itself while the app was away"
+    },
+    "Open Pianism to keep counting." : {
+      "comment" : "Under a piano session paused at its last note while the app is away, which only the open app hears"
+    },
+    "Open Pianism to see it." : {
+      "comment" : "Under Ended, for a session that ended itself while the app was away"
+    },
     "Pause" : {
       "comment" : "The Live Activity's button; VoiceOver reads this"
     },

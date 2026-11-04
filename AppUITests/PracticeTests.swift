@@ -1238,6 +1238,26 @@ final class PracticeTests: UITestCase {
         XCTAssertFalse(liveActivities.firstMatch.waitForExistence(timeout: 5), "The activity stayed past the cap")
     }
 
+    /// GLN-1, MIDI-1: once the app leaves the screen, a piano session's island stops its clock at the last note, as
+    /// nothing hears the piano then (decided with Ed, 2026-11-03). The notes are a chord at the start, so it stops at
+    /// 0:00; the title and "Open Pianism to keep counting." show only on the Lock Screen and expanded, device row L9.
+    @MainActor
+    func testAPianoSessionsIslandStopsAtItsLastNote() throws {
+        try skipWithoutAnIsland()
+        let app = launch(at: nil, reset: true, midiNotes: "0,0,0")
+        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
+        goHome()
+        XCTAssertTrue(liveActivities.firstMatch.waitForExistence(timeout: 10), "No activity on the Home Screen")
+        let clock = liveActivities.firstMatch.staticTexts.firstMatch
+        XCTAssertTrue(
+            clock.wait(for: \.label, toEqual: "0:00", timeout: 10),
+            "The clock didn't stop at the last note: \(clock.label)")
+        // A second read, to show it stays stopped.
+        Thread.sleep(forTimeInterval: 3)
+        XCTAssertEqual(clock.label, "0:00", "The island counted with nobody hearing the piano")
+        attachScreenshot(of: springboard, named: "The island stopped at the last note")
+    }
+
     /// MIDI-1, MIDI-2: a piano the system announces is heard through the app's own CoreMIDI adapter, not the test
     /// script: Practice names it, three notes start a session, and the name goes with the piano (device rows M1, M3
     /// and P1, with a piano in software).
