@@ -43,7 +43,7 @@ final class SystemPracticeGlance: PracticeGlance {
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetKind.practice)
     }
 
-    func show(_ session: PracticeSession?, cappedAt cap: TimeInterval?, saveAfter: TimeInterval) {
+    func show(_ session: PracticeSession?, cappedAt cap: TimeInterval?, saveAfter: TimeInterval, appOnScreen: Bool) {
         // An ended session still stored, as when neither history nor the outbox could take it, isn't being practiced.
         let session = session?.state == .ended ? nil : session
         // The cap lives in the app, so the widget learns it from here: the totals file carries it (#164). The widget
@@ -67,7 +67,8 @@ final class SystemPracticeGlance: PracticeGlance {
         pending.withLock { previous in
             previous = Task { [previous] in
                 await previous?.value
-                await self.reconcileActivities(with: session, cappedAt: cap, saveAfter: saveAfter)
+                await self.reconcileActivities(
+                    with: session, cappedAt: cap, saveAfter: saveAfter, appOnScreen: appOnScreen)
             }
         }
         // Practice refreshes at every tick and tag change too; the widget reads the session's file itself, so it
@@ -97,13 +98,13 @@ final class SystemPracticeGlance: PracticeGlance {
     /// The end-to-end tests read the island it leaves on the Home Screen (`testTheLiveActivity…`); the device
     /// checklist's L rows cover the Lock Screen and the buttons.
     private func reconcileActivities(
-        with session: PracticeSession?, cappedAt cap: TimeInterval?, saveAfter: TimeInterval
+        with session: PracticeSession?, cappedAt cap: TimeInterval?, saveAfter: TimeInterval, appOnScreen: Bool
     ) async {
         // Out of date once the session has ended itself with no process running, so the activity says so.
         let content = session.map {
             ActivityContent(
-                state: PracticeAttributes.ContentState(session: $0, cappedAt: cap),
-                staleDate: $0.endsByItself(cap: cap, saveAfter: saveAfter))
+                state: PracticeAttributes.ContentState(session: $0, cappedAt: cap, appOnScreen: appOnScreen),
+                staleDate: $0.endsByItself(cap: cap, saveAfter: saveAfter, appOnScreen: appOnScreen))
         }
         var shown = false
         for activity in Activity<PracticeAttributes>.activities {

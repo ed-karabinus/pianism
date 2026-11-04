@@ -143,12 +143,13 @@ private struct PracticeButtons: View {
 /// The widget's preview session, 85 minutes practiced and counting, or paused at 25 minutes, as the activity shows it
 /// with the app's 4-hour cap.
 private func previewState(paused: Bool) -> PracticeAttributes.ContentState {
-    PracticeAttributes.ContentState(session: previewSession(paused: paused), cappedAt: 4 * 60 * 60)
+    PracticeAttributes.ContentState(session: previewSession(paused: paused), cappedAt: 4 * 60 * 60, appOnScreen: false)
 }
 
 private let previewAttributes = PracticeAttributes(sessionID: UUID())
 
-private let previewPianoState = PracticeAttributes.ContentState(session: previewPianoSession(), cappedAt: nil)
+private let previewPianoState = PracticeAttributes.ContentState(
+    session: previewPianoSession(), cappedAt: nil, appOnScreen: false)
 
 #Preview("Lock Screen", as: .content, using: previewAttributes) {
     PracticeLiveActivity()

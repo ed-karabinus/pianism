@@ -7,6 +7,7 @@ public protocol PracticeGlance: Sendable {
     func show(_ totals: PracticeTotals)
     /// Shows the stored session, or none; an ended one still stored counts as none. `cap` is the practice time at
     /// which the session ends itself, so a clock outside the app stops there (SES-4), or `nil` when it isn't capped.
-    /// `saveAfter` is the silence after which a MIDI session ends itself (MIDI-1).
-    func show(_ session: PracticeSession?, cappedAt cap: TimeInterval?, saveAfter: TimeInterval)
+    /// `saveAfter` is the silence after which a MIDI session ends itself (MIDI-1). `appOnScreen` is whether the app
+    /// is open on screen, hearing the piano, so a MIDI session's clock counts on outside it (GLN-1).
+    func show(_ session: PracticeSession?, cappedAt cap: TimeInterval?, saveAfter: TimeInterval, appOnScreen: Bool)
 }

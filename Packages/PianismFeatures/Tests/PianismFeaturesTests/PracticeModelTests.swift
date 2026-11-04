@@ -136,6 +136,19 @@ struct PracticeModelTests {
         #expect(glance.shownSaveAfter == 300, "The Live Activity goes stale when the new save would end it")
     }
 
+    @Test("GLN-1: the glance learns whether the app is on screen, which it isn't until it comes to the front")
+    func theGlanceLearnsWhetherTheAppIsOnScreen() {
+        let model = makeModel()
+        model.tick()
+        #expect(glance.shownOnScreen == false, "A Live Activity's button can launch the app in the background")
+
+        model.cameToFront()
+        #expect(glance.shownOnScreen == true)
+
+        model.leaveForeground()
+        #expect(glance.shownOnScreen == false, "Shown again as the app leaves, with no note to store")
+    }
+
     @Test("GLN-1, MIDI-1: a silence-paused MIDI session resumed from the Lock Screen shows stopped at the resume")
     func aMIDISessionResumedWhileAwayShowsStoppedAtTheResume() throws {
         let model = makeModel()
@@ -152,9 +165,10 @@ struct PracticeModelTests {
         model.resume()
 
         let shown = try #require(glance.shownSessions.last ?? nil)
+        #expect(glance.shownOnScreen == false)
         #expect(shown.countsOnlyInApp)
         #expect(shown.pausedAwayAt == first + 190)
-        #expect(shown.endsByItself(cap: nil, saveAfter: 600) == first + 790)
+        #expect(shown.endsByItself(cap: nil, saveAfter: 600, appOnScreen: false) == first + 790)
     }
 
     @Test(

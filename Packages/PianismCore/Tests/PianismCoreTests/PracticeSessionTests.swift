@@ -313,13 +313,13 @@ struct PracticeSessionTests {
         var session = PracticeSession(startedAt: start, source: .midi)
         #expect(session.pausedAwayAt == start, "With no note stored yet, it stops at its start")
         #expect(session.countsOnlyInApp)
-        #expect(session.endsByItself(cap: nil, saveAfter: 600) == start + 600)
+        #expect(session.endsByItself(cap: nil, saveAfter: 600, appOnScreen: false) == start + 600)
 
         try session.noteLastPlayed(at: start + 70)
 
         #expect(session.pausedAwayAt == start + 70)
         #expect(session.countsOnlyInApp)
-        #expect(session.endsByItself(cap: nil, saveAfter: 600) == start + 670)
+        #expect(session.endsByItself(cap: nil, saveAfter: 600, appOnScreen: false) == start + 670)
     }
 
     @Test("GLN-1, MIDI-1: a paused MIDI session stops at its pause, which needs no app, and ends a save after it")
@@ -332,7 +332,7 @@ struct PracticeSessionTests {
 
         #expect(session.pausedAwayAt == start + 70)
         #expect(!session.countsOnlyInApp)
-        #expect(session.endsByItself(cap: nil, saveAfter: 300) == start + 370)
+        #expect(session.endsByItself(cap: nil, saveAfter: 300, appOnScreen: false) == start + 370)
     }
 
     @Test("GLN-1, MIDI-1: a MIDI session resumed by a tap after its last note stops outside the app at the resume")
@@ -347,7 +347,24 @@ struct PracticeSessionTests {
 
         #expect(session.countsOnlyInApp)
         #expect(session.pausedAwayAt == start + 200)
-        #expect(session.endsByItself(cap: nil, saveAfter: 600) == start + 800)
+        #expect(session.endsByItself(cap: nil, saveAfter: 600, appOnScreen: false) == start + 800)
+    }
+
+    @Test(
+        "GLN-1, MIDI-1: with the app on screen, a MIDI session's clock outside it counts on, and stops only at a pause")
+    func aMIDISessionOnScreenCountsOn() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start, source: .midi)
+        try session.noteLastPlayed(at: start + 70)
+        #expect(session.pausedOutside(appOnScreen: false) == start + 70)
+
+        #expect(session.pausedOutside(appOnScreen: true) == nil, "On a paired Watch or a Mac, it counts on")
+        #expect(session.endsByItself(cap: nil, saveAfter: 600, appOnScreen: true) == nil)
+
+        try session.pause(at: start + 100)
+
+        #expect(session.pausedOutside(appOnScreen: true) == start + 100)
+        #expect(session.endsByItself(cap: nil, saveAfter: 600, appOnScreen: true) == start + 700)
     }
 
     @Test("GLN-1, SES-4: a timer session counts outside the app, and ends at the cap while running, never while paused")
@@ -356,13 +373,13 @@ struct PracticeSessionTests {
         var session = PracticeSession(startedAt: start)
         #expect(session.pausedAwayAt == nil)
         #expect(!session.countsOnlyInApp)
-        #expect(session.endsByItself(cap: 3_600, saveAfter: 600) == start + 3_600)
-        #expect(session.endsByItself(cap: nil, saveAfter: 600) == nil)
+        #expect(session.endsByItself(cap: 3_600, saveAfter: 600, appOnScreen: false) == start + 3_600)
+        #expect(session.endsByItself(cap: nil, saveAfter: 600, appOnScreen: false) == nil)
 
         try session.pause(at: start + 100)
 
         #expect(session.pausedAwayAt == start + 100)
-        #expect(session.endsByItself(cap: 3_600, saveAfter: 600) == nil)
+        #expect(session.endsByItself(cap: 3_600, saveAfter: 600, appOnScreen: false) == nil)
     }
 
     // MARK: Invalid changes are rejected and leave the session untouched

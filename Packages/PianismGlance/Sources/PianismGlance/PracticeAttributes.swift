@@ -16,10 +16,10 @@ public struct PracticeAttributes: ActivityAttributes, Sendable {
         /// Whether the clock waits for the app to count on, as for a MIDI session played until the app left.
         public let countsOnlyInApp: Bool
 
-        public init(session: PracticeSession, cappedAt cap: TimeInterval?) {
+        public init(session: PracticeSession, cappedAt cap: TimeInterval?, appOnScreen: Bool) {
             timer = session.practiceClock(cap: cap)
-            pausedAt = session.pausedAwayAt
-            countsOnlyInApp = session.countsOnlyInApp
+            pausedAt = session.pausedOutside(appOnScreen: appOnScreen)
+            countsOnlyInApp = !appOnScreen && session.countsOnlyInApp
         }
     }
 

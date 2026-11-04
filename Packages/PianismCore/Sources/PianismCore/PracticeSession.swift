@@ -106,11 +106,19 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         source == .midi && state == .running
     }
 
+    /// Where a clock outside the app stops, with the app open on screen or away. A Live Activity shows on a paired
+    /// Watch or a Mac while the app is open, and then only a pause stops it, as the app hears the piano and keeps
+    /// the clock up to date.
+    public func pausedOutside(appOnScreen: Bool) -> Date? {
+        appOnScreen ? pausedAt : pausedAwayAt
+    }
+
     /// When the session ends itself with no process running, so a clock outside the app is out of date from then:
-    /// a timer session when its practice reaches `cap` (SES-4), a MIDI session `saveAfter` after its last note or
-    /// pause (MIDI-1). `nil` while nothing would end it, as for a paused timer session.
-    public func endsByItself(cap: TimeInterval?, saveAfter: TimeInterval) -> Date? {
-        if source == .midi { return pausedAwayAt.map { $0 + saveAfter } }
+    /// a timer session when its practice reaches `cap` (SES-4), a MIDI session `saveAfter` after where its clock
+    /// stops (MIDI-1). `nil` while nothing would end it, as for a paused timer session, or a MIDI session played
+    /// with the app on screen, which ends it itself.
+    public func endsByItself(cap: TimeInterval?, saveAfter: TimeInterval, appOnScreen: Bool) -> Date? {
+        if source == .midi { return pausedOutside(appOnScreen: appOnScreen).map { $0 + saveAfter } }
         return cap.flatMap(whenPracticeReaches)
     }
 
