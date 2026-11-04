@@ -19,7 +19,7 @@ to the owner.
 | `make test` | All of the above |
 | `make lint` / `make format` | Check / apply swift-format |
 | `make unused` | Fails on unused code in the app and the package code it builds (Periphery, pinned by checksum). Keep an intentional exception with `// periphery:ignore - <reason>` |
-| `make mutate` | Mutation testing of the core and adapters (minutes). Run before milestone checks and for PRs that add logic there; each survivor gets a test, a deletion or `// mutate:ignore - <reason>` |
+| `make mutate` | Mutation testing of the core and adapters (minutes). Run it for PRs that add logic there; a survivor on a line the PR changed gets a test, a deletion or `// mutate:ignore - <reason>` (owner, 2026-10-19) |
 | `make build` | Release build for the simulator, as the app ships; the tests build Debug |
 | `make evidence` | Exports the screenshots the last `test-app` run captured, for the PR's Testing section |
 
@@ -53,6 +53,9 @@ Run `make lint unused build test` before every push. CI runs the same commands.
   `SessionFileFormatTests` (ADR 0003). The synced schema follows ADR 0006.
 - Every user-facing string goes through the String Catalog; every control gets a VoiceOver label.
 - New views get `#Preview`s in light, dark and AX5 text size.
+- Never promise more than the app does. Pianism hears a piano only while it's open on screen (iOS
+  suspends it otherwise, and no background mode allows MIDI), so the paywall, App Store text,
+  onboarding and Settings say "while Pianism is open".
 - Tests use Swift Testing (`import Testing`) except UI tests, which use XCTest and subclass
   `UITestCase`, so a failure keeps its screen and UI tree. Name each test after the behaviour it
   proves and tag it with its requirement ID.
@@ -97,4 +100,29 @@ Agents write code quickly, so the main risk is code that works but shouldn't exi
    automated test in that PR or a follow-up issue that says how it will be automated. If it can't
    be automated, the issue says why and the check becomes an entry in `docs/device-checklist.md`
    (start the file with its first entry). When the owner reports a problem from using the app,
-   write a test that fails on it before fixing it.
+   write a test that fails on it before fixing it. The same goes for any bug: the failing test first.
+9. Before calling a change done, plant bugs in the new logic (two to five, each a likely mistake) and
+   show the tests catch each one; the PR lists them. A plant no test catches means a missing test.
+10. Open each PR as a draft once the code is final, so CI runs while you finish. Mark it ready only
+    when every CI job is green, then tell the owner. Update a branch with `main` only for a real
+    conflict, as each update reruns CI.
+11. In the description, lead with what the owner will see change (layout, wording, a test changed),
+    with a screenshot (the `evidence` branch, under `pr-NN/`). A PR holds no open questions: settle
+    wording and behaviour with the owner first, and the PR states the decision.
+12. Commits end with `Co-Authored-By: Claude <model> <noreply@anthropic.com>`, and PR descriptions
+    with "🤖 Generated with [Claude Code](https://claude.com/claude-code)". No session links in
+    either.
+13. Go easy on GitHub: the bot account was flagged once for a burst of writes. Poll CI every five
+    minutes at most, cancel a run a newer push replaced, and open issues a few at a time.
+
+## Working with the owner
+
+- Write in plain, casual, precise language with little jargon. Leave out hashes and run IDs unless
+  they're needed.
+- Ask about any default, behaviour, wording or scope you're unsure of, batched, with your
+  recommendation first. Give your real view, and disagree when the evidence says so.
+- Approval is the owner writing "I approve <X>". A bare "ok" isn't approval.
+- A change to the spec needs the owner's authorization for those exact lines, and each
+  authorization is used once.
+- Secrets (tokens, passwords) are entered only in the owner's own Terminal, never through chat or a
+  command an agent runs. Never publish the owner's email address; commits use the no-reply one.
