@@ -15,29 +15,40 @@ What is genuinely strong and should not be regressed: calendar/DST-correct day/w
 
 ## Decisions (Ed, 2026-11-03)
 
-Read this before the fix order below: these decisions replace it. Features stay first until code complete; the "Do" items go in as small PRs between feature PRs, about one for every two.
+Read this before the fix order below: these decisions replace it. Features stay first until code complete; the "Do" items go in as small PRs between feature PRs, about one for every two, in these slots (agreed with the reviewing agent's reply, 2026-11-03):
+
+1. #174, SET-1's piano settings.
+2. The Lock Screen pause for MIDI sessions in the background, with AUDIT-34, AUDIT-05 (same code) and the `PracticeAttributes.ContentState` tests from AUDIT-10.
+3. VoiceOver announcing the silence pause.
+4. AUDIT-04.
+5. SET-1's notification switch, with AUDIT-37.
+6. AUDIT-12 and AUDIT-13, with AUDIT-03 (same files). AUDIT-12 waits for #174, which changes `MIDIDetector`.
+7. SET-1's daily reminder.
+8. AUDIT-19.
+
+AUDIT-11 goes to the reviewing agent now, off `main`, as its own draft PR; nothing in flight touches `WeekView.swift`.
 
 | Finding | Decision | Why |
 | --- | --- | --- |
 | AUDIT-01 Bluetooth reconnect | **After P5** | Device check P5 (paired from Pianism, piano off and on) decides it. If it doesn't come back, the CoreBluetooth reconnect suggested here is the fix, under #44. |
 | AUDIT-02 Edit versus delete on two devices | **With the sync device checks** | Needs two devices; the result goes in ADR 0006, and a rule and test follow if a delete can lose. |
-| AUDIT-03 Negative cap or MIDI timeout | **Later** | Only Debug's launch overrides can set one; Settings offers only positive values (#171, #174). A guard is cheap but not urgent. |
-| AUDIT-04 Widget across midnight | **Do** | Confirmed: the midnight entry carries the running session over whole. |
-| AUDIT-05 Widget cap with no totals file | **Do** | |
+| AUDIT-03 Negative cap or MIDI timeout | **Do, slot 6** | Only Debug's launch overrides can set one; Settings offers only positive values (#171, #174). It goes with 12 and 13, which change the same files. |
+| AUDIT-04 Widget across midnight | **Do, slot 4** | Confirmed: the midnight entry carries the running session over whole. |
+| AUDIT-05 Widget cap with no totals file | **Do, slot 2** | Changes the same cap write as the Lock Screen pause. |
 | AUDIT-06 No end-to-end run on push to main | **No** | Decided earlier: no end-to-end run on main; the nightly run covers it. |
 | AUDIT-07 Mutation survivors don't fail a gate | **No** | Decided earlier (2026-10-19): mutation testing only for new logic, on changed lines. |
 | AUDIT-08 No archive or delivery path | **Partly** | No CI archive: CI never uses the owner's Apple ID, and uploads stay his. A local release-build check before TestFlight settles U-1. |
-| AUDIT-09 Widget privacy manifest | **No (disputed)** | The widget calls no required-reason API: it reads no settings since #170, only App Group files' contents. The app manifest's comment saying otherwise was stale and is fixed in this PR. |
-| AUDIT-10 No Glance tests | **Later** | Worth doing; the widget and Live Activity device checks (W, L rows) come first. |
-| AUDIT-11 WeekView has no preview | **Do** | Breaks CLAUDE.md's preview rule. |
-| AUDIT-12 Stop dated before a pause | **Do** | Probe-verified, small core PR. |
-| AUDIT-13 `lastNoteAt` and monotonicity | **Do** | Probe-verified, small core PR. |
+| AUDIT-09 Widget privacy manifest | **No (disputed, withdrawn by the reviewer)** | The widget calls no required-reason API: it reads no settings since #170, only App Group files' contents. The app manifest's comment saying otherwise was stale and is fixed in this PR. If widget-linked code ever calls one, the extension needs its own manifest then. |
+| AUDIT-10 No Glance tests | **Partly, slot 2** | The `ContentState` mapping tests (paused, capped, uncapped) come with the Lock Screen pause, which changes that mapping. The rest waits for code complete. |
+| AUDIT-11 WeekView has no preview | **Do, reviewing agent, now** | Breaks CLAUDE.md's preview rule. |
+| AUDIT-12 Stop dated before a pause | **Do, slot 6** | Probe-verified. After #174. |
+| AUDIT-13 `lastNoteAt` and monotonicity | **Do, slot 6** | Probe-verified. |
 | AUDIT-14 to AUDIT-18 | **After code complete** | Real but small. |
-| AUDIT-19 Timeline ticks every second | **Do** | Battery cost for nothing while no session runs. |
+| AUDIT-19 Timeline ticks every second | **Do, slot 8** | Battery cost for nothing while no session runs. |
 | AUDIT-20 to AUDIT-33 | **After code complete** | Real but small polish. |
-| AUDIT-34 Live Activity never stale | **Do** | With the Lock Screen pause PR (decided 2026-11-03), which changes the same code. |
+| AUDIT-34 Live Activity never stale | **Do, slot 2** | With the Lock Screen pause PR (decided 2026-11-03), which changes the same code. |
 | AUDIT-35, AUDIT-36 MIDI re-enumeration, failed setup | **After code complete** | Or with AUDIT-01 if P5 fails. |
-| AUDIT-37 Notifications denied | **Do** | With SET-1's notification switch PR. |
+| AUDIT-37 Notifications denied | **Do, slot 5** | With SET-1's notification switch PR. |
 | AUDIT-38 | **After code complete** | |
 | AUDIT-39 CI hygiene | **No, mostly** | Reverses earlier choices on retries and checks; revisit only if flakes cost more than they do now. |
 | U-1 `aps-environment` | **Before TestFlight** | Check a signed release build's entitlements; change nothing before that. |
