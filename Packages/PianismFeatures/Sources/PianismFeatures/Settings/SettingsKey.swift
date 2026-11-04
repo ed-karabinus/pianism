@@ -7,4 +7,10 @@ enum SettingsKey {
     static let stillPracticingAfter = "stillPracticingAfter"
     /// The cap, in seconds (SES-4).
     static let automaticCapAfter = "automaticCapAfter"
+    /// How many notes start a MIDI session (MIDI-1).
+    static let midiStartNotes = "midiStartNotes"
+    /// The silence that pauses a MIDI session, in seconds (MIDI-1).
+    static let midiPauseAfter = "midiPauseAfter"
+    /// The silence that ends and saves a MIDI session, in seconds (MIDI-1).
+    static let midiSaveAfter = "midiSaveAfter"
 }

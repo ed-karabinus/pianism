@@ -63,6 +63,30 @@ public final class PracticeModel: TagTarget {
             refresh()
         }
     }
+    /// How many notes within 10 s start a MIDI session (MIDI-1). Set in Settings (SET-1).
+    var startNotes: Int {
+        didSet {
+            defaults.set(startNotes, forKey: SettingsKey.midiStartNotes)
+            detector.settings.startNotes = startNotes
+        }
+    }
+    /// The silence after which a MIDI session pauses (MIDI-1). Set in Settings, where a change applies to the session
+    /// being played at once (SET-1).
+    var pauseAfter: TimeInterval {
+        didSet {
+            defaults.set(pauseAfter, forKey: SettingsKey.midiPauseAfter)
+            detector.settings.pauseAfter = pauseAfter
+            tick()
+        }
+    }
+    /// The silence after which a MIDI session ends and is saved (MIDI-1). Set in Settings, as `pauseAfter` is.
+    var saveAfter: TimeInterval {
+        didSet {
+            defaults.set(saveAfter, forKey: SettingsKey.midiSaveAfter)
+            detector.settings.saveAfter = saveAfter
+            tick()
+        }
+    }
     private let recorder: SessionRecorder
     private let history: any SessionHistory
     private let outbox: any SessionOutbox
@@ -88,6 +112,9 @@ public final class PracticeModel: TagTarget {
         self.defaults = defaults
         self.nudge = nudge
         self.cap = cap
+        startNotes = midi.startNotes
+        pauseAfter = midi.pauseAfter
+        saveAfter = midi.saveAfter
         answeredID = defaults.string(forKey: Self.answeredKey).flatMap(UUID.init(uuidString:))
         // Loads the stored session now, so the first frame after a relaunch already shows it, with the silence
         // since its last change applied.
@@ -103,7 +130,7 @@ public final class PracticeModel: TagTarget {
         }
     }
 
-    /// Counts a note played on a connected piano (MIDI-1). Three within 10 s start a MIDI session. On a session
+    /// Counts a note played on a connected piano (MIDI-1). Three within 10 s, or as many as set, start a MIDI session. On a session
     /// started by tapping, notes only show the user is there, so past the nudge they answer "Still practicing?" as
     /// a Pause does (MIDI-R4, SES-3).
     public func noteOn(at date: Date) {
@@ -255,7 +282,10 @@ public final class PracticeModel: TagTarget {
     var firstDeadline: Date? { deadlines.min() }
 
     private var deadlines: [Date] {
-        ([nudge, cap].map { timerSession?.whenPracticeReaches($0) } + [detector.nextDeadline]).compactMap { $0 }
+        // The silences are read here as well as by the detector, which isn't observed, so RootView's wake-up moves
+        // when one changes in Settings.
+        _ = (pauseAfter, saveAfter)
+        return ([nudge, cap].map { timerSession?.whenPracticeReaches($0) } + [detector.nextDeadline]).compactMap { $0 }
     }
 
     /// The session, unless it's a MIDI session: the piano shows the user is there, and a silence ends it, so it
@@ -305,6 +335,15 @@ public final class PracticeModel: TagTarget {
         stored(SettingsKey.automaticCapAfter, in: defaults) ?? 4 * 60 * 60
     }
 
+    /// How a MIDI session starts, pauses and is saved, as set in Settings, or the defaults (SET-1).
+    public static func storedMIDI(in defaults: UserDefaults) -> MIDISettings {
+        var midi = MIDISettings()
+        midi.startNotes = defaults.object(forKey: SettingsKey.midiStartNotes) as? Int ?? midi.startNotes
+        midi.pauseAfter = stored(SettingsKey.midiPauseAfter, in: defaults) ?? midi.pauseAfter
+        midi.saveAfter = stored(SettingsKey.midiSaveAfter, in: defaults) ?? midi.saveAfter
+        return midi
+    }
+
     private static func stored(_ key: String, in defaults: UserDefaults) -> TimeInterval? {
         defaults.object(forKey: key) as? TimeInterval
     }
@@ -323,6 +362,17 @@ public final class PracticeModel: TagTarget {
     /// Whether Settings can change the cap: not while a timer session runs, which a new cap would end or stretch
     /// (SET-1, decided with Ed, 2026-11-02).
     var canChangeCap: Bool { timerSession == nil }
+
+    /// The silences Settings offers to pause a MIDI session, from 15 s to 5 minutes, each shorter than the one that
+    /// saves it (SET-1, decided with Ed, 2026-11-03).
+    var pauseChoices: [TimeInterval] {
+        Self.choices([15, 30, 45, 60, 120, 180, 300].filter { $0 < saveAfter }, with: pauseAfter)
+    }
+
+    /// The silences Settings offers to save a MIDI session, from 2 minutes to an hour, each longer than the pause.
+    var saveChoices: [TimeInterval] {
+        Self.choices([2, 5, 10, 15, 20, 30, 45, 60].map { $0 * 60 }.filter { $0 > pauseAfter }, with: saveAfter)
+    }
 
     /// `values` with `current` among them, as when a test launches with a nudge or cap of seconds, so the picker
     /// shows it.

@@ -57,6 +57,34 @@ struct MIDIDetectorTests {
         #expect(detector.handle(.noteOn(start + 2)) == [.start(at: start)])
     }
 
+    @Test(
+        "MIDI-1, SET-1: the number of notes that start a session comes from the settings, still within 10 s",
+        arguments: [1, 3, 10])
+    func theNotesThatStartASessionComeFromTheSettings(notes: Int) {
+        var settings = MIDISettings()
+        settings.startNotes = notes
+        var detector = MIDIDetector(settings)
+        // One note fewer, then a note outside their 10 s, start nothing.
+        for offset in 0..<notes - 1 { #expect(detector.handle(.noteOn(start + Double(offset))).isEmpty) }
+        let later = start + 20
+
+        for offset in 0..<notes - 1 { #expect(detector.handle(.noteOn(later + Double(offset) / 2)).isEmpty) }
+        #expect(detector.handle(.noteOn(later + 9.999)) == [.start(at: notes == 1 ? later + 9.999 : later)])
+    }
+
+    @Test("MIDI-1, SET-1: a pause changed while playing moves the deadline, and the next tick pauses at the last note")
+    func aPauseChangedWhilePlayingMovesTheDeadline() {
+        var detector = MIDIDetector()
+        for _ in 1...3 { _ = detector.handle(.noteOn(start)) }
+        #expect(detector.nextDeadline == start + 60)
+
+        detector.settings.pauseAfter = 15
+
+        #expect(detector.nextDeadline == start + 15)
+        #expect(detector.handle(.tick(start + 20)) == [.pause(at: start)])
+        #expect(detector.nextDeadline == start + 600)
+    }
+
     // MARK: MIDI-R4: Stop
 
     @Test(

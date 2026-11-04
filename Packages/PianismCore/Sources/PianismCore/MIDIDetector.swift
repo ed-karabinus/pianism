@@ -1,7 +1,7 @@
 import Foundation
 
-/// Turns a connected piano's notes into changes to a MIDI session (MIDI-1): three notes within 10 s start one
-/// at the first of them. A silence pauses it at its last note, and a note resumes it. A longer silence ends it
+/// Turns a connected piano's notes into changes to a MIDI session (MIDI-1): three notes within 10 s, or as many as
+/// set, start one at the first of them. A silence pauses it at its last note, and a note resumes it. A longer silence ends it
 /// 5 s after its last note, and so does Stop, unless tapped sooner (MIDI-R4).
 ///
 /// It reads no clock and stores nothing. Each event carries its date, each effect is dated for
@@ -36,11 +36,11 @@ public struct MIDIDetector: Sendable {
         case paused(since: Date, bySilence: Bool)
     }
 
-    private static let startThreshold = 3
     private static let startWindow: TimeInterval = 10
     private static let endTail: TimeInterval = 5
 
-    private let settings: MIDISettings
+    /// The settings it follows. A change applies to the session being played at the next event (SET-1).
+    public var settings: MIDISettings
     private var state = State.idle(recent: [])
 
     public init(_ settings: MIDISettings = .init()) {
@@ -105,7 +105,7 @@ public struct MIDIDetector: Sendable {
         case .idle(let recent):
             // Notes dated after this one, as before the clock stepped back, can't start a session in the future.
             let window = recent.filter { (0..<Self.startWindow).contains(date.timeIntervalSince($0)) } + [date]
-            guard window.count >= Self.startThreshold, let first = window.min() else {
+            guard window.count >= settings.startNotes, let first = window.min() else {
                 state = .idle(recent: window)
                 return []
             }

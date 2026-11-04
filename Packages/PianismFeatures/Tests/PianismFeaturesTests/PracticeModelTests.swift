@@ -1,6 +1,7 @@
 import Foundation
 import PianismCore
 import PianismCoreTestSupport
+import Synchronization
 import Testing
 
 @testable import PianismFeatures
@@ -884,7 +885,6 @@ struct PracticeModelTests {
         #expect(model.showsLowBattery)
     }
 
-    /// A model over `store`, with the app's nudge and cap.
     @Test("SET-1: nothing stored reads as 90 minutes and 4 hours, and a nudge and cap set in Settings are kept")
     func nudgeAndCapAreKept() {
         #expect(PracticeModel.storedNudge(in: defaults) == 5_400)
@@ -955,6 +955,67 @@ struct PracticeModelTests {
         #expect(model.capChoices == [20] + stride(from: 3_600, through: 28_800, by: 3_600).map(TimeInterval.init))
     }
 
+    @Test("SET-1: nothing stored reads as 3 notes, 1 minute and 10 minutes; what Settings sets is kept and played by")
+    func midiSettingsAreKept() {
+        let stored = PracticeModel.storedMIDI(in: defaults)
+        #expect((stored.startNotes, stored.pauseAfter, stored.saveAfter) == (3, 60, 600))
+        let model = makeModel()
+
+        model.startNotes = 1
+        model.pauseAfter = 30
+        model.saveAfter = 300
+
+        let kept = PracticeModel.storedMIDI(in: defaults)
+        #expect((kept.startNotes, kept.pauseAfter, kept.saveAfter) == (1, 30, 300))
+        model.noteOn(at: clock.now)
+        #expect(model.session?.source == .midi, "One note starts a session when set to 1")
+    }
+
+    @Test("SET-1, MIDI-1: a pause changed while playing moves the wake-up, or pauses at the last note if already past")
+    func newPauseAppliesAtOnce() {
+        let model = makeModel()
+        let lastNote = clock.now
+        for _ in 1...3 { model.noteOn(at: lastNote) }
+        clock.advance(by: 20)
+        let wakeUpMoved = Mutex(false)
+        withObservationTracking {
+            _ = model.firstDeadline
+        } onChange: {
+            wakeUpMoved.withLock { $0 = true }
+        }
+
+        model.pauseAfter = 30
+
+        #expect(wakeUpMoved.withLock { $0 }, "RootView's wake-up keys on firstDeadline")
+        #expect(model.firstDeadline == lastNote + 30)
+        #expect(model.session?.state == .running)
+
+        model.pauseAfter = 15
+
+        #expect(model.session?.state == .paused)
+        #expect(model.isPausedAtLastNote(at: clock.now))
+    }
+
+    @Test("SET-1: the pauses offered stay below the save, and the saves above the pause")
+    func choicesKeepThePauseBelowTheSave() {
+        let model = makeModel()
+
+        #expect(model.pauseChoices == [15, 30, 45, 60, 120, 180, 300])
+        #expect(model.saveChoices == [120, 300, 600, 900, 1_200, 1_800, 2_700, 3_600])
+
+        model.pauseAfter = 300
+        model.saveAfter = 600
+
+        #expect(model.pauseChoices == [15, 30, 45, 60, 120, 180, 300])
+        #expect(model.saveChoices == [600, 900, 1_200, 1_800, 2_700, 3_600])
+
+        model.pauseAfter = 60
+        model.saveAfter = 120
+
+        #expect(model.pauseChoices == [15, 30, 45, 60])
+    }
+
+    /// A model over `store`, with the app's nudge and cap.
     private func makeModel(over store: InMemoryRunningSessionStore = InMemoryRunningSessionStore()) -> PracticeModel {
         PracticeModel(
             store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,

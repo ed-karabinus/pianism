@@ -37,9 +37,11 @@ struct PianismApp: App {
         // this launch only (SET-1).
         var nudge: TimeInterval?
         var cap: TimeInterval?
-        // A MIDI session pauses after a minute of silence, ends after 10, and is dropped under a minute played
-        // (MIDI-1).
-        var midiSettings = MIDISettings()
+        // How a MIDI session starts, pauses and ends (MIDI-1): as set in Settings, unless a test shortens the
+        // silences below for this launch only (SET-1). One under a minute played is dropped.
+        var midiPause: TimeInterval?
+        var midiSave: TimeInterval?
+        var midiMinimum: TimeInterval?
         // Debug keeps its own history and outbox, so a Release build on the same device never uploads a
         // Debug run's sessions to Production (ADR 0008).
         #if DEBUG
@@ -74,13 +76,13 @@ struct PianismApp: App {
             // They shorten a MIDI session's timeouts too, with PIANISM_MIDI_PAUSE_SECONDS, PIANISM_MIDI_SAVE_SECONDS
             // and PIANISM_MIDI_MINIMUM_SECONDS, which Release builds ignore as well.
             if let seconds = environment["PIANISM_MIDI_PAUSE_SECONDS"].flatMap(TimeInterval.init) {
-                midiSettings.pauseAfter = seconds
+                midiPause = seconds
             }
             if let seconds = environment["PIANISM_MIDI_SAVE_SECONDS"].flatMap(TimeInterval.init) {
-                midiSettings.saveAfter = seconds
+                midiSave = seconds
             }
             if let seconds = environment["PIANISM_MIDI_MINIMUM_SECONDS"].flatMap(TimeInterval.init) {
-                midiSettings.minimumPlayed = seconds
+                midiMinimum = seconds
             }
             if environment["PIANISM_RESET"] == "1" {
                 try? store.update { $0 = nil }
@@ -160,10 +162,14 @@ struct PianismApp: App {
             let nudges = notifications
         #endif
         let glance = SystemPracticeGlance(file: totals)
+        var midi = PracticeModel.storedMIDI(in: .standard)
+        midi.pauseAfter = midiPause ?? midi.pauseAfter
+        midi.saveAfter = midiSave ?? midi.saveAfter
+        midi.minimumPlayed = midiMinimum ?? midi.minimumPlayed
         let practice = PracticeModel(
             store: store, history: sessions, outbox: outbox, clock: clock, nudges: nudges, glance: glance,
             defaults: .standard, nudge: nudge ?? PracticeModel.storedNudge(in: .standard),
-            cap: cap ?? PracticeModel.storedCap(in: .standard), midi: midiSettings)
+            cap: cap ?? PracticeModel.storedCap(in: .standard), midi: midi)
         answering.practice = practice
         self.practice = practice
         // The widget's and the Live Activity's buttons run in this process as intents, which find the model through
