@@ -1304,7 +1304,9 @@ final class PracticeTests: UITestCase {
                 at: nil, reset: true, midiNotes: "0.5,0.8,1.1,2.5,4", midiPauseSeconds: 10, midiSaveSeconds: 60,
                 midiMinimumSeconds: 2)
             XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 20), "No session from the notes")
-            // Played from the first note to the last, 3.5 s. Asked often, as the service only reports what's being said.
+            // Played from the first note to the last, 3.5 s. Apple documents currentSpeech() as the focused element's
+            // speech, but it also reports an announcement while it's being said (the test fails without the line, tried
+            // 2026-11-04). So it's asked often, and this stays nightly, should that change.
             let line = "Paused at your last note, 3 seconds"
             var said: [String] = []
             let deadline = Date.now + 40

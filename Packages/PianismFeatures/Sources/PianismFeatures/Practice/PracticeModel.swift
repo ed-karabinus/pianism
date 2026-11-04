@@ -104,7 +104,7 @@ public final class PracticeModel: TagTarget {
         store: any RunningSessionStore, history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock,
         nudges: any PracticeNudges, glance: any PracticeGlance, defaults: UserDefaults, nudge: TimeInterval,
         cap: TimeInterval, midi: MIDISettings = .init(),
-        announce: @escaping @MainActor (String) -> Void = { AccessibilityNotification.Announcement($0).post() }
+        announce: @escaping @MainActor (String) -> Void = PracticeModel.tellVoiceOver
     ) {
         self.recorder = SessionRecorder(store: store, clock: clock, midi: midi)
         self.detector = MIDIDetector(midi)
@@ -233,6 +233,13 @@ public final class PracticeModel: TagTarget {
         // The detector has a last note only while a MIDI session is playing.
         guard let lastNote = detector.lastNote else { return }
         perform { try recorder.noteLastPlayed(at: lastNote) }
+    }
+
+    /// Says `line` over whatever VoiceOver is saying, which otherwise drops it, as when it's naming the app that opened.
+    public static func tellVoiceOver(_ line: String) {
+        var line = AttributedString(line)
+        line.accessibilitySpeechAnnouncementPriority = .high
+        AccessibilityNotification.Announcement(line).post()
     }
 
     /// Stores the detector's effects in one command, so a note refreshes once, and only if it changed something.

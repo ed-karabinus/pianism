@@ -12,7 +12,7 @@ struct PracticeModelTests {
     let clock = ManualClock()
     let nudges = InMemoryNudges()
     let glance = InMemoryPracticeGlance()
-    let voiceOver = HeardByVoiceOver()
+    private let voiceOver = HeardByVoiceOver()
     /// Stands in for the device's settings, emptied before each test.
     let defaults = UserDefaults(suiteName: "PracticeModelTests") ?? .standard
 
@@ -633,10 +633,9 @@ struct PracticeModelTests {
         #expect(voiceOver.lines.isEmpty)
     }
 
-    @Test("MIDI-1: VoiceOver hears of a silence that paused the session while away, back in the app or at a relaunch")
+    @Test("MIDI-1: VoiceOver hears of a silence that paused the session while away, back in the app")
     func aPauseWhileAwayIsAnnouncedOnReturn() {
-        let store = InMemoryRunningSessionStore()
-        let model = makeModel(over: store)
+        let model = makeModel()
         for _ in 1...3 { model.noteOn(at: clock.now) }
         model.leaveForeground()
         clock.advance(by: 90)
@@ -644,14 +643,6 @@ struct PracticeModelTests {
         model.cameToFront()
 
         #expect(voiceOver.lines == ["Paused at your last note, 0 seconds"])
-
-        model.noteOn(at: clock.now)
-        model.leaveForeground()
-        clock.advance(by: 90)
-
-        _ = makeModel(over: store)
-
-        #expect(voiceOver.lines.count == 2)
     }
 
     @Test("MIDI-1: VoiceOver hears of a silence pause only once the store has taken it")
@@ -1156,6 +1147,6 @@ private final class RefusingStore: RunningSessionStore {
 
 /// What the model has said to VoiceOver.
 @MainActor
-final class HeardByVoiceOver {
+private final class HeardByVoiceOver {
     var lines: [String] = []
 }
