@@ -134,12 +134,16 @@ struct WeekView: View {
 
 // WeekView's body is a Section, so its previews wrap it in a List, as HistoryView does.
 
-#Preview("This week, with tags") {
+#Preview("This week") {
     List { WeekView(model: .preview()) { _ in } }
 }
 
-#Preview("This week, with tags, dark, AX5") {
+// Open, as AX5 is where the tag rows are tightest; its own defaults suite, so the closed previews stay closed.
+#Preview("This week, by piece and skill, dark, AX5") {
+    let defaults = UserDefaults(suiteName: "WeekView preview") ?? .standard
+    let _ = defaults.set(true, forKey: "showsWeekByTag")
     List { WeekView(model: .preview()) { _ in } }
+        .defaultAppStorage(defaults)
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }
