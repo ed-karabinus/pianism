@@ -173,10 +173,12 @@ struct PianismApp: App {
         answering.practice = practice
         self.practice = practice
         // The widget's and the Live Activity's buttons run in this process as intents, which find the model through
-        // this (ADR 0010). Each waits for the Live Activity to take the change before the intent returns.
+        // this (ADR 0010). Each waits for the Live Activity to take the change before the intent returns, and for
+        // today's reminder to learn of it, as the app may never come to the front (SET-1).
         func command(_ run: @escaping @MainActor @Sendable () -> Void) -> GlanceCommands.Command {
             {
                 run()
+                await practice.checkNudges()
                 await glance.settle()
             }
         }
