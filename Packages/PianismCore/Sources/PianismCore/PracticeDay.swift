@@ -6,7 +6,7 @@ public struct PracticeDay: Sendable, Hashable, Identifiable {
     /// The day's first moment, in the calendar the sessions were grouped by.
     public let start: Date
     public let sessions: [PracticeSession]
-    /// Practice time of all the day's sessions, excluding pauses (SES-2).
+    /// Practice time of all the day's sessions, excluding pauses (SES-2), in the whole seconds each one shows.
     public let total: TimeInterval
 
     public var id: Date { start }
@@ -18,10 +18,18 @@ public struct PracticeDay: Sendable, Hashable, Identifiable {
             .map { start, sessions in
                 // Sessions starting at the same instant have no promised order, so `>=` would do as well.
                 let newestFirst = sessions.sorted { $0.startedAt > $1.startedAt }  // mutate:ignore - only ties differ
-                // An ended session's practice time is fixed, so the date passed here is ignored.
-                let total = newestFirst.reduce(0) { $0 + $1.elapsed(at: .distantPast) }
+                let total = newestFirst.reduce(0) { $0 + $1.wholeSecondsPracticed }
                 return PracticeDay(start: start, sessions: newestFirst, total: total)
             }
             .sorted { $0.start > $1.start }  // mutate:ignore - days never tie: there is one per date
+    }
+}
+
+extension PracticeSession {
+    /// An ended session's practice time, in the whole seconds a row shows, rounded down as the clock is. Totals add
+    /// these, so a day's or a tag's total always equals what its rows add up to (decided with Ed, 2026-11-04). The
+    /// session keeps its exact times. An ended session's time is fixed, so the date passed here is ignored.
+    var wholeSecondsPracticed: TimeInterval {
+        elapsed(at: .distantPast).rounded(.down)
     }
 }

@@ -23,6 +23,21 @@ struct PracticeWeekTests {
         #expect(week.total == 50 * 60)
     }
 
+    @Test("HIS-2: a tag's time adds the whole seconds of its sessions, as the week's total does")
+    func tagTimeAddsWholeSeconds() throws {
+        let calendar = try calendar(firstWeekday: 1)
+        let start = try date(2026, 11, 4, 15, 0, in: calendar)
+        var first = PracticeSession(startedAt: start)
+        try first.stop(at: start + 93.9)
+        var second = PracticeSession(startedAt: start + 600)
+        try second.stop(at: start + 600 + 155.9)
+        let days = PracticeDay.group([first, second], in: calendar)
+        let week = PracticeWeek(containing: start, days: days, in: calendar)
+
+        #expect(week.total == 248)
+        #expect(week.timeByTag(in: TagIndex([])).map(\.time) == [248])
+    }
+
     @Test("HIS-2: sessions outside the week don't count toward it")
     func otherWeeksDontCount() throws {
         let calendar = try calendar(firstWeekday: 2)
