@@ -102,6 +102,36 @@ struct PracticeWeekTests {
         #expect(times == expected)
     }
 
+    @Test("HIS-2: tags with the same time sort by name whatever their IDs, then by ID if the names match too")
+    func tiedTagsSortByNameThenID() throws {
+        let calendar = try calendar(firstWeekday: 2)
+        let arabesque = PianismCore.Tag(id: "z", kind: .piece, name: "Arabesque", isArchived: false)
+        let piece = PianismCore.Tag(id: "a", kind: .piece, name: "Nocturne", isArchived: false)
+        let skill = PianismCore.Tag(id: "b", kind: .skill, name: "Nocturne", isArchived: false)
+        let monday = try date(2026, 10, 12, 8, 0, in: calendar)
+        let sessions = [
+            try session(at: monday, minutes: 30, tags: ["b"]),
+            try session(at: monday + 3_600, minutes: 30, tags: ["a"]),
+            try session(at: monday + 7_200, minutes: 30, tags: ["z"]),
+        ]
+        let week = PracticeWeek(containing: monday, days: PracticeDay.group(sessions, in: calendar), in: calendar)
+
+        let times = week.timeByTag(in: TagIndex([arabesque, piece, skill]))
+
+        #expect(times.map(\.tag) == [arabesque, piece, skill])
+    }
+
+    @Test("HIS-2: a week with every session tagged has no untagged row")
+    func noUntaggedRowWithoutUntaggedTime() throws {
+        let calendar = try calendar(firstWeekday: 2)
+        let scales = PianismCore.Tag(id: "scales", kind: .skill, name: "Scales", isArchived: false)
+        let monday = try date(2026, 10, 12, 8, 0, in: calendar)
+        let tagged = try session(at: monday, minutes: 30, tags: ["scales"])
+        let week = PracticeWeek(containing: monday, days: PracticeDay.group([tagged], in: calendar), in: calendar)
+
+        #expect(week.timeByTag(in: TagIndex([scales])).map(\.tag) == [scales])
+    }
+
     private func calendar(firstWeekday: Int, zone: String = "America/Los_Angeles") throws -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try #require(TimeZone(identifier: zone))
