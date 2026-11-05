@@ -22,11 +22,19 @@ struct PracticeEntry: TimelineEntry {
     let finished: TimeInterval
     /// The running or paused session, which the widget counts on top of `finished` itself.
     let session: PracticeSession?
-    /// The practice time at which the session ends itself, if the app has said (SES-4).
-    var cap: TimeInterval?
-    /// The session's practice before `date`'s day, which today's total leaves out: a session carried past
-    /// midnight counts only from midnight on.
-    var beforeToday: TimeInterval = 0
+    /// What the session's clock counts over today (GLN-2), as the core works it out.
+    let timer: ClosedRange<Date>?
+
+    init(
+        date: Date, finished: TimeInterval, session: PracticeSession?, cap: TimeInterval? = nil,
+        dayStart: Date? = nil
+    ) {
+        self.date = date
+        self.finished = finished
+        self.session = session
+        self.timer = session?.todaysClock(
+            finished: finished, dayStart: dayStart ?? Calendar.autoupdatingCurrent.startOfDay(for: date), cap: cap)
+    }
 }
 
 /// Reads the two App Group files the app writes: the running session (ADR 0003) and the day's finished practice
@@ -58,13 +66,9 @@ struct PracticeProvider: TimelineProvider {
         let totals = FilePracticeTotals(appGroup: AppGroup.identifier)?.read()
         // An ended session still stored, as when neither history nor the outbox could take it, isn't being practiced.
         let session = stored?.state == .ended ? nil : stored
-        // Up to where the session's clock stops, if that came first: practice after a MIDI session's last note
-        // doesn't count yet, and the note can fall before midnight.
-        let dayStart = calendar.startOfDay(for: date)
-        let beforeToday = session?.practiced(before: min(dayStart, session?.pausedAwayAt ?? dayStart)) ?? 0
         return PracticeEntry(
             date: date, finished: totals?.today(at: date, in: calendar) ?? 0, session: session,
-            cap: totals?.cap, beforeToday: beforeToday)
+            cap: totals?.cap, dayStart: calendar.startOfDay(for: date))
     }
 }
 
@@ -107,14 +111,9 @@ struct PracticeWidgetView: View {
     /// practice started, stopped at the pause while it's paused and at the cap, where the session ends itself, so
     /// no process needs to run (#164). A MIDI session stops at its last note, as only the open app hears the piano.
     @ViewBuilder private var time: some View {
-        if let session = entry.session {
-            let clock = session.practiceClock(cap: entry.cap)
-            // Leaving out practice before today moves where the clock starts, not where it stops at the cap;
-            // clamped, as a session already past the cap before today would start it past today's finished time.
-            let startsAt = min(
-                clock.lowerBound - entry.finished + entry.beforeToday, clock.upperBound - entry.finished)
+        if let session = entry.session, let timer = entry.timer {
             Text(
-                timerInterval: startsAt...clock.upperBound,
+                timerInterval: timer,
                 pauseTime: session.pausedAwayAt, countsDown: false)
         } else {
             let duration = Duration.seconds(Int(entry.finished / 60) * 60)
@@ -171,11 +170,11 @@ func previewPianoSession() -> PracticeSession {
     PracticeEntry(date: .now, finished: 0, session: previewPianoSession())
 }
 
-// As just past midnight, 16 of its 18 minutes fell yesterday: today counts only from midnight.
+// As just past midnight (faked as 4 minutes ago), 16 of its 18 minutes fell yesterday.
 #Preview("A piano session carried past midnight", as: .systemSmall) {
     PracticeWidget()
 } timeline: {
-    PracticeEntry(date: .now, finished: 0, session: previewPianoSession(), beforeToday: 16 * 60)
+    PracticeEntry(date: .now, finished: 0, session: previewPianoSession(), dayStart: .now - 4 * 60)
 }
 
 // The widget previews above take no modifiers, so dark and AX5 preview the view in a small widget's frame.

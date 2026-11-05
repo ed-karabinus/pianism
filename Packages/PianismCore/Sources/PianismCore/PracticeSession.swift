@@ -90,6 +90,18 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         return zip(starts, ends).reduce(0) { $0 + max(0, min($1.1, end).timeIntervalSince($1.0)) }
     }
 
+    /// The range a clock for the day beginning at `dayStart` counts over, on top of that day's `finished`
+    /// practice: as ``practiceClock(cap:)``, but leaving out this session's practice before the day, up to
+    /// where its clock stops if that came first — a last note before midnight, whose time after it doesn't
+    /// count yet. The start is clamped so a session already past `cap` before the day still leaves the
+    /// finished minutes showing (GLN-2).
+    public func todaysClock(finished: TimeInterval, dayStart: Date, cap: TimeInterval?) -> ClosedRange<Date> {
+        let clock = practiceClock(cap: cap)
+        let beforeToday = practiced(before: min(dayStart, pausedAwayAt ?? dayStart))
+        let startsAt = min(clock.lowerBound - finished + beforeToday, clock.upperBound - finished)
+        return startsAt...clock.upperBound
+    }
+
     /// The moment a clock counting only practice would have started, so `now - practiceOrigin` is the practice so
     /// far while the session runs, and a clock stopped at the pause, or at the end, reads the same (GLN-2). Later
     /// than `startedAt` by the pauses so far (SES-2).

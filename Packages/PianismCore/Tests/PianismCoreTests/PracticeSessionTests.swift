@@ -393,6 +393,27 @@ struct PracticeSessionTests {
         #expect(session.practiced(before: start + 1_000) == 200)
     }
 
+    @Test("GLN-2: today's clock counts a carried session only from the start of the day")
+    func todaysClockCountsFromTheDay() throws {
+        let midnight = clock.now
+        let session = PracticeSession(startedAt: midnight - 3_600)
+        let range = session.todaysClock(finished: 600, dayStart: midnight, cap: 4 * 3_600)
+
+        #expect(range.lowerBound == midnight - 600)
+        #expect(range.upperBound == midnight + 3 * 3_600)
+
+        // A last note before midnight: the clock stops there, showing today's finished minutes, not less.
+        var piano = PracticeSession(startedAt: midnight - 1_200, source: .midi)
+        try piano.noteLastPlayed(at: midnight - 120)
+        let pianoRange = piano.todaysClock(finished: 300, dayStart: midnight, cap: nil)
+        #expect(piano.pausedAwayAt.map { $0.timeIntervalSince(pianoRange.lowerBound) } == 300)
+
+        // Already past the cap before today: the clock already reads today's finished minutes, not nothing.
+        let long = PracticeSession(startedAt: midnight - 7_200)
+        let longRange = long.todaysClock(finished: 600, dayStart: midnight, cap: 3_600)
+        #expect(longRange.upperBound.timeIntervalSince(longRange.lowerBound) == 600)
+    }
+
     @Test("GLN-1, SES-4: a timer session counts outside the app, and ends at the cap while running, never while paused")
     func aTimerSessionAwayCountsOnUntilTheCap() throws {
         let start = clock.now
