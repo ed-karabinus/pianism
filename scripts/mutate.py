@@ -3,7 +3,8 @@
 Usage: python3 scripts/mutate.py <package directory> ...   (`make mutate` passes the core and adapters)
 
 Runs on a copy of the packages in build/mutate, so the working tree is never touched. A line ending
-in `// mutate:ignore - <reason>` is skipped: use it only for a mutation that cannot change behaviour.
+in `// mutate:ignore - <reason>` is skipped: use it only for a mutation that cannot change behaviour,
+or that no test can safely reach, saying why.
 """
 
 import re

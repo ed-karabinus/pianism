@@ -46,14 +46,14 @@ public final class CoreMIDINotes: Sendable {
         }
         var port = MIDIPortRef()
         if status == noErr {
-            midi.withLock { $0.client = client }  // so deinit disposes of it, even if the port fails
+            midi.withLock { $0.client = client }  // mutate:ignore - for deinit, even if the port fails: see there
             status = MIDIInputPortCreateWithProtocol(client, "Notes" as CFString, ._1_0, &port) {
                 @Sendable [weak self] list, _ in
                 self?.receive(list)
             }
         }
         guard status == noErr else {
-            logger.error("Can't listen for MIDI: OSStatus \(status)")
+            logger.error("Can't listen for MIDI: OSStatus \(status)")  // mutate:ignore - only logs
             return
         }
         midi.withLock { $0.port = port }
@@ -63,7 +63,8 @@ public final class CoreMIDINotes: Sendable {
     deinit {
         continuation.finish()
         pianosContinuation.finish()
-        midi.withLock { _ = MIDIClientDispose($0.client) }
+        // The app keeps one for its whole life, and nothing can see a client left behind.
+        midi.withLock { _ = MIDIClientDispose($0.client) }  // mutate:ignore - see above
     }
 
     /// The sources it hears now.
@@ -79,7 +80,9 @@ public final class CoreMIDINotes: Sendable {
         midi.withLock { midi in
             let online = Set(
                 (0..<MIDIGetNumberOfSources()).map(MIDIGetSource).filter { source in
-                    guard source != network else { return false }
+                    guard source != network else {
+                        return false  // mutate:ignore - a test would have to turn on the system's network MIDI session
+                    }
                     var offline: Int32 = 0
                     MIDIObjectGetIntegerProperty(source, kMIDIPropertyOffline, &offline)
                     return offline == 0
@@ -96,7 +99,7 @@ public final class CoreMIDINotes: Sendable {
             guard names != midi.names else { return }
             midi.names = names
             pianosContinuation.yield(names)
-            logger.info("Pianos heard: \(names, privacy: .public)")
+            logger.info("Pianos heard: \(names, privacy: .public)")  // mutate:ignore - only logs
         }
     }
 

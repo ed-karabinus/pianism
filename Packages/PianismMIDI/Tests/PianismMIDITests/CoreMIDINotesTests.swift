@@ -63,6 +63,18 @@ struct CoreMIDINotesTests {
         #expect(await notes.next() == clock.now)
     }
 
+    @Test("MIDI-2: dropping the adapter ends its streams, or whatever's waiting on them would wait forever")
+    func droppingTheAdapterEndsItsStreams() async throws {
+        var midi: CoreMIDINotes? = CoreMIDINotes(clock: clock)
+        let notes = try #require(midi?.notes)
+        let pianos = try #require(midi?.pianos)
+
+        midi = nil
+
+        for await _ in notes {}
+        for await _ in pianos {}
+    }
+
     @Test("MIDI-R6: a piano plugged in after launch is heard")
     func aSourceThatAppearsAfterLaunchIsHeard() async throws {
         let midi = CoreMIDINotes(clock: clock)
