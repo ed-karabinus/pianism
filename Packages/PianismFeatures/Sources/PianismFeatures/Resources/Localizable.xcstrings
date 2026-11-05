@@ -187,6 +187,9 @@
     "Paused at your last note" : {
 
     },
+    "Paused at your last note, %@" : {
+
+    },
     "Pianism couldn't reach its storage. Try again in a moment." : {
 
     },

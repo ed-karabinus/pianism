@@ -12,6 +12,7 @@ struct PracticeModelTests {
     let clock = ManualClock()
     let nudges = InMemoryNudges()
     let glance = InMemoryPracticeGlance()
+    private let voiceOver = HeardByVoiceOver()
     /// Stands in for the device's settings, emptied before each test.
     let defaults = UserDefaults(suiteName: "PracticeModelTests") ?? .standard
 
@@ -637,6 +638,86 @@ struct PracticeModelTests {
         #expect(!model.isPausedAtLastNote(at: clock.now))
     }
 
+    @Test("MIDI-1: VoiceOver hears once that a silence paused the session, with the time, and again at the next one")
+    func aSilencePauseIsAnnouncedOnce() {
+        let model = makeModel()
+        let start = clock.now
+        for _ in 1...3 { model.noteOn(at: start) }
+        clock.advance(by: 20)
+        model.noteOn(at: clock.now)
+        #expect(voiceOver.lines.isEmpty)
+        clock.advance(by: 60)
+
+        model.tick()
+        model.tick()
+
+        #expect(voiceOver.lines == ["Paused at your last note, 20 seconds"])
+
+        clock.advance(by: 10)
+        model.noteOn(at: clock.now)
+        clock.advance(by: 5)
+        model.noteOn(at: clock.now)
+        clock.advance(by: 60)
+        model.tick()
+
+        #expect(voiceOver.lines.last == "Paused at your last note, 25 seconds")
+        #expect(voiceOver.lines.count == 2)
+    }
+
+    @Test("MIDI-1: VoiceOver hears nothing of a tapped Pause, a silence that ends the session, or a late note")
+    func onlyASilencePauseThatStandsIsAnnounced() {
+        let tapped = makeModel()
+        for _ in 1...3 { tapped.noteOn(at: clock.now) }
+        tapped.pause()
+        tapped.stop()
+
+        let ended = makeModel()
+        for _ in 1...3 { ended.noteOn(at: clock.now) }
+        clock.advance(by: 600)
+        ended.tick()
+        #expect(ended.session == nil)
+
+        // The note shows the silence paused it, and resumes it in the same change.
+        let late = makeModel()
+        for _ in 1...3 { late.noteOn(at: clock.now) }
+        clock.advance(by: 61)
+        late.noteOn(at: clock.now)
+        #expect(late.session?.state == .running)
+
+        #expect(voiceOver.lines.isEmpty)
+    }
+
+    @Test("MIDI-1: VoiceOver hears of a silence that paused the session while away, back in the app")
+    func aPauseWhileAwayIsAnnouncedOnReturn() {
+        let model = makeModel()
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        model.leaveForeground()
+        clock.advance(by: 90)
+
+        model.cameToFront()
+
+        #expect(voiceOver.lines == ["Paused at your last note, 0 seconds"])
+    }
+
+    @Test("MIDI-1: VoiceOver hears of a silence pause only once the store has taken it")
+    func aRefusedPauseIsNotAnnounced() {
+        let store = RefusingStore()
+        let model = makeModel(over: store)
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        clock.advance(by: 60)
+        store.refuse(true)
+
+        model.tick()
+
+        #expect(model.session?.state == .running)
+        #expect(voiceOver.lines.isEmpty)
+
+        store.refuse(false)
+        model.tick()
+
+        #expect(voiceOver.lines == ["Paused at your last note, 0 seconds"])
+    }
+
     @Test("MIDI-1: a tapped Pause says just \"Paused\", and left alone 10 minutes ends the session 5 s after the tap")
     func aTappedPauseEndsAfterTheSaveTimeout() {
         let model = makeModel()
@@ -1089,9 +1170,37 @@ struct PracticeModelTests {
     }
 
     /// A model over `store`, with the app's nudge and cap.
-    private func makeModel(over store: InMemoryRunningSessionStore = InMemoryRunningSessionStore()) -> PracticeModel {
+    private func makeModel(over store: any RunningSessionStore = InMemoryRunningSessionStore()) -> PracticeModel {
         PracticeModel(
             store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
-            nudges: nudges, glance: glance, defaults: defaults, nudge: 5_400, cap: 14_400)
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 5_400, cap: 14_400,
+            announce: { [voiceOver] in voiceOver.lines.append($0) })
     }
+}
+
+/// A store that refuses changes when told to, as a full disk does.
+private final class RefusingStore: RunningSessionStore {
+    private struct Refused: Error {}
+
+    private let stored = InMemoryRunningSessionStore()
+    private let refuses = Mutex(false)
+
+    func refuse(_ refuse: Bool) {
+        refuses.withLock { $0 = refuse }
+    }
+
+    func current() -> PracticeSession? {
+        stored.current()
+    }
+
+    func update<Result: Sendable>(_ change: (inout PracticeSession?) throws -> Result) throws -> Result {
+        if refuses.withLock({ $0 }) { throw Refused() }
+        return try stored.update(change)
+    }
+}
+
+/// What the model has said to VoiceOver.
+@MainActor
+private final class HeardByVoiceOver {
+    var lines: [String] = []
 }

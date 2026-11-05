@@ -1,3 +1,4 @@
+import Accessibility
 import Foundation
 import Observation
 import PianismCore
@@ -93,6 +94,8 @@ public final class PracticeModel: TagTarget {
     private let nudges: any PracticeNudges
     private let glance: any PracticeGlance
     private let defaults: UserDefaults
+    /// Says a line to VoiceOver, whose user can't see the time drop back. A seam, so the model's tests hear it.
+    private let announce: @MainActor (String) -> Void
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "practice")
     /// The key under which the banner's `@AppStorage` kept the answer, so answers given before stay given.
     private static let answeredKey = "stillPracticingAnswered"
@@ -100,7 +103,8 @@ public final class PracticeModel: TagTarget {
     public init(
         store: any RunningSessionStore, history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock,
         nudges: any PracticeNudges, glance: any PracticeGlance, defaults: UserDefaults, nudge: TimeInterval,
-        cap: TimeInterval, midi: MIDISettings = .init()
+        cap: TimeInterval, midi: MIDISettings = .init(),
+        announce: @escaping @MainActor (String) -> Void = PracticeModel.tellVoiceOver
     ) {
         self.recorder = SessionRecorder(store: store, clock: clock, midi: midi)
         self.detector = MIDIDetector(midi)
@@ -110,6 +114,7 @@ public final class PracticeModel: TagTarget {
         self.nudges = nudges
         self.glance = glance
         self.defaults = defaults
+        self.announce = announce
         self.nudge = nudge
         self.cap = cap
         startNotes = midi.startNotes
@@ -238,6 +243,13 @@ public final class PracticeModel: TagTarget {
     /// Not until it comes to the front, as a Live Activity's button can launch it in the background.
     private var isOnScreen = false
 
+    /// Says `line` over whatever VoiceOver is saying, which otherwise drops it, as when it's naming the app that opened.
+    public static func tellVoiceOver(_ line: String) {
+        var line = AttributedString(line)
+        line.accessibilitySpeechAnnouncementPriority = .high
+        AccessibilityNotification.Announcement(line).post()
+    }
+
     /// Stores the detector's effects in one command, so a note refreshes once, and only if it changed something.
     /// A MIDI session ended with under a minute played is dropped in the refresh, which Practice then says.
     private func apply(_ effects: [MIDIDetector.Effect]) {
@@ -263,6 +275,11 @@ public final class PracticeModel: TagTarget {
         // Neither kept nor still stored, as one is when history and the outbox both fail, so it was dropped.
         if let endedID {
             lastRunWasTooShort = lastSession?.id != endedID && session?.id != endedID
+        }
+        // Last among the effects and stored, so not when a late note resumes it at once or the store refused the pause.
+        if case .pause = effects.last, session?.state == .paused {
+            let time = ElapsedTime.spoken(elapsed(at: clock.now))
+            announce(String(localized: "Paused at your last note, \(time)", bundle: .module))
         }
     }
 
