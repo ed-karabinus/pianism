@@ -50,14 +50,20 @@ def mutants(lines):
                 yield index + 1, "remove statement", lines[:index] + [""] + lines[index + 1:]
 
 
-def passes(command, cwd, timeout=300):
+def failure(command, cwd, timeout=300):
+    """What went wrong running the command, or None if it passed."""
     try:
-        return subprocess.run(command, cwd=cwd, capture_output=True, timeout=timeout).returncode == 0
+        done = subprocess.run(command, cwd=cwd, capture_output=True, text=True, errors="replace", timeout=timeout)
     except subprocess.TimeoutExpired:
         # `swift test` runs the tests in a helper with a process group of its own, which outlives it: after a
         # mutant that loops forever, it would go on running at full speed.
         subprocess.run(["pkill", "-f", f"swiftpm-testing-helper.*{WORK}"])
-        return False
+        return f"Still running after {timeout} seconds."
+    return None if done.returncode == 0 else done.stdout[-4000:] + done.stderr[-4000:]
+
+
+def passes(command, cwd, timeout=300):
+    return failure(command, cwd, timeout) is None
 
 
 def main(packages):
@@ -74,9 +80,9 @@ def main(packages):
     for package in packages:
         workdir = WORK / "Packages" / Path(package).name
         # A failing suite would make every mutation look caught.
-        base = subprocess.run(["swift", "test"], cwd=workdir, capture_output=True, text=True, timeout=900)
-        if base.returncode != 0:
-            sys.exit(f"{package} must build and pass its tests before mutating:\n{base.stdout[-4000:]}{base.stderr[-4000:]}")
+        why = failure(["swift", "test"], workdir, 900)
+        if why is not None:
+            sys.exit(f"{package} must build and pass its tests before mutating:\n{why}")
         for source in sorted((workdir / "Sources" / workdir.name).rglob("*.swift")):
             original = source.read_text()
             for line, name, lines in mutants(original.splitlines(keepends=True)):

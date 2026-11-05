@@ -17,7 +17,8 @@ on:
 
 concurrency:
   group: mutation-${{ github.ref }}
-  cancel-in-progress: true
+  # A new push replaces a pull request's run, but a nightly hours in isn't cancelled by a manual run on main.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -26,13 +27,13 @@ jobs:
   mutate:
     name: Mutation testing (report only)
     runs-on: macos-26
-    # Under GitHub's limit of 6 hours, so the report still gets written if a run is too slow.
-    timeout-minutes: 340
     steps:
       - uses: actions/checkout@v5
       - name: Select the newest stable Xcode
         run: scripts/select-xcode.sh
       - name: Plant one bug at a time
+        # Stops this step, under GitHub's limit of 6 hours for the job, so the steps below still run if it's too slow.
+        timeout-minutes: 340
         run: |
           set -o pipefail
           make mutate 2>&1 | tee mutate.log
