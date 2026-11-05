@@ -529,6 +529,98 @@ struct PracticeModelTests {
         #expect(model.notifiesWhenAway)
     }
 
+    @Test("SET-1: the daily reminder is off by default and adds nothing, even with notifications allowed")
+    func theReminderIsOffByDefault() async {
+        nudges.setPermission(.allowed)
+        let model = makeModel()
+        await model.checkNudges()
+
+        #expect(!model.remindsDaily)
+        #expect(nudges.waitingReminders.isEmpty)
+    }
+
+    @Test("SET-1: turning the reminder on asks if the system hasn't, then adds 14 days at 6:00 PM; off takes them away")
+    func turningTheReminderOnAndOff() async throws {
+        let model = makeModel()
+        model.remindsDaily = true
+
+        // The setter asks in a task of its own, as `turningOnAsks` explains.
+        let deadline = ContinuousClock.now + .seconds(10)
+        while nudges.waitingReminders.isEmpty {
+            try #require(ContinuousClock.now < deadline, "The reminders weren't added")
+            await Task.yield()
+        }
+        #expect(nudges.permission() == .allowed)
+        #expect(model.remindsDaily)
+        #expect(nudges.waitingReminders.count == 14)
+        #expect(nudges.waitingReminders.allSatisfy { $0.hour == 18 && $0.minute == 0 })
+
+        model.remindsDaily = false
+
+        #expect(nudges.waitingReminders.isEmpty)
+        #expect(!model.remindsDaily)
+    }
+
+    @Test("SET-1: a new time moves the reminders at once and is kept, as is the switch")
+    func theReminderTimeMovesAndIsKept() async throws {
+        nudges.setPermission(.allowed)
+        let model = makeModel()
+        await model.checkNudges()
+        model.remindsDaily = true
+        let calendar = Calendar.autoupdatingCurrent
+
+        model.dailyReminderTime = try #require(calendar.date(bySettingHour: 7, minute: 45, second: 0, of: clock.now))
+
+        #expect(nudges.waitingReminders.allSatisfy { $0.hour == 7 && $0.minute == 45 })
+        #expect(calendar.component(.hour, from: model.dailyReminderTime) == 7)
+        #expect(calendar.component(.minute, from: model.dailyReminderTime) == 45)
+
+        let reopened = makeModel()
+        await reopened.checkNudges()
+        #expect(reopened.remindsDaily)
+        #expect(calendar.component(.minute, from: reopened.dailyReminderTime) == 45)
+    }
+
+    @Test("SET-1: the reminder reads off and adds nothing without the system's permission, and comes back with it")
+    func theReminderFollowsTheSystem() async {
+        nudges.setPermission(.denied)
+        let model = makeModel()
+        await model.checkNudges()
+        model.remindsDaily = true
+        await model.checkNudges()
+
+        #expect(!model.remindsDaily)
+        #expect(nudges.waitingReminders.isEmpty)
+
+        nudges.setPermission(.allowed)
+        await model.checkNudges()
+
+        #expect(model.remindsDaily)
+        #expect(nudges.waitingReminders.count == 14)
+    }
+
+    @Test("SET-1: coming to the front tops the reminders up from today, so they run out only if the app stays closed")
+    func comingToTheFrontTopsUpTheReminders() async throws {
+        nudges.setPermission(.allowed)
+        defaults.set(true, forKey: SettingsKey.remindsDaily)
+        let model = makeModel()
+        await model.checkNudges()
+        let first = try #require(nudges.waitingReminders.first)
+
+        clock.advance(by: 3 * 24 * 60 * 60)
+        model.cameToFront()
+
+        let deadline = ContinuousClock.now + .seconds(10)
+        while nudges.waitingReminders.first == first {
+            try #require(ContinuousClock.now < deadline, "The reminders weren't topped up")
+            await Task.yield()
+        }
+        #expect(nudges.waitingReminders.count == 14)
+        #expect(
+            nudges.waitingReminders.first
+                == DailyReminder.dates(atMinute: 18 * 60, after: clock.now, in: .autoupdatingCurrent).first)
+    }
+
     @Test("SES-3: the notification opens Practice to the question, or with \"I stopped earlier\" to picking the end")
     func notificationOpensPractice() {
         let model = makeModel()

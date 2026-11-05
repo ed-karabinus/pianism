@@ -46,6 +46,40 @@ public final class PracticeModel: TagTarget {
             if newValue { Task { await askForNudges() } }
         }
     }
+    /// Whether the daily reminder is wanted, kept apart from what the system allows, as the setting above is.
+    private var wantsDailyReminder: Bool {
+        didSet {
+            defaults.set(wantsDailyReminder, forKey: SettingsKey.remindsDaily)
+            planReminders()
+        }
+    }
+    /// The daily reminder's time, in minutes after local midnight.
+    private var dailyReminderMinute: Int {
+        didSet {
+            defaults.set(dailyReminderMinute, forKey: SettingsKey.dailyReminderMinute)
+            planReminders()
+        }
+    }
+    /// The switch in Settings, which reads and asks as `notifiesWhenAway` does (SET-1).
+    var remindsDaily: Bool {
+        get { wantsDailyReminder && notificationPermission == .allowed }
+        set {
+            wantsDailyReminder = newValue
+            if newValue { Task { await askForNudges() } }
+        }
+    }
+    /// The daily reminder's time, as today's date at that time, for the picker in Settings.
+    var dailyReminderTime: Date {
+        get {
+            calendar.date(
+                bySettingHour: dailyReminderMinute / 60, minute: dailyReminderMinute % 60, second: 0, of: clock.now)
+                ?? clock.now
+        }
+        set {
+            let time = calendar.dateComponents([.hour, .minute], from: newValue)
+            dailyReminderMinute = (time.hour ?? 0) * 60 + (time.minute ?? 0)
+        }
+    }
     /// What the notification opened Practice to show, until it's shown: the question, or the end being picked.
     var nudgeOpened: NudgeOpening?
     /// The session that ended itself at the cap, until the banner explaining it is acted on (SES-4).
@@ -113,6 +147,7 @@ public final class PracticeModel: TagTarget {
     private let nudges: any PracticeNudges
     private let glance: any PracticeGlance
     private let defaults: UserDefaults
+    private let calendar = Calendar.autoupdatingCurrent
     /// Says a line to VoiceOver, whose user can't see the time drop back. A seam, so the model's tests hear it.
     private let announce: @MainActor (String) -> Void
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "practice")
@@ -141,6 +176,9 @@ public final class PracticeModel: TagTarget {
         saveAfter = midi.saveAfter
         answeredID = defaults.string(forKey: Self.answeredKey).flatMap(UUID.init(uuidString:))
         notifiesStillPracticing = defaults.object(forKey: SettingsKey.notifiesStillPracticing) as? Bool ?? true
+        wantsDailyReminder = defaults.bool(forKey: SettingsKey.remindsDaily)
+        dailyReminderMinute =
+            defaults.object(forKey: SettingsKey.dailyReminderMinute) as? Int ?? DailyReminder.defaultMinute
         // Loads the stored session now, so the first frame after a relaunch already shows it, with the silence
         // since its last change applied. As `cameToFront()`, but not yet on screen: a Live Activity's button can
         // launch the app in the background.
@@ -214,8 +252,16 @@ public final class PracticeModel: TagTarget {
         nudgeOpened = NudgeOpening(sessionID: id, pickingEnd: pickingEnd)
     }
 
+    /// Reads what the system allows, and tops the reminders up, as they run out unless the app is opened (SET-1).
     func checkNudges() async {
         notificationPermission = await nudges.permission()
+        planReminders()
+    }
+
+    private func planReminders() {
+        guard remindsDaily else { return nudges.cancelReminders() }
+        nudges.scheduleReminders(
+            at: DailyReminder.dates(atMinute: dailyReminderMinute, after: clock.now, in: calendar))
     }
 
     /// Asks for the notification, if the system hasn't asked yet, and adds it for the session running, which the
@@ -252,6 +298,7 @@ public final class PracticeModel: TagTarget {
         isOnScreen = true
         readyUntil = clock.now + Self.readyAwake
         tick()
+        Task { await checkNudges() }
     }
 
     /// Stores the MIDI session's last note as the app leaves the screen, so if it's killed while away, the silence

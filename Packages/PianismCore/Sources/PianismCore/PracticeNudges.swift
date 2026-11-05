@@ -23,4 +23,10 @@ public protocol PracticeNudges: Sendable {
 
     /// Cancels the nudge still waiting, if there is one.
     func cancel()
+
+    /// Reminds at each of these times, in place of any reminders still waiting (SET-1). ``DailyReminder`` says when.
+    func scheduleReminders(at dates: [DateComponents])
+
+    /// Cancels the reminders still waiting.
+    func cancelReminders()
 }

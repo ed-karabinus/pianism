@@ -9,6 +9,10 @@ enum SettingsKey {
     static let automaticCapAfter = "automaticCapAfter"
     /// Whether a session past the nudge may notify, if the system allows it (SES-3).
     static let notifiesStillPracticing = "notifiesStillPracticing"
+    /// Whether the daily reminder is wanted, if the system allows it (SET-1).
+    static let remindsDaily = "remindsDaily"
+    /// The daily reminder's time, in minutes after local midnight (SET-1).
+    static let dailyReminderMinute = "dailyReminderMinute"
     /// How many notes start a MIDI session (MIDI-1).
     static let midiStartNotes = "midiStartNotes"
     /// The silence that pauses a MIDI session, in seconds (MIDI-1).

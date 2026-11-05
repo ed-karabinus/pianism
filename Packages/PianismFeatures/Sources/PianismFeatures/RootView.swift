@@ -158,6 +158,8 @@ enum AccessibilityID {
     static let settingsPianos = "settings.pianos"
     static let settingsNotifications = "settings.notifications"
     static let settingsOpenNotificationSettings = "settings.open-notification-settings"
+    static let settingsDailyReminder = "settings.daily-reminder"
+    static let settingsDailyReminderTime = "settings.daily-reminder-time"
     static let settingsOverlapWarning = "settings.overlap-warning"
     static let settingsNudge = "settings.nudge"
     static let settingsCap = "settings.cap"

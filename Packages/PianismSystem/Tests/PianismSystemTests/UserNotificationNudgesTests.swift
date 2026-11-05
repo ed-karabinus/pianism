@@ -17,6 +17,21 @@ struct UserNotificationNudgesTests {
             ])
     }
 
+    @Test("SET-1: a reminder says it's time to practice, once, at its date, with a name kept per day")
+    func aReminderIsOnceAtItsDate() throws {
+        let date = DateComponents(year: 2027, month: 1, day: 30, hour: 18, minute: 0)
+
+        let request = UserNotificationNudges.reminder(at: date, index: 3)
+
+        #expect(request.identifier == "daily-reminder-3")
+        #expect(request.content.title == "Time to practice")
+        #expect(request.content.body == "Your piano's waiting.")
+        #expect(request.content.sound == .default)
+        let trigger = try #require(request.trigger as? UNCalendarNotificationTrigger)
+        #expect(trigger.dateComponents == date)
+        #expect(!trigger.repeats)
+    }
+
     @Test("SET-1: the system's status reads as not asked, denied or, for all that deliver, allowed")
     func mapsTheStatus() {
         #expect(UserNotificationNudges.permission(for: .notDetermined) == .notAsked)

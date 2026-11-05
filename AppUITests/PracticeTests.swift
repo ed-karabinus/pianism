@@ -393,6 +393,34 @@ final class PracticeTests: UITestCase {
             accuracy: 1, "The answers stacked")
     }
 
+    /// SET-1: the daily reminder is off until it's turned on, which shows its time, 6:00 PM unless changed, and stays on
+    /// after a relaunch. The notification itself is device row R1, as it comes at a time of day.
+    @MainActor
+    func testTheDailyReminderIsOffUntilTurnedOn() throws {
+        var app = launch(at: nil, reset: true)
+        openSettings(app)
+        let reminder = app.switches["settings.daily-reminder"]
+        // Below the fold on a shorter screen, as the overlap warning is.
+        if !reminder.waitForExistence(timeout: 2) { app.swipeUp() }
+        XCTAssertTrue(reminder.waitForExistence(timeout: 5), "No daily reminder in Settings")
+        XCTAssertEqual(reminder.value as? String, "0", "The daily reminder isn't off by default")
+        XCTAssertFalse(element(app, "settings.daily-reminder-time").exists, "A time shows with the reminder off")
+
+        setNotificationSwitch(app, "settings.daily-reminder", on: true)
+        XCTAssertTrue(element(app, "settings.daily-reminder-time").waitForExistence(timeout: 5), "No time")
+        attachScreenshot(of: app, named: "Daily reminder, on")
+
+        app.terminate()
+        app = launch(at: nil, reset: false)
+        openSettings(app)
+        let kept = app.switches["settings.daily-reminder"]
+        if !kept.waitForExistence(timeout: 2) { app.swipeUp() }
+        XCTAssertTrue(kept.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.switches.matching(NSPredicate(format: "identifier == 'settings.daily-reminder' AND value == '1'"))
+                .firstMatch.waitForExistence(timeout: 5), "The daily reminder wasn't kept")
+    }
+
     /// SET-1, SES-3: with "Notify me when I'm away" off in Settings, a session past the nudge sends no notification, and
     /// with it back on, the next one does. On the real clock, with a nudge of 20 s, as the notification test explains.
     @MainActor
@@ -401,20 +429,7 @@ final class PracticeTests: UITestCase {
         openSettings(app)
         let toggle = app.switches["settings.notifications"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 5), "No switch in Settings")
-        func set(_ on: Bool) {
-            let value = on ? "1" : "0"
-            let wanted = app.switches.matching(
-                NSPredicate(format: "identifier == 'settings.notifications' AND value == %@", value)
-            ).firstMatch
-            guard !wanted.waitForExistence(timeout: 2) else { return }
-            toggle.tap()
-            // The system asks once per install, so a retry on the same simulator finds the notification allowed.
-            let allow = springboard.alerts.buttons["Allow"]
-            if on, allow.waitForExistence(timeout: 3) { allow.tap() }
-            // As with the overlap warning's switch, a tap in a Form sometimes lands only on its own control.
-            if !wanted.waitForExistence(timeout: 2) { toggle.switches.firstMatch.tap() }
-            XCTAssertTrue(wanted.waitForExistence(timeout: 5), "The switch didn't turn \(on ? "on" : "off")")
-        }
+        func set(_ on: Bool) { setNotificationSwitch(app, "settings.notifications", on: on) }
         set(true)
         attachScreenshot(of: app, named: "Notify me when I'm away, on")
         set(false)
@@ -1650,6 +1665,30 @@ final class PracticeTests: UITestCase {
         tab.tap()
         if !history.waitForExistence(timeout: 3) { tab.tap() }
         XCTAssertTrue(history.waitForExistence(timeout: 5), "History didn't open")
+    }
+
+    /// Turns a notification switch in Settings on or off, tapping Allow if the system asks. It asks once per install, so
+    /// a retry on the same simulator finds notifications allowed.
+    @MainActor
+    private func setNotificationSwitch(_ app: XCUIApplication, _ identifier: String, on: Bool) {
+        let toggle = app.switches[identifier]
+        let wanted = app.switches.matching(
+            NSPredicate(format: "identifier == %@ AND value == %@", identifier, on ? "1" : "0")
+        ).firstMatch
+        guard !wanted.waitForExistence(timeout: 2) else { return }
+        // The system asks after whichever tap turned the switch on.
+        func allowIfAsked() {
+            let allow = springboard.alerts.buttons["Allow"]
+            if on, allow.waitForExistence(timeout: 3) { allow.tap() }
+        }
+        toggle.tap()
+        allowIfAsked()
+        // As with the overlap warning's switch, a tap in a Form sometimes lands only on its own control.
+        if !wanted.waitForExistence(timeout: 2) {
+            toggle.switches.firstMatch.tap()
+            allowIfAsked()
+        }
+        XCTAssertTrue(wanted.waitForExistence(timeout: 5), "The switch didn't turn \(on ? "on" : "off")")
     }
 
     /// Opens Settings, tapping again if the tab bar swallowed the tap, as with History.

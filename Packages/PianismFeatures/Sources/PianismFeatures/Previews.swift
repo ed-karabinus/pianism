@@ -153,6 +153,8 @@ private struct PreviewNudges: PracticeNudges {
     func requestPermission() {}
     func schedule(after _: TimeInterval, sessionID _: UUID) {}
     func cancel() {}
+    func scheduleReminders(at _: [DateComponents]) {}
+    func cancelReminders() {}
 }
 
 /// Shows nothing: previews have no widget.
