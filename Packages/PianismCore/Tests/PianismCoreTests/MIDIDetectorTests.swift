@@ -113,6 +113,19 @@ struct MIDIDetectorTests {
         #expect(detector.handle(.stop(start + 50)) == [.end(afterLastNote: start + 80, at: start + 80)])
     }
 
+    @Test("MIDI-1: a stored session paused before its last note follows that note when synced")
+    func syncFollowsALastNoteAfterThePause() throws {
+        var stored = PracticeSession(startedAt: start, source: .midi)
+        try stored.pause(at: start + 50)
+        try stored.noteLastPlayed(at: start + 80)
+        var detector = MIDIDetector()
+
+        detector.sync(with: stored)
+
+        #expect(detector.nextDeadline == start + 80 + 600)
+        #expect(detector.handle(.stop(start + 100)) == [.end(afterLastNote: start + 80, at: start + 85)])
+    }
+
     @Test("MIDI-1, SET-1: settings under their smallest are read as their smallest")
     func settingsAreClamped() {
         var settings = MIDISettings()

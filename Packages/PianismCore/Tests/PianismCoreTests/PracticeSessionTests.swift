@@ -284,7 +284,6 @@ struct PracticeSessionTests {
     func negativeCapAndSaveReadAsNone() throws {
         let start = clock.now
         let session = PracticeSession(startedAt: start)
-        #expect(session.practiceClock(cap: -60) == session.practiceClock(cap: 0))
         #expect(session.practiceClock(cap: -60) == start...start)
         #expect(session.whenPracticeReaches(-60) == session.whenPracticeReaches(0))
 

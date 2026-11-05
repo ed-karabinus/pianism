@@ -134,7 +134,7 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
     /// when Pause came after the cap but before the app noticed, reaches it then, so it can still stop there.
     public func whenPracticeReaches(_ practice: TimeInterval) -> Date? {
         guard state == .running else { return nil }
-        return max(latestEvent.addingTimeInterval(max(practice, 0) - elapsed(at: latestEvent)), latestEvent)
+        return max(latestEvent.addingTimeInterval(practice - elapsed(at: latestEvent)), latestEvent)
     }
 
     /// Pauses a running session. Time from `date` until ``resume(at:)`` doesn't count (SES-2).
