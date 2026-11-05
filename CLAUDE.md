@@ -9,7 +9,7 @@ engineering principles `E1`–`E8`, and the definition of done. Never edit the s
 to the owner.
 
 **Before proposing a process or scope change,** read `docs/decisions.md`: what's settled, and why.
-**Before branching,** check the pinned work queue (issue #179) and put your name and files on your slot.
+**Before branching,** check the pinned work queue (issue #179) for what's next.
 
 ## Commands
 
@@ -99,14 +99,15 @@ Agents write code quickly, so the main risk is code that works but shouldn't exi
    re-audit, and it doesn't propose again anything settled in `docs/decisions.md` without something
    new. The author applies each finding or says why not in the PR's Review section, which ends with
    a count: findings, applied, not applied. A disagreement goes to the owner, not back and forth.
-   - **The other agent** (the building and reviewing agents review each other's PRs): once the
-     draft's code is final, ask on its row in the queue (#179) and with a note in the local mailbox
-     (`~/Developer/pianism-mail/`, see its README). The review is one PR comment headed "Review by
-     the building agent" or "Review by the reviewing agent", with findings numbered most serious
-     first, each with file, line and what goes wrong, or what was checked and found fine. It's read
-     and probed from the reviewer's own worktree, with no bugs planted by the reviewer. It never
-     blocks: the PR goes ready on green CI without it, and a late finding that's real is fixed
-     before the merge.
+   - **The reviewing agent** (Muse, which reviews and doesn't build: owner, 2026-11-05): once the
+     draft's code is final, ask with a note in the local mailbox (`~/Developer/pianism-mail/`, see
+     its README). The review is one PR comment headed "Review by the reviewing agent", with findings
+     numbered most serious first, each with file, line and what goes wrong, or what was checked and
+     found fine. It's read and probed from the reviewer's own worktree, with no bugs planted by the
+     reviewer. It never blocks: the PR goes ready on green CI without it, and a late finding that's
+     real is fixed before the merge. If it has no capacity left, the PR says the review didn't
+     happen. The Review section also counts its findings that changed code or added a test and that
+     no other review had caught, which is how the owner judges whether to keep it.
    - **A fresh review agent** with the brief in `.claude/agents/pr-reviewer.md`, for Tier 1 and 2,
      kept from the other reviews so it reads the change on its own.
 6. Never weaken, skip or delete a test to make it pass without saying so in the PR.
@@ -119,7 +120,7 @@ Agents write code quickly, so the main risk is code that works but shouldn't exi
 9. Before calling a change done, plant bugs in the new logic (two to five, each a likely mistake) and
    show the tests catch each one; the PR lists them. A plant no test catches means a missing test.
    The PR names its tier, and the higher one wins a doubt:
-   - **Tier 0, no behaviour change** (previews, docs, comments, renames): the other agent's review and
+   - **Tier 0, no behaviour change** (previews, docs, comments, renames): the reviewing agent's review and
      CI only; no
      failing test or planted bugs unless a helper changes, and "No visible change" or "Previews only"
      in place of a screenshot.
