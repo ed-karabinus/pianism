@@ -296,6 +296,8 @@ private struct OfferingNudges: PracticeNudges {
     func requestPermission() async {}
     func schedule(after _: TimeInterval, sessionID _: UUID) {}
     func cancel() {}
+    func scheduleReminders(at _: [DateComponents]) {}
+    func cancelReminders() {}
 }
 
 /// A clock that always reads the same time, for end-to-end tests.

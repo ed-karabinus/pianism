@@ -66,6 +66,37 @@ public final class UserNotificationNudges: NSObject, PracticeNudges, UNUserNotif
         center.removeDeliveredNotifications(withIdentifiers: [Self.category])  // mutate:ignore - as above
     }
 
+    /// One notification per day, as the days it reminds on can change. Added without checking the settings first, as
+    /// `schedule` is.
+    public func scheduleReminders(at dates: [DateComponents]) {
+        cancelReminders()  // mutate:ignore - needs an app
+        let center = UNUserNotificationCenter.current()
+        for (index, date) in dates.enumerated() {
+            center.add(Self.reminder(at: date, index: index))  // mutate:ignore - needs an app
+        }
+    }
+
+    /// Also takes a delivered reminder out of Notification Center, as the app is open now.
+    public func cancelReminders() {
+        let identifiers = (0..<DailyReminder.daysAhead).map(Self.reminderIdentifier)
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)  // mutate:ignore - needs an app
+        center.removeDeliveredNotifications(withIdentifiers: identifiers)  // mutate:ignore - as above
+    }
+
+    /// A notification's identifier stays with the system across app updates, so renaming this leaves strays behind.
+    static func reminderIdentifier(_ index: Int) -> String { "daily-reminder-\(index)" }
+
+    /// The reminder at this time. Tapping it just opens the app.
+    static func reminder(at date: DateComponents, index: Int) -> UNNotificationRequest {
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "Time to practice", bundle: .module)
+        content.body = String(localized: "Your piano's waiting.", bundle: .module)
+        content.sound = .default
+        let trigger = UNCalendarNotificationTrigger(dateMatching: date, repeats: false)
+        return UNNotificationRequest(identifier: reminderIdentifier(index), content: content, trigger: trigger)
+    }
+
     /// The notification's buttons. "I stopped earlier" opens the app, where the end is picked.
     static var answers: UNNotificationCategory {
         UNNotificationCategory(

@@ -7,7 +7,6 @@ struct SettingsView: View {
     @Bindable var practice: PracticeModel
 
     @AppStorage(SettingsKey.showsOverlapWarning) private var showsOverlapWarning = true
-    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -92,6 +91,22 @@ struct SettingsView: View {
                     }
                 }
                 Section {
+                    Toggle(isOn: $practice.remindsDaily) {
+                        Text("Daily reminder", bundle: .module)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.settingsDailyReminder)
+                    if practice.remindsDaily {
+                        DatePicker(selection: $practice.dailyReminderTime, displayedComponents: .hourAndMinute) {
+                            Text("Time", bundle: .module)
+                        }
+                        .accessibilityIdentifier(AccessibilityID.settingsDailyReminderTime)
+                    }
+                } header: {
+                    Text("Reminder", bundle: .module)
+                } footer: {
+                    Text("Reminds you to practice once a day.", bundle: .module)
+                }
+                Section {
                     Toggle(isOn: $showsOverlapWarning) {
                         Text("Overlap warning", bundle: .module)
                     }
@@ -105,8 +120,6 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle(Text("Settings", bundle: .module))
-            // Coming back from the system's Settings app may find notifications allowed or not.
-            .task(id: scenePhase) { await practice.checkNudges() }
         }
     }
 
@@ -117,6 +130,12 @@ struct SettingsView: View {
 
 #Preview("No piano") {
     SettingsView(practice: .preview(.ready))
+}
+
+#Preview("Daily reminder on") {
+    let practice = PracticeModel.preview(.ready, notifications: .allowed)
+    practice.remindsDaily = true
+    return SettingsView(practice: practice)
 }
 
 #Preview("Notifications off in the Settings app") {

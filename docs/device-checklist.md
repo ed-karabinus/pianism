@@ -104,6 +104,12 @@ Run a build on the iPhone, with the widget from W1 added. The running session sh
 | --- | --- | --- |
 | N1 | **After Don't Allow:** delete Pianism and install it again, so iOS asks anew. In Settings, turn on "Notify me when I'm away" and tap Don't Allow. The switch stays off, and "Open the Settings app" with "Notifications are off for Pianism in the Settings app." shows. Tap it: iOS opens Pianism's notification settings. Allow notifications there and go back: the switch reads on, and the link has gone. A simulator asks once per install and no test can reset that, so a planted denial covers the model (`aDenialIsKnown`) and this row covers the rest | Not run yet. |
 
+## Daily reminder (SET-1, issue #50)
+
+| # | Check | Result |
+| --- | --- | --- |
+| R1 | **It arrives:** in Settings, turn on "Daily reminder" and set the time a couple of minutes ahead. Go to the Home Screen. "Time to practice" with "Your piano's waiting." arrives at that time, once. Tap it: Pianism opens. It comes at a time of day from the system's own clock, and tests run on a fixed clock or a shared simulator, so a test covers what's asked for (`turningTheReminderOnAndOff`, `aReminderIsOnceAtItsDate`) and this row covers its arrival | Not run yet. |
+
 ## iCloud sync (SYN-1, issue #15)
 
 | # | Check | Last result |

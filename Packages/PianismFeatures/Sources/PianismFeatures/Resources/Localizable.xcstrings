@@ -82,6 +82,9 @@
     "Couldn't save that change" : {
 
     },
+    "Daily reminder" : {
+
+    },
     "Day" : {
 
     },
@@ -235,6 +238,12 @@
     "Remind me with a notification" : {
 
     },
+    "Reminder" : {
+
+    },
+    "Reminds you to practice once a day." : {
+
+    },
     "Rename" : {
 
     },
@@ -311,6 +320,9 @@
 
     },
     "This week" : {
+
+    },
+    "Time" : {
 
     },
     "Today" : {
