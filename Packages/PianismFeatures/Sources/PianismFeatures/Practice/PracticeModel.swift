@@ -25,8 +25,27 @@ public final class PracticeModel: TagTarget {
     /// The session whose "Still practicing?" was answered, in the app or its notification, so it's asked once per
     /// session (SES-3). Stored per device.
     private(set) var answeredID: UUID?
-    /// Whether Practice offers the notification, which is until it's been asked for, as the system asks once.
-    private(set) var canAskForNudges = false
+    /// What the system allows, once read, as it can change in its Settings app while the app is away (SET-1).
+    private(set) var notificationPermission: NotificationPermission?
+    /// Whether the banner offers the notification, until the system has asked, as it asks once. Not with the switch off
+    /// in Settings, which already said no (SES-3, SET-1).
+    var canAskForNudges: Bool { notifiesStillPracticing && notificationPermission == .notAsked }
+    /// The setting, kept apart from what the system allows, so allowing it in the Settings app turns it back on.
+    private var notifiesStillPracticing: Bool {
+        didSet {
+            defaults.set(notifiesStillPracticing, forKey: SettingsKey.notifiesStillPracticing)
+            refresh()
+        }
+    }
+    /// The switch in Settings: on only while the system allows notifications too. Turning it on asks the system, if it
+    /// hasn't asked yet (SET-1).
+    var notifiesWhenAway: Bool {
+        get { notifiesStillPracticing && notificationPermission == .allowed }
+        set {
+            notifiesStillPracticing = newValue
+            if newValue { Task { await askForNudges() } }
+        }
+    }
     /// What the notification opened Practice to show, until it's shown: the question, or the end being picked.
     var nudgeOpened: NudgeOpening?
     /// The session that ended itself at the cap, until the banner explaining it is acted on (SES-4).
@@ -121,6 +140,7 @@ public final class PracticeModel: TagTarget {
         pauseAfter = midi.pauseAfter
         saveAfter = midi.saveAfter
         answeredID = defaults.string(forKey: Self.answeredKey).flatMap(UUID.init(uuidString:))
+        notifiesStillPracticing = defaults.object(forKey: SettingsKey.notifiesStillPracticing) as? Bool ?? true
         // Loads the stored session now, so the first frame after a relaunch already shows it, with the silence
         // since its last change applied. As `cameToFront()`, but not yet on screen: a Live Activity's button can
         // launch the app in the background.
@@ -195,13 +215,17 @@ public final class PracticeModel: TagTarget {
     }
 
     func checkNudges() async {
-        canAskForNudges = await nudges.canAskPermission()
+        notificationPermission = await nudges.permission()
     }
 
-    /// Asks for the notification, which nudges about the sessions after this one (SES-3).
+    /// Asks for the notification, if the system hasn't asked yet, and adds it for the session running, which the
+    /// system refused until now (SES-3, SET-1).
     func askForNudges() async {
-        canAskForNudges = false
+        await checkNudges()
+        guard notificationPermission == .notAsked else { return }
         await nudges.requestPermission()
+        await checkNudges()
+        refresh()
     }
 
     /// Ends the session now, or a MIDI session at the earlier of now and 5 s after its last note (MIDI-R4). Public for
@@ -453,7 +477,9 @@ public final class PracticeModel: TagTarget {
         isPastNudge = timerSession?.whenPracticeReaches(nudge).map { $0 <= clock.now } ?? false
         // The notification waits for the running session to reach the nudge. A pause, a stop or a session already
         // past it cancels it, so it comes at most once per session.
-        if let session = timerSession, let date = session.whenPracticeReaches(nudge), date > clock.now {
+        if notifiesStillPracticing, let session = timerSession, let date = session.whenPracticeReaches(nudge),
+            date > clock.now
+        {
             nudges.schedule(after: date.timeIntervalSince(clock.now), sessionID: session.id)
         } else {
             nudges.cancel()

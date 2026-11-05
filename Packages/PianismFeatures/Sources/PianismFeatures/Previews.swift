@@ -15,7 +15,7 @@ extension PracticeModel {
     /// A model over an in-memory store, 25 minutes into a session, 95 minutes into one past the 90-minute nudge,
     /// or 5 hours into one that ends itself at the 4-hour cap, just after a MIDI session too short to save, or with
     /// a MIDI session paused by a silence, also on a low battery, for previews.
-    static func preview(_ state: PreviewState) -> PracticeModel {
+    static func preview(_ state: PreviewState, notifications: NotificationPermission = .notAsked) -> PracticeModel {
         let minutesEarlier: TimeInterval =
             switch state {
             case .pastNudge: 70
@@ -29,7 +29,8 @@ extension PracticeModel {
         let clock = PreviewClock(now: previewNow.addingTimeInterval(25 * 60 + 3))
         let model = PracticeModel(
             store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
-            nudges: PreviewNudges(), glance: PreviewGlance(), defaults: .standard, nudge: 90 * 60, cap: 4 * 60 * 60)
+            nudges: PreviewNudges(allowed: notifications), glance: PreviewGlance(), defaults: .standard, nudge: 90 * 60,
+            cap: 4 * 60 * 60)
         if state == .paused {
             model.pause()
         } else if state == .tooShort {
@@ -146,7 +147,9 @@ private struct PreviewUnavailableHistory: SessionHistory {
 
 /// Offers the notification, as before it's asked for, and sends none.
 private struct PreviewNudges: PracticeNudges {
-    func canAskPermission() -> Bool { true }
+    let allowed: NotificationPermission
+
+    func permission() -> NotificationPermission { allowed }
     func requestPermission() {}
     func schedule(after _: TimeInterval, sessionID _: UUID) {}
     func cancel() {}

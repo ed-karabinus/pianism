@@ -46,6 +46,9 @@
     "Ask “Still practicing?” after" : {
 
     },
+    "Asks “Still practicing?” with a notification when Pianism isn't open." : {
+
+    },
     "Bluetooth" : {
 
     },
@@ -167,6 +170,15 @@
 
     },
     "Notes that start a session" : {
+
+    },
+    "Notifications are off for Pianism in the Settings app." : {
+
+    },
+    "Notify me when I'm away" : {
+
+    },
+    "Open the Settings app" : {
 
     },
     "Overlap warning" : {

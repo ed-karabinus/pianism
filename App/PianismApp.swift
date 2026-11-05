@@ -292,7 +292,7 @@ private final class Answering {
 
 /// Offers the notification and sends none, for end-to-end tests of the banner it's offered in.
 private struct OfferingNudges: PracticeNudges {
-    func canAskPermission() async -> Bool { true }
+    func permission() async -> NotificationPermission { .notAsked }
     func requestPermission() async {}
     func schedule(after _: TimeInterval, sessionID _: UUID) {}
     func cancel() {}
