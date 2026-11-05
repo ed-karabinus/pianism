@@ -24,6 +24,9 @@ struct PracticeEntry: TimelineEntry {
     let session: PracticeSession?
     /// The practice time at which the session ends itself, if the app has said (SES-4).
     var cap: TimeInterval?
+    /// The session's practice before `date`'s day, which today's total leaves out: a session carried past
+    /// midnight counts only from midnight on.
+    var beforeToday: TimeInterval = 0
 }
 
 /// Reads the two App Group files the app writes: the running session (ADR 0003) and the day's finished practice
@@ -50,13 +53,14 @@ struct PracticeProvider: TimelineProvider {
     }
 
     private func entry(at date: Date) -> PracticeEntry {
+        let calendar = Calendar.autoupdatingCurrent
         let stored = try? FileRunningSessionStore(appGroup: AppGroup.identifier)?.current()
         let totals = FilePracticeTotals(appGroup: AppGroup.identifier)?.read()
         // An ended session still stored, as when neither history nor the outbox could take it, isn't being practiced.
         let session = stored?.state == .ended ? nil : stored
         return PracticeEntry(
-            date: date, finished: totals?.today(at: date, in: .autoupdatingCurrent) ?? 0, session: session,
-            cap: totals?.cap)
+            date: date, finished: totals?.today(at: date, in: calendar) ?? 0, session: session,
+            cap: totals?.cap, beforeToday: session?.practiced(before: calendar.startOfDay(for: date)) ?? 0)
     }
 }
 
@@ -101,8 +105,11 @@ struct PracticeWidgetView: View {
     @ViewBuilder private var time: some View {
         if let session = entry.session {
             let clock = session.practiceClock(cap: entry.cap)
+            // Leaving out practice before today moves where the clock starts, not where it stops at the cap;
+            // clamped, as a session already past the cap before today would start it past its end.
+            let startsAt = min(clock.lowerBound - entry.finished + entry.beforeToday, clock.upperBound)
             Text(
-                timerInterval: (clock.lowerBound - entry.finished)...clock.upperBound,
+                timerInterval: startsAt...clock.upperBound,
                 pauseTime: session.pausedAwayAt, countsDown: false)
         } else {
             let duration = Duration.seconds(Int(entry.finished / 60) * 60)
@@ -157,6 +164,13 @@ func previewPianoSession() -> PracticeSession {
     PracticeWidget()
 } timeline: {
     PracticeEntry(date: .now, finished: 0, session: previewPianoSession())
+}
+
+// As just past midnight, 16 of its 18 minutes fell yesterday: today counts only from midnight.
+#Preview("A piano session carried past midnight", as: .systemSmall) {
+    PracticeWidget()
+} timeline: {
+    PracticeEntry(date: .now, finished: 0, session: previewPianoSession(), beforeToday: 16 * 60)
 }
 
 // The widget previews above take no modifiers, so dark and AX5 preview the view in a small widget's frame.

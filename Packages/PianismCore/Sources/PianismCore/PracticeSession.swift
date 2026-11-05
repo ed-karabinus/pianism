@@ -79,6 +79,17 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         return end.timeIntervalSince(startedAt) - paused
     }
 
+    /// Practice time earlier than `date`, excluding pauses: what had been practiced by then, whenever this is
+    /// asked. A pause across `date` stops the count at the pause. The widget leaves this out of a total for a
+    /// day a session carries into (GLN-2).
+    public func practiced(before date: Date) -> TimeInterval {
+        let end = min(date, endedAt ?? date)
+        guard end > startedAt else { return 0 }
+        let starts = [startedAt] + pauses.map { $0.end ?? end }
+        let ends = pauses.map(\.start) + [end]
+        return zip(starts, ends).reduce(0) { $0 + max(0, min($1.1, end).timeIntervalSince($1.0)) }
+    }
+
     /// The moment a clock counting only practice would have started, so `now - practiceOrigin` is the practice so
     /// far while the session runs, and a clock stopped at the pause, or at the end, reads the same (GLN-2). Later
     /// than `startedAt` by the pauses so far (SES-2).
