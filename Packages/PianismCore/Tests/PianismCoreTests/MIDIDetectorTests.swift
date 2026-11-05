@@ -197,6 +197,12 @@ struct MIDIDetectorTests {
         #expect(unticked.handle(.stop(start + 1801)).isEmpty)
     }
 
+    @Test("MIDI-1: a first tick exactly at the save deadline ends a session still playing, as it does a paused one")
+    func aFirstTickAtTheSaveDeadlineEnds() {
+        var detector = playing(lastNote: start)
+        #expect(detector.handle(.tick(start + 600)) == [.end(afterLastNote: start, at: start + 5)])
+    }
+
     @Test("MIDI-R3: a note that arrives after the silence, as when the app comes back, can't fill it")
     func aLateNoteCantFillTheSilence() {
         var afterAPause = playing(lastNote: start)

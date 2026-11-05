@@ -84,7 +84,7 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
     /// day a session carries into (GLN-2).
     public func practiced(before date: Date) -> TimeInterval {
         let end = min(date, endedAt ?? date)
-        guard end > startedAt else { return 0 }
+        guard end > startedAt else { return 0 }  // mutate:ignore - at equal times the sum below is 0 too
         let starts = [startedAt] + pauses.map { $0.end ?? end }
         let ends = pauses.map(\.start) + [end]
         return zip(starts, ends).reduce(0) { $0 + max(0, min($1.1, end).timeIntervalSince($1.0)) }

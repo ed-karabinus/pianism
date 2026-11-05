@@ -34,10 +34,13 @@ public struct PracticeWeek: Sendable {
             for tag in tags { byTag[tag.id, default: TagTime(tag: tag, time: 0)].time += time }
         }
         let tagged = byTag.values.sorted { first, second in
-            guard first.time == second.time else { return first.time > second.time }
+            guard first.time == second.time else {
+                return first.time > second.time  // mutate:ignore - the times differ here
+            }
             // A piece and a skill can share a name, so the ID settles it, or their rows could swap between launches.
             let order = (first.tag?.name ?? "").localizedStandardCompare(second.tag?.name ?? "")
-            return order == .orderedSame ? first.id ?? "" < second.id ?? "" : order == .orderedAscending
+            guard order == .orderedSame else { return order == .orderedAscending }
+            return first.id ?? "" < second.id ?? ""  // mutate:ignore - two tags never share an ID
         }
         return tagged + (untagged.time > 0 ? [untagged] : [])
     }
