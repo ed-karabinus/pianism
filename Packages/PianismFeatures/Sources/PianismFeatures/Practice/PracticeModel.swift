@@ -25,7 +25,6 @@ public final class PracticeModel: TagTarget {
     /// The session whose "Still practicing?" was answered, in the app or its notification, so it's asked once per
     /// session (SES-3). Stored per device.
     private(set) var answeredID: UUID?
-    /// Whether Practice offers the notification, which is until it's been asked for, as the system asks once.
     /// What the system allows, once read, as it can change in its Settings app while the app is away (SET-1).
     private(set) var notificationPermission: NotificationPermission?
     /// Whether the banner offers the notification, until the system has asked, as it asks once. Not with the switch off

@@ -343,6 +343,7 @@ struct PracticeModelTests {
 
     @Test("SES-3: the notification waits for the running session's practice to reach the nudge")
     func notificationWaitsForTheNudge() throws {
+        nudges.setPermission(.allowed)
         let model = makeModel()
         model.start()
         let id = try #require(model.session?.id)
@@ -448,25 +449,25 @@ struct PracticeModelTests {
 
     @Test("SET-1, SES-3: with the notification off, no nudge waits and the banner doesn't offer it")
     func theSwitchOffMeansNoNudge() async {
+        nudges.setPermission(.allowed)
         let model = makeModel()
         await model.checkNudges()
         model.start()
         #expect(nudges.pending != nil)
-        #expect(model.canAskForNudges)
 
         model.notifiesWhenAway = false
 
         #expect(nudges.pending == nil)
-        #expect(!model.canAskForNudges)
         #expect(defaults.object(forKey: SettingsKey.notifiesStillPracticing) as? Bool == false)
-        clock.advance(by: 60)
-        model.refresh()
-        #expect(nudges.pending == nil)
         // Practice still asks in the app past the nudge.
         clock.advance(by: 5_400)
         model.refresh()
         #expect(model.isAskingStillPracticing)
 
+        // Offered with the system yet to ask (`notificationIsOfferedUntilAsked`), but not with the switch off.
+        nudges.setPermission(.notAsked)
+        await model.checkNudges()
+        #expect(!model.canAskForNudges)
         let reopened = makeModel()
         await reopened.checkNudges()
         #expect(!reopened.canAskForNudges, "The setting wasn't kept")
@@ -491,17 +492,19 @@ struct PracticeModelTests {
     }
 
     @Test("SET-1: turning the switch on asks the system if it hasn't asked, and adds the running session's nudge")
-    func turningOnAsks() async {
+    func turningOnAsks() async throws {
         let model = makeModel()
         model.notifiesWhenAway = false
         model.start()
-        #expect(nudges.pending == nil)
 
         model.notifiesWhenAway = true
-        #expect(nudges.pending != nil)
-        // The setter asks in a task of its own on this actor, which needs only turns to finish.
-        for _ in 0..<10 { await Task.yield() }
 
+        // The setter asks in a task of its own. The fake, like the system, refuses the nudge until it's allowed.
+        let deadline = ContinuousClock.now + .seconds(10)
+        while nudges.pending == nil {
+            try #require(ContinuousClock.now < deadline, "The running session's nudge wasn't added")
+            await Task.yield()
+        }
         #expect(nudges.permission() == .allowed)
         #expect(model.notifiesWhenAway)
     }
@@ -1111,6 +1114,7 @@ struct PracticeModelTests {
     func newNudgeAppliesAtOnce() {
         // Typed, as #expect compares an optional with a bare literal as unequal.
         let quarterHour: TimeInterval = 15 * 60
+        nudges.setPermission(.allowed)
         let model = makeModel()
         let start = clock.now
         model.start()

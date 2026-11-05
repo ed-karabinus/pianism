@@ -30,7 +30,8 @@ public final class InMemoryNudges: PracticeNudges {
     }
 
     public func schedule(after delay: TimeInterval, sessionID: UUID) {
-        state.withLock { $0.pending = (delay, sessionID) }
+        // As the system does, which refuses a notification until it's allowed.
+        state.withLock { if $0.permission == .allowed { $0.pending = (delay, sessionID) } }
     }
 
     public func cancel() {
