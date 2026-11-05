@@ -18,7 +18,9 @@ struct PracticeDayTests {
                 try date(2026, 10, 15, 0, 0, in: calendar), try date(2026, 10, 14, 0, 0, in: calendar),
             ])
         #expect(days.map(\.sessions) == [[evening, morning], [yesterday]])
-        #expect(days.map(\.total) == [45 * 60, 20 * 60])
+        // Typed outside the macro, as Xcode 26.6 (CI's Mac) gives up working it out inside.
+        let totals: [TimeInterval] = [45 * 60, 20 * 60]
+        #expect(days.map(\.total) == totals)
     }
 
     @Test("HIS-1: a day's total adds the whole seconds its rows show, so a row's fraction can't make them disagree")

@@ -1,0 +1,50 @@
+name: Mutation testing
+
+# The whole of `make mutate`, nightly on main (Ed, 2026-11-05; ADR 0005), as it takes too long to run for each pull
+# request. It only reports: survivors don't fail the job, and it isn't a required check, so it never blocks a merge.
+# It fails only if the tests don't pass before mutating, or it can't run. It's apart from CI so a run can't hold up
+# CI's jobs, though it does take one of GitHub Free's 5 macOS slots while it runs.
+on:
+  schedule:
+    # 10:47 UTC, half an hour after CI's nightly. Off the hour, which GitHub delays most.
+    - cron: "47 10 * * *"
+  workflow_dispatch:
+  # A change to the job or the script gets tried before it merges.
+  pull_request:
+    paths:
+      - .github/workflows/mutation.yml
+      - scripts/mutate.py
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  # A new push replaces a pull request's run, but a nightly hours in isn't cancelled by a manual run on main.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  mutate:
+    name: Mutation testing (report only)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+      - name: Select the newest stable Xcode
+        run: scripts/select-xcode.sh
+      - name: Plant one bug at a time
+        # Stops this step, under GitHub's limit of 6 hours for the job, so the steps below still run if it's too slow.
+        timeout-minutes: 340
+        run: |
+          set -o pipefail
+          make mutate 2>&1 | tee mutate.log
+      # From the lines as they ran, not the script's closing summary, so a run stopped early still reports.
+      - name: Report the survivors
+        if: always()
+        run: scripts/mutation-report.sh mutate.log >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the whole log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-log
+          path: mutate.log
+          if-no-files-found: ignore
