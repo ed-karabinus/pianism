@@ -44,6 +44,30 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A session under 10 s was kept")
     }
 
+    /// NFR-10: on the real clock, the shown time advances second by second while a session runs and holds
+    /// while it is paused: the timeline that draws the time ticks only while the session counts.
+    @MainActor
+    func testPracticeTimeAdvancesWhileRunningAndHoldsWhilePaused() throws {
+        let app = launch(at: nil, reset: true)
+        tap(app, "practice.start")
+        XCTAssertEqual(text(app, "practice.status"), "Practicing")
+
+        let time = app.staticTexts["practice.elapsed"]
+        XCTAssertTrue(time.waitForExistence(timeout: 5), "No practice time")
+        let started = elapsed(app)
+        let moved = expectation(
+            for: NSPredicate(format: "value != %@", started ?? ""), evaluatedWith: time)
+        XCTAssertEqual(XCTWaiter.wait(for: [moved], timeout: 5), .completed, "The running time didn't advance")
+        attachScreenshot(of: app, named: "Practicing, counting")
+
+        tap(app, "practice.pause")
+        XCTAssertEqual(text(app, "practice.status"), "Paused")
+        let held = elapsed(app)
+        Thread.sleep(forTimeInterval: 2.5)
+        XCTAssertEqual(elapsed(app), held, "The paused time moved")
+        attachScreenshot(of: app, named: "Paused, time held")
+    }
+
     /// MIDI-1: three notes start a session, and a Stop with under a minute of played time discards it and says so.
     /// The simulator has no piano, so the app plays a chord at launch, on the fixed clock.
     @MainActor
