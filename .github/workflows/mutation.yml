@@ -35,7 +35,7 @@ jobs:
       - name: Plant one bug at a time
         run: |
           set -o pipefail
-          make mutate | tee mutate.log
+          make mutate 2>&1 | tee mutate.log
       # From the lines as they ran, not the script's closing summary, so a run stopped early still reports.
       - name: Report the survivors
         if: always()

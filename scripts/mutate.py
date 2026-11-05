@@ -74,8 +74,9 @@ def main(packages):
     for package in packages:
         workdir = WORK / "Packages" / Path(package).name
         # A failing suite would make every mutation look caught.
-        if not passes(["swift", "test"], workdir, 900):
-            sys.exit(f"{package} must build and pass its tests before mutating")
+        base = subprocess.run(["swift", "test"], cwd=workdir, capture_output=True, text=True, timeout=900)
+        if base.returncode != 0:
+            sys.exit(f"{package} must build and pass its tests before mutating:\n{base.stdout[-4000:]}{base.stderr[-4000:]}")
         for source in sorted((workdir / "Sources" / workdir.name).rglob("*.swift")):
             original = source.read_text()
             for line, name, lines in mutants(original.splitlines(keepends=True)):
