@@ -103,6 +103,30 @@ struct MIDIDetectorTests {
         #expect(detector.handle(.stop(start + 100)).isEmpty)
     }
 
+    @Test("MIDI-R4: Stop dated before the pause, as after the clock stepped back, still ends at the pause")
+    func stopDatedBeforeThePauseEndsAtThePause() {
+        var detector = MIDIDetector()
+        for _ in 1...3 { _ = detector.handle(.noteOn(start)) }
+        _ = detector.handle(.noteOn(start + 80))
+        #expect(detector.handle(.tick(start + 140)) == [.pause(at: start + 80)])
+
+        #expect(detector.handle(.stop(start + 50)) == [.end(afterLastNote: start + 80, at: start + 80)])
+    }
+
+    @Test("MIDI-1, SET-1: settings under their smallest are read as their smallest")
+    func settingsAreClamped() {
+        var settings = MIDISettings()
+        settings.startNotes = -2
+        settings.pauseAfter = -1
+        settings.saveAfter = -600
+        settings.minimumPlayed = -60
+
+        #expect(settings.startNotes == 1)
+        #expect(settings.pauseAfter == 0)
+        #expect(settings.saveAfter == 0)
+        #expect(settings.minimumPlayed == 0)
+    }
+
     // MARK: MIDI-1: a silence pauses, a note resumes, a longer silence ends
 
     @Test(

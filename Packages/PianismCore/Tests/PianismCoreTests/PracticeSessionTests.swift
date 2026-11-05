@@ -280,6 +280,34 @@ struct PracticeSessionTests {
         #expect(session.practiceClock(cap: 600).upperBound == session.whenPracticeReaches(600))
     }
 
+    @Test("GLN-1, SES-4: a negative cap or save reads as none, so no clock is built backwards")
+    func negativeCapAndSaveReadAsNone() throws {
+        let start = clock.now
+        let session = PracticeSession(startedAt: start)
+        #expect(session.practiceClock(cap: -60) == session.practiceClock(cap: 0))
+        #expect(session.practiceClock(cap: -60) == start...start)
+        #expect(session.whenPracticeReaches(-60) == session.whenPracticeReaches(0))
+
+        var piano = PracticeSession(startedAt: start, source: .midi)
+        try piano.noteLastPlayed(at: start + 70)
+        #expect(piano.endsByItself(cap: nil, saveAfter: -600, appOnScreen: false) == start + 70)
+    }
+
+    @Test("MIDI-1: a last note can't move back, and no change is dated before it")
+    func lastNoteCantMoveBack() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start, source: .midi)
+        try session.noteLastPlayed(at: start + 70)
+
+        #expect(throws: SessionError.timeWentBackwards) { try session.noteLastPlayed(at: start + 60) }
+        #expect(throws: SessionError.timeWentBackwards) { try session.pause(at: start + 50) }
+        #expect(session.lastNoteAt == start + 70)
+        #expect(session.state == .running)
+
+        try session.pause(at: start + 70)
+        #expect(session.state == .paused)
+    }
+
     @Test("GLN-1: a session with no cap, as a MIDI session, has a clock with no end")
     func practiceClockWithoutACap() {
         let start = clock.now
