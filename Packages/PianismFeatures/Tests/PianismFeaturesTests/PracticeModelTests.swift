@@ -770,6 +770,34 @@ struct PracticeModelTests {
         #expect(waiting.count == 14)
     }
 
+    @Test("SET-1: turning the reminder off before the system has answered still cancels what's waiting")
+    func turningItOffNeedsNoAnswer() async {
+        _ = await modelReminding()
+        #expect(nudges.waitingReminders.count == 14)
+
+        let relaunched = makeModel()
+        relaunched.remindsDaily = false
+
+        #expect(nudges.waitingReminders.isEmpty)
+    }
+
+    @Test("SET-1: deleting today's only session brings today's reminder back")
+    func deletingTodaysPracticeBringsTheReminderBack() async throws {
+        let history = InMemorySessionHistory()
+        let model = await modelReminding(history: history)
+        model.start()
+        clock.advance(by: 60)
+        model.stop()
+        model.leaveForeground()
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: true))
+
+        let saved = try #require(history.sessions().first)
+        try history.delete(id: saved.id)
+        model.leaveForeground()
+
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: false))
+    }
+
     @Test("SES-3: the notification opens Practice to the question, or with \"I stopped earlier\" to picking the end")
     func notificationOpensPractice() {
         let model = makeModel()

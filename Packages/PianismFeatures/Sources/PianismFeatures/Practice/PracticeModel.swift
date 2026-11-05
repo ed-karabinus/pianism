@@ -261,8 +261,8 @@ public final class PracticeModel: TagTarget {
 
     private func planReminders() {
         // Not before the system has answered, as when a button launches the app in the background: the reminder would
-        // read as off, and all of them would go.
-        guard notificationPermission != nil else { return }
+        // read as off, and all of them would go. Turning it off needs no answer.
+        if wantsDailyReminder && notificationPermission == nil { return }
         guard remindsDaily else { return nudges.cancelReminders() }
         nudges.scheduleReminders(
             at: DailyReminder.dates(
