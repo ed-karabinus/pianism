@@ -77,7 +77,8 @@ dependency.
   passing tests mean it survived. A mutation that doesn't compile is left out of the score.
 - `make mutate` runs it. It runs before every milestone check, and by hand for a PR that adds
   logic to those packages. It isn't a CI check: it takes minutes, and some survivors need a person
-  to judge them.
+  to judge them. (Amended 2026-11-05: CI runs all of it nightly on main, as a report that blocks
+  nothing, in its own workflow, as runs by hand had become rare. It still isn't a required check.)
 - Every survivor gets one of three outcomes, recorded in the milestone report: a new test, a
   deleted line, or a note that the mutation doesn't change behaviour.
 
