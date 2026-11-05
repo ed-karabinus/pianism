@@ -77,6 +77,16 @@ struct DailyReminderTests {
         #expect(midnight.map(\.day) == [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
     }
 
+    @Test("SET-1: a time the clocks go back through comes once that day")
+    func aRepeatedTimeComesOnce() throws {
+        let calendar = try calendar("America/Los_Angeles")
+        // 1:30 AM happens twice on 2027-11-07 there.
+        let dates = DailyReminder.dates(
+            atMinute: 60 + 30, after: try date(calendar, 2027, 11, 6, 12), skippingToday: false, in: calendar)
+        #expect(dates.map(\.day) == [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20])
+        #expect(dates.first?.hour == 1)
+    }
+
     @Test("SET-1: a reminder names no time zone, so it follows the phone")
     func namesNoTimeZone() throws {
         let calendar = try calendar("Asia/Tokyo")

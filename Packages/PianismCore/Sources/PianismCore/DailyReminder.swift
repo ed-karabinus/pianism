@@ -6,6 +6,7 @@ import Foundation
 public enum DailyReminder {
     /// 6:00 PM, in minutes after midnight (decided with Ed, 2026-11-02).
     public static let defaultMinute = 18 * 60
+    /// Before shrinking this, `cancelReminders` must clear the old range, or the days dropped still come after it's off.
     public static let daysAhead = 14
 
     /// The next `daysAhead` reminders at `minute` after midnight, from the first still to come, and none today if
