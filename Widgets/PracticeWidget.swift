@@ -58,9 +58,13 @@ struct PracticeProvider: TimelineProvider {
         let totals = FilePracticeTotals(appGroup: AppGroup.identifier)?.read()
         // An ended session still stored, as when neither history nor the outbox could take it, isn't being practiced.
         let session = stored?.state == .ended ? nil : stored
+        // Up to where the session's clock stops, if that came first: practice after a MIDI session's last note
+        // doesn't count yet, and the note can fall before midnight.
+        let dayStart = calendar.startOfDay(for: date)
+        let beforeToday = session?.practiced(before: min(dayStart, session?.pausedAwayAt ?? dayStart)) ?? 0
         return PracticeEntry(
             date: date, finished: totals?.today(at: date, in: calendar) ?? 0, session: session,
-            cap: totals?.cap, beforeToday: session?.practiced(before: calendar.startOfDay(for: date)) ?? 0)
+            cap: totals?.cap, beforeToday: beforeToday)
     }
 }
 
@@ -106,8 +110,9 @@ struct PracticeWidgetView: View {
         if let session = entry.session {
             let clock = session.practiceClock(cap: entry.cap)
             // Leaving out practice before today moves where the clock starts, not where it stops at the cap;
-            // clamped, as a session already past the cap before today would start it past its end.
-            let startsAt = min(clock.lowerBound - entry.finished + entry.beforeToday, clock.upperBound)
+            // clamped, as a session already past the cap before today would start it past today's finished time.
+            let startsAt = min(
+                clock.lowerBound - entry.finished + entry.beforeToday, clock.upperBound - entry.finished)
             Text(
                 timerInterval: startsAt...clock.upperBound,
                 pauseTime: session.pausedAwayAt, countsDown: false)

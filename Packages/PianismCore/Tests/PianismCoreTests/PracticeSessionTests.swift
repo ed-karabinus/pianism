@@ -371,6 +371,7 @@ struct PracticeSessionTests {
     func practicedBeforeAMoment() throws {
         let start = clock.now
         var session = PracticeSession(startedAt: start)
+        #expect(session.practiced(before: start - 60) == 0)
         #expect(session.practiced(before: start) == 0)
         #expect(session.practiced(before: start + 50) == 50)
 
@@ -388,6 +389,7 @@ struct PracticeSessionTests {
         #expect(session.practiced(before: start + 250) == 150)
 
         try session.stop(at: start + 400)
+        #expect(session.practiced(before: start + 250) == 150)
         #expect(session.practiced(before: start + 1_000) == 200)
     }
 
