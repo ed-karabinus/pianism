@@ -41,6 +41,26 @@ struct PracticeModelTests {
         #expect(history.saved.sessions().map(\.id) == [model.lastSession?.id])
     }
 
+    @Test("NFR-10: only a running session is counting, so the screen needn't tick otherwise")
+    func onlyARunningSessionIsCounting() {
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 4 * 60 * 60)
+        #expect(!model.isCounting)
+
+        model.start()
+        #expect(model.isCounting)
+
+        model.pause()
+        #expect(!model.isCounting)
+
+        model.resume()
+        #expect(model.isCounting)
+
+        model.stop()
+        #expect(!model.isCounting)
+    }
+
     @Test("SES-4: a session left running ends at the cap when the app next opens, and a banner says so until Start")
     func capEndsASessionLeftRunning() {
         let store = InMemoryRunningSessionStore()

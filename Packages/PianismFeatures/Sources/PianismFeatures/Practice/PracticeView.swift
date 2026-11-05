@@ -51,7 +51,7 @@ struct PracticeView: View {
         VStack(spacing: 24) {
             Spacer()
             // The status changes with the time, as a silence that pauses a MIDI session changes both at once.
-            TimelineView(.periodic(from: .now, by: 1)) { _ in
+            TimelineView(PracticeTimelineSchedule(isCounting: model.isCounting)) { _ in
                 let now = model.clock.now
                 let elapsed = model.elapsed(at: now)
                 let pausedAtLastNote = model.isPausedAtLastNote(at: now)
@@ -380,6 +380,17 @@ private struct CommandButton: View {
             }
             .frame(maxWidth: .infinity)
         }
+    }
+}
+
+/// Second ticks while a session is counting, and only its first entry otherwise: a running session keeps
+/// `.periodic`'s entries exactly, while an idle or paused Practice screen has nothing new to draw (NFR-10).
+private struct PracticeTimelineSchedule: TimelineSchedule {
+    let isCounting: Bool
+
+    func entries(from startDate: Date, mode: TimelineScheduleMode) -> AnySequence<Date> {
+        guard isCounting else { return AnySequence([startDate]) }
+        return AnySequence(PeriodicTimelineSchedule(from: startDate, by: 1).entries(from: startDate, mode: mode))
     }
 }
 
