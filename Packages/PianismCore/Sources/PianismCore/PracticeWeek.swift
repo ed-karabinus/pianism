@@ -28,7 +28,7 @@ public struct PracticeWeek: Sendable {
         var byTag: [Tag.ID: TagTime] = [:]
         var untagged = TagTime(tag: nil, time: 0)
         for session in days.flatMap(\.sessions) {
-            let time = session.elapsed(at: .distantPast)
+            let time = session.wholeSecondsPracticed
             let tags = index.tags(for: session.tagIDs)
             if tags.isEmpty { untagged.time += time }
             for tag in tags { byTag[tag.id, default: TagTime(tag: tag, time: 0)].time += time }
