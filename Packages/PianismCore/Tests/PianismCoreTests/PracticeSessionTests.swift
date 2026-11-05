@@ -367,6 +367,53 @@ struct PracticeSessionTests {
         #expect(session.endsByItself(cap: nil, saveAfter: 600, appOnScreen: true) == start + 700)
     }
 
+    @Test("GLN-2: practiced before a moment counts only practice earlier than it, pauses across it included")
+    func practicedBeforeAMoment() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start)
+        #expect(session.practiced(before: start - 60) == 0)
+        #expect(session.practiced(before: start) == 0)
+        #expect(session.practiced(before: start + 50) == 50)
+
+        // A pause across the moment: practice stops at the pause, not at the moment.
+        try session.pause(at: start + 100)
+        #expect(session.practiced(before: start + 150) == 100)
+
+        // Asked after a resume later that day, the answer for the earlier moment doesn't move.
+        try session.resume(at: start + 200)
+        #expect(session.practiced(before: start + 150) == 100)
+        #expect(session.practiced(before: start + 260) == 160)
+
+        // Asked after a later pause, a moment in the resumed span still excludes the pause that followed it.
+        try session.pause(at: start + 300)
+        #expect(session.practiced(before: start + 250) == 150)
+
+        try session.stop(at: start + 400)
+        #expect(session.practiced(before: start + 250) == 150)
+        #expect(session.practiced(before: start + 1_000) == 200)
+    }
+
+    @Test("GLN-2: today's clock counts a carried session only from the start of the day")
+    func todaysClockCountsFromTheDay() throws {
+        let midnight = clock.now
+        let session = PracticeSession(startedAt: midnight - 3_600)
+        let range = session.todaysClock(finished: 600, dayStart: midnight, cap: 4 * 3_600)
+
+        #expect(range.lowerBound == midnight - 600)
+        #expect(range.upperBound == midnight + 3 * 3_600)
+
+        // A last note before midnight: the clock stops there, showing today's finished minutes, not less.
+        var piano = PracticeSession(startedAt: midnight - 1_200, source: .midi)
+        try piano.noteLastPlayed(at: midnight - 120)
+        let pianoRange = piano.todaysClock(finished: 300, dayStart: midnight, cap: nil)
+        #expect(piano.pausedAwayAt.map { $0.timeIntervalSince(pianoRange.lowerBound) } == 300)
+
+        // Already past the cap before today: the clock already reads today's finished minutes, not nothing.
+        let long = PracticeSession(startedAt: midnight - 7_200)
+        let longRange = long.todaysClock(finished: 600, dayStart: midnight, cap: 3_600)
+        #expect(longRange.upperBound.timeIntervalSince(longRange.lowerBound) == 600)
+    }
+
     @Test("GLN-1, SES-4: a timer session counts outside the app, and ends at the cap while running, never while paused")
     func aTimerSessionAwayCountsOnUntilTheCap() throws {
         let start = clock.now
