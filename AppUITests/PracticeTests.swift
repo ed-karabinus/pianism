@@ -982,6 +982,8 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.buttons["editor.save"].waitForNonExistence(timeout: 5))
         openSettings(app)
         let warning = app.switches["settings.overlap-warning"]
+        // Below the fold on a shorter screen, like iPhone Duo's, where a Form hasn't built the row yet.
+        if !warning.waitForExistence(timeout: 2) { app.swipeUp() }
         XCTAssertTrue(warning.waitForExistence(timeout: 5), "No overlap warning in Settings")
         XCTAssertEqual(warning.value as? String, "0", "Settings shows the warning on after Don't Show Again")
         let on = app.switches.matching(NSPredicate(format: "identifier == 'settings.overlap-warning' AND value == '1'"))

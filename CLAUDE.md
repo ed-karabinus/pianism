@@ -133,9 +133,8 @@ Agents write code quickly, so the main risk is code that works but shouldn't exi
     with a screenshot (the `evidence` branch, under `pr-NN/`). Label what each image proves; an
     unchanged screen is never evidence that a preview renders. A PR holds no open questions: settle
     wording and behaviour with the owner first, and the PR states the decision.
-12. Commits end with `Co-Authored-By: Claude <model> <noreply@anthropic.com>`, and PR descriptions
-    with "🤖 Generated with [Claude Code](https://claude.com/claude-code)". No session links in
-    either.
+12. Commits end with a `Co-Authored-By:` line naming the agent that wrote them, and PR descriptions
+    with "Generated with <the agent that wrote it>". No session links in either.
 13. Go easy on GitHub: the bot account was flagged once for a burst of writes. Poll CI every five
     minutes at most, cancel a run a newer push replaced, and open issues a few at a time.
 
