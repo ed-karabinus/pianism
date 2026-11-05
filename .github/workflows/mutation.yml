@@ -33,14 +33,14 @@ jobs:
         run: scripts/select-xcode.sh
       - name: Plant one bug at a time
         # Stops this step, under GitHub's limit of 6 hours for the job, so the steps below still run if it's too slow.
-        timeout-minutes: 340
+        timeout-minutes: 8
         run: |
           set -o pipefail
           make mutate 2>&1 | tee mutate.log
       # From the lines as they ran, not the script's closing summary, so a run stopped early still reports.
       - name: Report the survivors
         if: always()
-        run: scripts/mutation-report.sh mutate.log >> "$GITHUB_STEP_SUMMARY"
+        run: scripts/mutation-report.sh mutate.log | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Keep the whole log
         if: always()
         uses: actions/upload-artifact@v4
