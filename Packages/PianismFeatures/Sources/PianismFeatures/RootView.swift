@@ -156,6 +156,8 @@ enum AccessibilityID {
     static let historyUndo = "history.undo"
     static let deleteConfirm = "delete.confirm"
     static let settingsPianos = "settings.pianos"
+    static let settingsNotifications = "settings.notifications"
+    static let settingsOpenNotificationSettings = "settings.open-notification-settings"
     static let settingsOverlapWarning = "settings.overlap-warning"
     static let settingsNudge = "settings.nudge"
     static let settingsCap = "settings.cap"

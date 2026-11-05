@@ -7,6 +7,8 @@ enum SettingsKey {
     static let stillPracticingAfter = "stillPracticingAfter"
     /// The cap, in seconds (SES-4).
     static let automaticCapAfter = "automaticCapAfter"
+    /// Whether a session past the nudge may notify, if the system allows it (SES-3).
+    static let notifiesStillPracticing = "notifiesStillPracticing"
     /// How many notes start a MIDI session (MIDI-1).
     static let midiStartNotes = "midiStartNotes"
     /// The silence that pauses a MIDI session, in seconds (MIDI-1).

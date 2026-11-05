@@ -17,6 +17,14 @@ struct UserNotificationNudgesTests {
             ])
     }
 
+    @Test("SET-1: the system's status reads as not asked, denied or, for all that deliver, allowed")
+    func mapsTheStatus() {
+        #expect(UserNotificationNudges.permission(for: .notDetermined) == .notAsked)
+        #expect(UserNotificationNudges.permission(for: .denied) == .denied)
+        #expect(UserNotificationNudges.permission(for: .authorized) == .allowed)
+        #expect(UserNotificationNudges.permission(for: .provisional) == .allowed)
+    }
+
     @Test("SES-3: a tap opens Practice to the question, and a dismissal asks nothing of the app")
     func tapOpensTheQuestion() {
         #expect(UserNotificationNudges.answer(to: UNNotificationDefaultActionIdentifier) == .open(pickingEnd: false))

@@ -369,6 +369,46 @@ final class PracticeTests: UITestCase {
             accuracy: 1, "The answers stacked")
     }
 
+    /// SET-1, SES-3: with "Notify me when I'm away" off in Settings, a session past the nudge sends no notification, and
+    /// with it back on, the next one does. On the real clock, with a nudge of 20 s, as the notification test explains.
+    @MainActor
+    func testTheNudgeNotificationCanBeTurnedOff() throws {
+        let app = launch(at: nil, reset: true, nudgeSeconds: 20)
+        openSettings(app)
+        let toggle = app.switches["settings.notifications"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "No switch in Settings")
+        func set(_ on: Bool) {
+            let value = on ? "1" : "0"
+            let wanted = app.switches.matching(
+                NSPredicate(format: "identifier == 'settings.notifications' AND value == %@", value)
+            ).firstMatch
+            guard !wanted.waitForExistence(timeout: 2) else { return }
+            toggle.tap()
+            // The system asks once per install, so a retry on the same simulator finds the notification allowed.
+            let allow = springboard.alerts.buttons["Allow"]
+            if on, allow.waitForExistence(timeout: 3) { allow.tap() }
+            // As with the overlap warning's switch, a tap in a Form sometimes lands only on its own control.
+            if !wanted.waitForExistence(timeout: 2) { toggle.switches.firstMatch.tap() }
+            XCTAssertTrue(wanted.waitForExistence(timeout: 5), "The switch didn't turn \(on ? "on" : "off")")
+        }
+        set(true)
+        attachScreenshot(of: app, named: "Notify me when I'm away, on")
+        set(false)
+
+        openPractice(app)
+        tap(app, "practice.start")
+        goHome()
+        XCTAssertFalse(notification.waitForExistence(timeout: 30), "It notified with the switch off")
+        app.activate()
+        tap(app, "practice.stop")
+
+        openSettings(app)
+        set(true)
+        openPractice(app)
+        tap(app, "practice.start")
+        answerNotification(with: "Still practicing")
+    }
+
     /// SES-3: the banner offers the notification, which then asks "Still practicing?" while the app is away, unless
     /// the session is paused. Its "Still practicing" answers for the session, and its "I stopped earlier" opens
     /// Practice to pick the end. A nudge that passes while History shows is asked when Practice is back. The clock

@@ -7,6 +7,7 @@ struct SettingsView: View {
     @Bindable var practice: PracticeModel
 
     @AppStorage(SettingsKey.showsOverlapWarning) private var showsOverlapWarning = true
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -53,6 +54,20 @@ struct SettingsView: View {
                         Text("Ask “Still practicing?” after", bundle: .module)
                     }
                     .accessibilityIdentifier(AccessibilityID.settingsNudge)
+                    Toggle(isOn: $practice.notifiesWhenAway) {
+                        Text("Notify me when I'm away", bundle: .module)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.settingsNotifications)
+                    #if os(iOS)
+                        if practice.notificationPermission == .denied,
+                            let settings = URL(string: UIApplication.openNotificationSettingsURLString)
+                        {
+                            Link(destination: settings) {
+                                Text("Open the Settings app", bundle: .module)
+                            }
+                            .accessibilityIdentifier(AccessibilityID.settingsOpenNotificationSettings)
+                        }
+                    #endif
                     Picker(selection: $practice.cap) {
                         times(practice.capChoices)
                     } label: {
@@ -63,8 +78,17 @@ struct SettingsView: View {
                 } header: {
                     Text("Practice", bundle: .module)
                 } footer: {
-                    if !practice.canChangeCap {
-                        Text("You can change when a session stops once this one ends.", bundle: .module)
+                    VStack(alignment: .leading) {
+                        if practice.notificationPermission == .denied {
+                            Text("Notifications are off for Pianism in the Settings app.", bundle: .module)
+                        } else {
+                            Text(
+                                "Asks “Still practicing?” with a notification when Pianism isn't open.",
+                                bundle: .module)
+                        }
+                        if !practice.canChangeCap {
+                            Text("You can change when a session stops once this one ends.", bundle: .module)
+                        }
                     }
                 }
                 Section {
@@ -81,6 +105,8 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle(Text("Settings", bundle: .module))
+            // Coming back from the system's Settings app may find notifications allowed or not.
+            .task(id: scenePhase) { await practice.checkNudges() }
         }
     }
 
@@ -91,6 +117,16 @@ struct SettingsView: View {
 
 #Preview("No piano") {
     SettingsView(practice: .preview(.ready))
+}
+
+#Preview("Notifications off in the Settings app") {
+    SettingsView(practice: .preview(.ready, notifications: .denied))
+}
+
+#Preview("Notifications off in the Settings app, dark, AX5") {
+    SettingsView(practice: .preview(.running, notifications: .denied))
+        .preferredColorScheme(.dark)
+        .dynamicTypeSize(.accessibility5)
 }
 
 #Preview("A session running, a piano, dark, AX5") {

@@ -34,9 +34,18 @@ public final class UserNotificationNudges: NSObject, PracticeNudges, UNUserNotif
         center.delegate = self  // mutate:ignore - as above
     }
 
-    public func canAskPermission() async -> Bool {
+    public func permission() async -> NotificationPermission {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
-        return settings.authorizationStatus == .notDetermined  // mutate:ignore - as above
+        return Self.permission(for: settings.authorizationStatus)  // mutate:ignore - as above
+    }
+
+    /// Provisional and ephemeral permission still deliver, so they count as allowed.
+    static func permission(for status: UNAuthorizationStatus) -> NotificationPermission {
+        switch status {
+        case .notDetermined: .notAsked
+        case .denied: .denied
+        default: .allowed
+        }
     }
 
     public func requestPermission() async {

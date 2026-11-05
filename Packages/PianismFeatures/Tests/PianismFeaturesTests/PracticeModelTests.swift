@@ -431,6 +431,80 @@ struct PracticeModelTests {
         #expect(!model.canAskForNudges)
     }
 
+    @Test("SET-1: Practice stops offering the notification after a Don't Allow, and Settings can say why")
+    func aDenialIsKnown() async {
+        let denying = InMemoryNudges(answer: .denied)
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudges: denying, glance: glance, defaults: defaults, nudge: 5_400, cap: 14_400)
+
+        await model.askForNudges()
+
+        #expect(model.notificationPermission == .denied)
+        #expect(!model.canAskForNudges)
+        #expect(!model.notifiesWhenAway)
+    }
+
+    @Test("SET-1, SES-3: with the notification off, no nudge waits and the banner doesn't offer it")
+    func theSwitchOffMeansNoNudge() async {
+        let model = makeModel()
+        await model.checkNudges()
+        model.start()
+        #expect(nudges.pending != nil)
+        #expect(model.canAskForNudges)
+
+        model.notifiesWhenAway = false
+
+        #expect(nudges.pending == nil)
+        #expect(!model.canAskForNudges)
+        #expect(defaults.object(forKey: SettingsKey.notifiesStillPracticing) as? Bool == false)
+        clock.advance(by: 60)
+        model.refresh()
+        #expect(nudges.pending == nil)
+        // Practice still asks in the app past the nudge.
+        clock.advance(by: 5_400)
+        model.refresh()
+        #expect(model.isAskingStillPracticing)
+
+        let reopened = makeModel()
+        await reopened.checkNudges()
+        #expect(!reopened.canAskForNudges, "The setting wasn't kept")
+    }
+
+    @Test("SET-1: the switch reads on only while the system allows notifications, and turns on again with it")
+    func theSwitchFollowsTheSystem() async {
+        let model = makeModel()
+        #expect(!model.notifiesWhenAway)
+
+        nudges.setPermission(.allowed)
+        await model.checkNudges()
+        #expect(model.notifiesWhenAway)
+
+        nudges.setPermission(.denied)
+        await model.checkNudges()
+        #expect(!model.notifiesWhenAway)
+
+        nudges.setPermission(.allowed)
+        await model.checkNudges()
+        #expect(model.notifiesWhenAway)
+    }
+
+    @Test("SET-1: turning the switch on asks the system if it hasn't asked, and adds the running session's nudge")
+    func turningOnAsks() async {
+        let model = makeModel()
+        model.notifiesWhenAway = false
+        model.start()
+        #expect(nudges.pending == nil)
+
+        model.notifiesWhenAway = true
+        #expect(nudges.pending != nil)
+        // The setter asks in a task of its own on this actor, which needs only turns to finish.
+        for _ in 0..<10 { await Task.yield() }
+
+        #expect(nudges.permission() == .allowed)
+        #expect(model.notifiesWhenAway)
+    }
+
     @Test("SES-3: the notification opens Practice to the question, or with \"I stopped earlier\" to picking the end")
     func notificationOpensPractice() {
         let model = makeModel()
