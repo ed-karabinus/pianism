@@ -378,6 +378,27 @@ struct HistoryModelTests {
         #expect(running.current() == current)
     }
 
+    @Test("SES-5, MIDI-1: the running session still overlaps as if ended when its last note is after now")
+    func editorsCountASessionWhoseLastNoteIsAfterNow() throws {
+        let history = InMemorySessionHistory()
+        var session = PracticeSession(startedAt: clock.now - 3_600, source: .midi)
+        // Dated after the model's now, as after the clock stepped back.
+        try session.noteLastPlayed(at: clock.now + 60)
+        let current = session
+        try running.update { $0 = current }
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock, glance: glance
+        )
+        model.refresh()
+
+        model.add()
+        let added = try #require(model.editing?.editor)
+        added.end = clock.now
+
+        #expect(added.overlap?.session.id == current.id)
+        #expect(running.current() == current)
+    }
+
     @Test(
         "SES-5: a session added or edited is warned about sharing a minute or more of practice with another in History, waiting ones included"
     )

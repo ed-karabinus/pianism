@@ -128,7 +128,9 @@ public struct MIDIDetector: Sendable {
             return []
         case .playing(let last), .paused(let last, _):
             state = .idle(recent: [])
-            return [.end(afterLastNote: last, at: min(date, last + Self.endTail))]
+            // Dated before the last note, as after the clock stepped back, it still ends at that note:
+            // an end dated earlier than what it ends after is one a session refuses.
+            return [.end(afterLastNote: last, at: max(min(date, last + Self.endTail), last))]
         }
     }
 
@@ -146,9 +148,9 @@ public struct MIDIDetector: Sendable {
         let stored = max(session.latestEvent, session.lastNoteAt ?? .distantPast)
         switch (state, session.state) {
         case (.paused(let since, let bySilence), .paused):
-            state = .paused(since: session.latestEvent, bySilence: bySilence && since == session.latestEvent)
+            state = .paused(since: stored, bySilence: bySilence && since == stored)
         case (_, .paused):
-            state = .paused(since: session.latestEvent, bySilence: false)
+            state = .paused(since: stored, bySilence: false)
         case (.playing(let last), _), (.paused(let last, _), _):
             state = .playing(lastNote: max(last, stored))
         case (.idle, _):

@@ -141,7 +141,7 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
     /// stops (MIDI-1). `nil` while nothing would end it, as for a paused timer session, or a MIDI session played
     /// with the app on screen, which ends it itself.
     public func endsByItself(cap: TimeInterval?, saveAfter: TimeInterval, appOnScreen: Bool) -> Date? {
-        if source == .midi { return pausedOutside(appOnScreen: appOnScreen).map { $0 + saveAfter } }
+        if source == .midi { return pausedOutside(appOnScreen: appOnScreen).map { $0 + max(saveAfter, 0) } }
         return cap.flatMap(whenPracticeReaches)
     }
 
@@ -149,7 +149,7 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
     /// if it keeps running, or without end when there's no cap (GLN-1). A clock that stops at the range's end, like
     /// the Live Activity's, stops at the cap by itself, with no process running (SES-4).
     public func practiceClock(cap: TimeInterval?) -> ClosedRange<Date> {
-        practiceOrigin...(cap.map { practiceOrigin + $0 } ?? .distantFuture)
+        practiceOrigin...(cap.map { practiceOrigin + max($0, 0) } ?? .distantFuture)
     }
 
     /// When a running session's practice time reaches `practice`, if it keeps running, or `nil` if it's paused
@@ -248,7 +248,9 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
 
     private func checkCanChange(at date: Date) throws(SessionError) {
         guard state != .ended else { throw .alreadyEnded }
-        guard date >= latestEvent else { throw .timeWentBackwards }
+        // The last note heard happened too: a change dated before it would leave a pause, or the note
+        // itself, behind the practice it follows.
+        guard date >= max(latestEvent, lastNoteAt ?? .distantPast) else { throw .timeWentBackwards }
     }
 }
 

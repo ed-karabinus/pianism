@@ -201,7 +201,9 @@ public final class HistoryModel {
         // A store that can't be read is reported by Practice.
         guard var current = try? running.current() else { return days.flatMap(\.sessions) }
         // No earlier than its last change, so a clock set back still ends the copy, and the warning still names it.
-        if current.state != .ended { try? current.stop(at: max(now, current.latestEvent)) }
+        if current.state != .ended {
+            try? current.stop(at: max(now, current.latestEvent, current.lastNoteAt ?? .distantPast))
+        }
         return [current] + days.flatMap(\.sessions)
     }
 }
