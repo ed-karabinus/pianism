@@ -362,6 +362,10 @@ public final class PracticeModel: TagTarget {
             && battery.map { ($0.level * 100).rounded() <= 20 && !$0.isPluggedIn } == true
     }
 
+    /// Whether the session's shown time changes with each second, so Practice ticks only then (NFR-10):
+    /// only while running, which for a piano session includes until its silence pause is due.
+    var isCounting: Bool { session?.state == .running }
+
     /// The session's time at `now` as the next tick leaves it: a MIDI session's silence stops at its last note
     /// once it pauses it, and a timer session stops at the cap. So a frame drawn before that tick, as while the
     /// app comes back from the lock screen, shows no time that isn't counted (MIDI-1, SES-4).
