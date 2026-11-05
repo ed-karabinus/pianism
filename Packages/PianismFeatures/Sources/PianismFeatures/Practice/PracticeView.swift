@@ -51,7 +51,6 @@ struct PracticeView: View {
         VStack(spacing: 24) {
             Spacer()
             // The status changes with the time, as a silence that pauses a MIDI session changes both at once.
-            // Ticks only while the session is counting, so an idle or paused screen draws nothing new (NFR-10).
             TimelineView(.animation(minimumInterval: 1, paused: !model.isCounting)) { _ in
                 let now = model.clock.now
                 let elapsed = model.elapsed(at: now)
