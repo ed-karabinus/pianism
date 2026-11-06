@@ -1,9 +1,9 @@
 name: Mutation testing
 
 # The whole of `make mutate`, nightly on main (Ed, 2026-11-05; ADR 0005), as it takes too long to run for each pull
-# request. It only reports: survivors don't fail the job, and it isn't a required check, so it never blocks a merge.
-# It fails only if the tests don't pass before mutating, or it can't run. It's apart from CI so a run can't hold up
-# CI's jobs, though it does take one of GitHub Free's 5 macOS slots while it runs.
+# request. A survivor fails the job (Ed, 2026-11-06), as do tests that don't pass before mutating, or a run that can't
+# finish. It isn't a required check, so it never blocks a merge. It's apart from CI so a run can't hold up CI's jobs,
+# though it does take one of GitHub Free's 5 macOS slots while it runs.
 on:
   schedule:
     # 10:47 UTC, half an hour after CI's nightly. Off the hour, which GitHub delays most.
@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   mutate:
-    name: Mutation testing (report only)
+    name: Mutation testing
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v5
@@ -48,3 +48,11 @@ jobs:
           name: mutation-log
           path: mutate.log
           if-no-files-found: ignore
+      # Last, so a failure here still leaves the report and the log. `make mutate` itself exits cleanly on survivors, as
+      # it's also run by hand on a branch to see what's left.
+      - name: Fail on survivors
+        run: |
+          if grep "^survived " mutate.log; then
+            echo "::error::Mutation survivors: each needs a test, a deletion or a mutate:ignore."
+            exit 1
+          fi
