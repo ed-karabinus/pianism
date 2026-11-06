@@ -152,7 +152,8 @@ struct PianismApp: App {
         let answering = Answering()
         let notifications = UserNotificationNudges(
             answered: { answering.practice?.answerStillPracticing(for: $0) },
-            opened: { answering.practice?.open(fromNudgeAbout: $0, pickingEnd: $1) })
+            opened: { answering.practice?.open(fromNudgeAbout: $0, pickingEnd: $1) },
+            reminderTapped: { answering.practice?.openFromReminder() })
         #if DEBUG
             // End-to-end tests have the banner offer the notification whatever the system says with
             // PIANISM_OFFER_NUDGES=1, as the system asks once per install. Release builds ignore it.

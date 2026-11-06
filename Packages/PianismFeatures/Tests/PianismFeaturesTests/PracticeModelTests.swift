@@ -873,6 +873,15 @@ struct PracticeModelTests {
         #expect(model.nudgeOpened == NudgeOpening(sessionID: id, pickingEnd: true))
     }
 
+    @Test("SET-1: tapping the daily reminder opens Practice, with no session's question or end picked")
+    func tappingAReminderOpensPractice() {
+        let model = makeModel()
+
+        model.openFromReminder()
+
+        #expect(model.nudgeOpened == NudgeOpening(sessionID: nil, pickingEnd: false))
+    }
+
     // MARK: MIDI-1: sessions from the piano
 
     @Test("MIDI-1: three notes within 10 s start a MIDI session at the first of them")

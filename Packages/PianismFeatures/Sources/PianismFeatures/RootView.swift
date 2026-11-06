@@ -76,7 +76,8 @@ public struct RootView: View {
                 _ = await (level, state)
             }
         #endif
-        // The notification opens Practice, to its question or the end being picked (SES-3).
+        // A notification opens Practice: "Still practicing?" to its question or the end being picked (SES-3), and the
+        // daily reminder to start practicing (SET-1).
         .onChange(of: practice.nudgeOpened) { _, opened in
             if opened != nil {
                 tab = .practice
