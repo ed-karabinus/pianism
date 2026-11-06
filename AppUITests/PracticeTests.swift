@@ -169,7 +169,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.start")
         kill(app)
 
-        app = launch(at: midnight + 20 * 60)
+        app = launch(at: midnight + 20 * 60, undoSeconds: 60)
         tap(app, "practice.stop")
         openHistory(app)
         func match(_ format: String) -> XCUIElement {
@@ -1038,14 +1038,10 @@ final class PracticeTests: UITestCase {
         XCTAssertFalse(element(app, "welcome.start").exists)
     }
 
-    /// ONB-1: the welcome leads to connecting a piano and back, and closes without starting anything. It shows once.
+    /// ONB-1: the welcome closes without starting anything, and it shows once.
     @MainActor
-    func testWelcomeConnectsAPianoOrClosesForGood() throws {
+    func testWelcomeClosesForGood() throws {
         var app = launch(at: start, reset: true, welcome: true)
-        tap(app, "welcome.connect")
-        let connect = app.navigationBars["Connect a piano"]
-        XCTAssertTrue(connect.waitForExistence(timeout: 5))
-        connect.buttons.firstMatch.tap()
         tap(app, "welcome.close")
         XCTAssertTrue(element(app, "practice.start").waitForExistence(timeout: 5))
         XCTAssertFalse(element(app, "welcome.start").exists)
@@ -1056,7 +1052,8 @@ final class PracticeTests: UITestCase {
         XCTAssertFalse(element(app, "welcome.start").exists)
     }
 
-    /// ONB-1: at the largest text, the welcome scrolls down to its buttons, and its words never run under them.
+    /// ONB-1: at the largest text, the welcome scrolls down to its buttons, and its words never run under them. Its link
+    /// opens Connect a piano.
     @MainActor
     func testWelcomeFitsAtTheLargestText() throws {
         let app = launch(at: start, reset: true, textSize: "AccessibilityXXXL", welcome: true)
