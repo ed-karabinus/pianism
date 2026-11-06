@@ -95,7 +95,7 @@ struct SettingsView: View {
                 }
                 Section {
                     Picker(selection: $goalDays) {
-                        ForEach(WeeklyGoal.dayChoices, id: \.self) { days in
+                        ForEach(1...7, id: \.self) { days in
                             Text("^[\(days) day](inflect: true)", bundle: .module).tag(days)
                         }
                     } label: {
@@ -104,7 +104,7 @@ struct SettingsView: View {
                     .accessibilityIdentifier(AccessibilityID.settingsGoalDays)
                     Picker(selection: $dailyMinimum) {
                         Text("Any amount", bundle: .module).tag(TimeInterval(0))
-                        times(WeeklyGoal.minimumChoices.filter { $0 > 0 })
+                        times(WeeklyGoal.minimumChoices)
                     } label: {
                         Text("A day counts after", bundle: .module)
                     }

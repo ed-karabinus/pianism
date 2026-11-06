@@ -5,9 +5,8 @@ import Foundation
 public struct WeeklyGoal: Sendable, Hashable {
     /// Three days, from the spec.
     public static let defaultDays = 3
-    public static let dayChoices = 1...7
-    /// Any practice at all, up to 3 hours.
-    public static let minimumChoices: [TimeInterval] = [0, 10, 15, 30, 45, 60, 90, 120, 180].map { $0 * 60 }
+    /// The minimums to pick from, up to 3 hours. Any practice at all is a minimum of zero.
+    public static let minimumChoices: [TimeInterval] = [10, 15, 30, 45, 60, 90, 120, 180].map { $0 * 60 }
 
     public var days: Int
     /// A day's least practice to count. At zero, any row in History counts, so the count matches the chart's bars.
@@ -28,16 +27,12 @@ public struct WeeklyGoal: Sendable, Hashable {
     /// Ed, 2026-11-06). `days` are as ``PracticeDay/group(_:in:)`` makes them.
     public func weeksMet(in days: [PracticeDay], at now: Date, calendar: Calendar) -> Int {
         // Can't fail: every date falls in some week, with another 51 before it.
-        guard let thisWeek = calendar.dateInterval(of: .weekOfYear, for: now)?.start,
-            let oldest = calendar.date(byAdding: .weekOfYear, value: -51, to: thisWeek)
-        else { return 0 }  // mutate:ignore - can't happen
+        let thisWeek = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? now
+        let oldest = calendar.date(byAdding: .weekOfYear, value: -51, to: thisWeek) ?? thisWeek
         let byWeek = Dictionary(grouping: days.filter(counts)) {
-            calendar.dateInterval(of: .weekOfYear, for: $0.start)?.start
+            calendar.dateInterval(of: .weekOfYear, for: $0.start)?.start ?? $0.start
         }
-        return byWeek.count { week, counted in
-            guard let week else { return false }  // mutate:ignore - can't happen
-            return week >= oldest && counted.count >= self.days
-        }
+        return byWeek.count { week, counted in week >= oldest && counted.count >= self.days }
     }
 
     private func counts(_ day: PracticeDay) -> Bool {

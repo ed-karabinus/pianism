@@ -112,9 +112,9 @@ struct WeeklyGoalTests {
     func theDefaults() {
         #expect(WeeklyGoal().days == 3)
         #expect(WeeklyGoal().minimum == 0)
-        let none: TimeInterval = 0
+        let tenMinutes: TimeInterval = 10 * 60
         let threeHours: TimeInterval = 3 * 60 * 60
-        #expect(WeeklyGoal.minimumChoices.first == none)
+        #expect(WeeklyGoal.minimumChoices.first == tenMinutes)
         #expect(WeeklyGoal.minimumChoices.last == threeHours)
     }
 }
