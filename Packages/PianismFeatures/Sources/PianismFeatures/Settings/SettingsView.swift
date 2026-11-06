@@ -1,3 +1,4 @@
+import PianismCore
 import SwiftUI
 
 /// The Settings tab: connecting a piano (MIDI-2) and how it starts, pauses and saves a session (MIDI-1), when Practice
@@ -7,6 +8,8 @@ struct SettingsView: View {
     @Bindable var practice: PracticeModel
 
     @AppStorage(SettingsKey.showsOverlapWarning) private var showsOverlapWarning = true
+    @AppStorage(SettingsKey.weeklyGoalDays) private var goalDays = WeeklyGoal.defaultDays
+    @AppStorage(SettingsKey.dailyMinimum) private var dailyMinimum: TimeInterval = 0
 
     var body: some View {
         NavigationStack {
@@ -89,6 +92,27 @@ struct SettingsView: View {
                             Text("You can change when a session stops once this one ends.", bundle: .module)
                         }
                     }
+                }
+                Section {
+                    Picker(selection: $goalDays) {
+                        ForEach(WeeklyGoal.dayChoices, id: \.self) { days in
+                            Text("^[\(days) day](inflect: true)", bundle: .module).tag(days)
+                        }
+                    } label: {
+                        Text("Days a week", bundle: .module)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.settingsGoalDays)
+                    Picker(selection: $dailyMinimum) {
+                        Text("Any amount", bundle: .module).tag(TimeInterval(0))
+                        times(WeeklyGoal.minimumChoices.filter { $0 > 0 })
+                    } label: {
+                        Text("A day counts after", bundle: .module)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.settingsDailyMinimum)
+                } header: {
+                    Text("Weekly goal", bundle: .module)
+                } footer: {
+                    Text("History shows how many weeks met this in the past year.", bundle: .module)
                 }
                 Section {
                     Toggle(isOn: $practice.remindsDaily) {

@@ -16,17 +16,28 @@ struct WeekView: View {
     @ScaledMetric private var iconWidth: CGFloat = 24
     /// Closed at first, so the sessions stay on screen, then as it was left (decided with Ed, 2026-10-29).
     @AppStorage("showsWeekByTag") private var showsByTag = false
+    @AppStorage(SettingsKey.weeklyGoalDays) private var goalDays = WeeklyGoal.defaultDays
+    @AppStorage(SettingsKey.dailyMinimum) private var dailyMinimum: TimeInterval = 0
     @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
         Section {
-            Chart(week.days) { day in
-                BarMark(
-                    x: .value(Text("Day", bundle: .module), day.start, unit: .day),
-                    y: .value(Text("Minutes", bundle: .module), day.total / 60)
-                )
-                .accessibilityLabel(day.start.formatted(.dateTime.weekday(.wide)))
-                .accessibilityValue(ElapsedTime.spoken(day.total))
+            Chart {
+                ForEach(week.days) { day in
+                    BarMark(
+                        x: .value(Text("Day", bundle: .module), day.start, unit: .day),
+                        y: .value(Text("Minutes", bundle: .module), day.total / 60)
+                    )
+                    .accessibilityLabel(day.start.formatted(.dateTime.weekday(.wide)))
+                    .accessibilityValue(ElapsedTime.spoken(day.total))
+                }
+                // So it shows why a day with a bar didn't count. VoiceOver reads the count below instead.
+                if goal.minimum > 0 {
+                    RuleMark(y: .value(Text("Minutes", bundle: .module), goal.minimum / 60))
+                        .foregroundStyle(.secondary)
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4]))
+                        .accessibilityHidden(true)
+                }
             }
             .chartXAxis {
                 AxisMarks(values: .stride(by: .day)) {
@@ -55,6 +66,7 @@ struct WeekView: View {
                 }
             }
             .accessibilityIdentifier(AccessibilityID.historyWeekChart)
+            consistency
             // Untagged time alone would only repeat the week's total.
             if tagTimes.contains(where: { $0.tag != nil }) {
                 DisclosureGroup(isExpanded: $showsByTag) {
@@ -93,6 +105,30 @@ struct WeekView: View {
     }
 
     private var week: PracticeWeek { model.week }
+    private var goal: WeeklyGoal { WeeklyGoal(days: goalDays, minimum: dailyMinimum) }
+
+    /// How the week shown went, and, whichever week that is, how the past year has gone (HIS-3). That one stays away
+    /// until there's a week to report, as "0 weeks" would only discourage.
+    private var consistency: some View {
+        let days = goal.daysPracticed(in: week)
+        let weeks = goal.weeksMet(in: model.days, at: model.now, calendar: model.calendar)
+        return VStack(alignment: .leading, spacing: 4) {
+            Group {
+                if goal.minimum > 0 {
+                    Text("\(ElapsedTime.spoken(goal.minimum)) or more on \(days) of 7 days", bundle: .module)
+                } else {
+                    Text("Practiced \(days) of 7 days", bundle: .module)
+                }
+            }
+            .accessibilityIdentifier(AccessibilityID.historyWeekDays)
+            if weeks > 0 {
+                Text("^[\(weeks) week](inflect: true) met your goal in the past year", bundle: .module)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(AccessibilityID.historyWeeksMet)
+            }
+        }
+    }
     private var tagTimes: [PracticeWeek.TagTime] { week.timeByTag(in: model.tagIndex) }
 
     /// A tag's time, marked as a piece or a skill, as a piece and a skill can share a name.
@@ -136,6 +172,16 @@ struct WeekView: View {
 
 #Preview("This week") {
     List { WeekView(model: .preview()) { _ in } }
+}
+
+// A minimum, so the line across the bars shows, with room for its words at the largest text size.
+#Preview("A daily minimum, AX5") {
+    let defaults = UserDefaults(suiteName: "WeekView minimum preview") ?? .standard
+    let _ = defaults.set(TimeInterval(15 * 60), forKey: SettingsKey.dailyMinimum)
+    let _ = defaults.set(1, forKey: SettingsKey.weeklyGoalDays)
+    List { WeekView(model: .preview()) { _ in } }
+        .defaultAppStorage(defaults)
+        .dynamicTypeSize(.accessibility5)
 }
 
 // Open, as AX5 is where the tag rows are tightest; its own defaults suite, so the closed previews stay closed.
