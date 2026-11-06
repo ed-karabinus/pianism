@@ -630,6 +630,12 @@ struct PracticeModelTests {
         ).first
     }
 
+    private func secondsToMidnight() throws -> TimeInterval {
+        let calendar = Calendar.autoupdatingCurrent
+        let today = calendar.startOfDay(for: clock.now)
+        return try #require(calendar.date(byAdding: .day, value: 1, to: today)).timeIntervalSince(clock.now)
+    }
+
     /// A model with the reminder on, and its reminders planned.
     private func modelReminding(
         history: any SessionHistory = InMemorySessionHistory(),
@@ -672,6 +678,67 @@ struct PracticeModelTests {
         clock.advance(by: 120)
         model.leaveForeground()
 
+        #expect(model.session?.state == .running)
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: true))
+    }
+
+    @Test("SET-1: a session stopped this morning that started last night counts as practice today")
+    func aSessionStoppedThisMorningCountsAsPractice() async throws {
+        let model = await modelReminding()
+        clock.advance(by: try secondsToMidnight() - 60)
+        model.start()
+
+        clock.advance(by: 120)
+        model.stop()
+        model.leaveForeground()
+
+        #expect(model.session == nil)
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: true))
+    }
+
+    @Test("SET-1: a few seconds past midnight count as practice today, as History lists them (decided with Ed)")
+    func aFewSecondsPastMidnightCountAsPractice() async throws {
+        let model = await modelReminding()
+        clock.advance(by: try secondsToMidnight() - 60)
+        model.start()
+
+        clock.advance(by: 65)
+        model.stop()
+        model.leaveForeground()
+
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: true))
+    }
+
+    @Test("SET-1: a session paused this morning after starting last night counts as practice today")
+    func aSessionPausedThisMorningCountsAsPractice() async throws {
+        let model = await modelReminding()
+        clock.advance(by: try secondsToMidnight() - 60)
+        model.start()
+
+        clock.advance(by: 120)
+        model.pause()
+        model.leaveForeground()
+
+        #expect(model.session?.state == .paused)
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: true))
+    }
+
+    @Test("SET-1: a session paused through midnight counts only once it has been played again")
+    func aSessionPausedThroughMidnightCountsOnceResumed() async throws {
+        let model = await modelReminding()
+        clock.advance(by: try secondsToMidnight() - 120)
+        model.start()
+        clock.advance(by: 60)
+        model.pause()
+
+        clock.advance(by: 120)
+        model.leaveForeground()
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: false))
+
+        model.cameToFront()
+        model.resume()
+        clock.advance(by: 60)
+        model.leaveForeground()
         #expect(model.session?.state == .running)
         #expect(nudges.waitingReminders.first == firstReminder(skippingToday: true))
     }

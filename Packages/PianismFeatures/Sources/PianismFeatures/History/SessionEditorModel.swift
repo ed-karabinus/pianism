@@ -66,6 +66,9 @@ final class SessionEditorModel: TagTarget {
             .first { $0.shared >= 60 }
     }
 
+    /// How many days History lists the session on as edited so far, which a change to any of its rows reaches (HIS-1).
+    var daysListed: Int { session.days(in: .autoupdatingCurrent).count }
+
     var start: Date {
         get { session.startedAt }
         set { retime(start: picked(newValue, opened: original.startedAt, otherEnd: end, within: startRange), end: end) }

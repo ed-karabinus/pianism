@@ -139,6 +139,12 @@
     "Improvisation" : {
       "comment" : "A built-in skill"
     },
+    "It's listed on more than one day. All its rows go." : {
+
+    },
+    "It's listed on two days. Both go." : {
+
+    },
     "Last session: %@" : {
 
     },
@@ -312,6 +318,9 @@
     },
     "Technique" : {
       "comment" : "A built-in skill"
+    },
+    "This session runs past midnight, so History lists it on each day it touches. Changes here change every row." : {
+
     },
     "This shares %@ of practice with your %@ session, so the day's total counts it twice." : {
 

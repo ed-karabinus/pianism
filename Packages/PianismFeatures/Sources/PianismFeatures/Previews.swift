@@ -89,7 +89,7 @@ extension HistoryModel {
         let midnight = Calendar.autoupdatingCurrent.startOfDay(for: previewNow)
         let hour: TimeInterval = 60 * 60
         // (Hours after this midnight, minutes of practice.)
-        let practice = empty ? [] : [(18, 25), (8, 40), (-5, 15), (-150, 55)]
+        let practice = empty ? [] : [(18, 25), (8, 40), (-1, 75), (-5, 15), (-150, 55)]
         for (hours, minutes) in practice {
             let start = midnight.addingTimeInterval(Double(hours) * hour)
             var session = PracticeSession(startedAt: start)
@@ -115,11 +115,14 @@ extension HistoryModel {
 extension SessionEdit {
     /// A finished session, tagged with a piece and a built-in skill, to edit; read-only as if a newer
     /// version wrote it, if `readOnly`; deleted on another device, if `deleted`; overlapping another session, if
-    /// `overlapping`.
+    /// `overlapping`; running past midnight, if `acrossMidnight`.
     @MainActor
-    static func preview(readOnly: Bool = false, deleted: Bool = false, overlapping: Bool = false) -> SessionEdit {
-        var session = PracticeSession(startedAt: previewNow)
-        try? session.stop(at: previewNow.addingTimeInterval(25 * 60 + 3))
+    static func preview(
+        readOnly: Bool = false, deleted: Bool = false, overlapping: Bool = false, acrossMidnight: Bool = false
+    ) -> SessionEdit {
+        let midnight = Calendar.autoupdatingCurrent.startOfDay(for: previewNow)
+        var session = PracticeSession(startedAt: acrossMidnight ? midnight.addingTimeInterval(-30 * 60) : previewNow)
+        try? session.stop(at: acrossMidnight ? midnight.addingTimeInterval(20 * 60) : previewNow + 25 * 60 + 3)
         try? session.editTags(["ballade", BuiltInSkill.scales.rawValue])
         try? session.editNote("Coda hands separately, slowly. Left hand still rushes the run.")
         let history = InMemorySessionHistory()

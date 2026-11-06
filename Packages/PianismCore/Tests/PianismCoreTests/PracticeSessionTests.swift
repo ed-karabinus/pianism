@@ -394,6 +394,21 @@ struct PracticeSessionTests {
         #expect(session.endsByItself(cap: nil, saveAfter: 600, appOnScreen: true) == start + 700)
     }
 
+    @Test("GLN-2, HIS-1: practice between two moments clips each span at both, pauses left out")
+    func practicedBetweenTwoMoments() throws {
+        let start = clock.now
+        var session = PracticeSession(startedAt: start)
+        try session.pause(at: start + 100)
+        try session.resume(at: start + 200)
+        try session.stop(at: start + 400)
+
+        #expect(session.practiced(from: start + 50, before: start + 300) == 150)
+        // Both moments inside the pause, then the first inside it and the second after it.
+        #expect(session.practiced(from: start + 120, before: start + 150) == 0)
+        #expect(session.practiced(from: start + 150, before: start + 250) == 50)
+        #expect(session.practiced(from: start + 500, before: start + 600) == 0)
+    }
+
     @Test("GLN-2: practiced before a moment counts only practice earlier than it, pauses across it included")
     func practicedBeforeAMoment() throws {
         let start = clock.now

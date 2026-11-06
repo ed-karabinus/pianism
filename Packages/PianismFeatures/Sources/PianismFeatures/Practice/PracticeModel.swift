@@ -276,7 +276,9 @@ public final class PracticeModel: TagTarget {
         guard session?.state != .running else { return true }
         let sessions =
             [session].compactMap { $0 } + ((try? history.sessions()) ?? []) + ((try? outbox.sessions()) ?? [])
-        return sessions.contains { calendar.isDate($0.startedAt, inSameDayAs: clock.now) }
+        // A whole second, the least History lists on a day, so the two agree, however late it started.
+        let today = calendar.startOfDay(for: clock.now)
+        return sessions.contains { $0.practiced(from: today, before: clock.now) >= 1 }
     }
 
     /// Asks for the notification, if the system hasn't asked yet, and adds it for the session running, which the

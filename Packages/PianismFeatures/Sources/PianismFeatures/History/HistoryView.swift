@@ -40,6 +40,8 @@ struct HistoryView: View {
                 model.delete(session)
             }
             .accessibilityIdentifier(AccessibilityID.deleteConfirm)
+        } message: { session in
+            session.deletionNote
         }
         // Undo lasts 5 seconds (`undoDuration`). A new deletion or Undo cancels the wait, but only at the next update, so
         // the ID is checked again: a late wait mustn't commit the next deletion.
@@ -122,13 +124,13 @@ struct HistoryView: View {
                     Section {
                         ForEach(day.sessions) { session in
                             let isWaiting = model.waitingIDs.contains(session.id)
+                            let part = day.part(of: session)
                             let title =
                                 isWaiting
-                                ? Text("\(session.times), not saved yet", bundle: .module) : Text(session.times)
-                            // A finished session's practice time is fixed, so the date passed here is ignored.
+                                ? Text("\(part.times), not saved yet", bundle: .module) : Text(part.times)
                             let row = TimedRow(
                                 title: title, detail: Text(tags: model.tagIndex.tags(for: session.tagIDs)),
-                                duration: session.elapsed(at: .distantPast))
+                                duration: part.practiced)
                             // A session waiting to be saved can't be edited yet (ADR 0007).
                             Group {
                                 if isWaiting {
@@ -193,8 +195,30 @@ struct HistoryView: View {
 }
 
 extension PracticeSession {
-    /// When the session ran, such as "3:30 – 4:00 PM", as History lists it.
+    /// When the session ran, such as "3:30 – 4:00 PM".
     var times: String { (startedAt..<(endedAt ?? startedAt)).formatted(.interval.hour().minute()) }
+
+    /// Says deleting this session takes all its rows, if History lists it on more than one day (HIS-1).
+    @ViewBuilder var deletionNote: some View {
+        let days = days(in: .autoupdatingCurrent).count
+        if days == 2 {
+            Text("It's listed on two days. Both go.", bundle: .module)
+        } else if days > 2 {
+            Text("It's listed on more than one day. All its rows go.", bundle: .module)
+        }
+    }
+}
+
+extension PracticeDay.Part {
+    /// When this part ran, as History lists it, such as "3:30 – 4:00 PM". One ending at midnight ends on the next date,
+    /// and the interval style would then spell out both dates, as "12/31/2026, 11:50 PM – 1/1/2027, 12:00 AM".
+    var times: String {
+        guard !Calendar.autoupdatingCurrent.isDate(span.lowerBound, inSameDayAs: span.upperBound) else {
+            return span.formatted(.interval.hour().minute())
+        }
+        let time = Date.FormatStyle().hour().minute()
+        return "\(span.lowerBound.formatted(time)) – \(span.upperBound.formatted(time))"
+    }
 }
 
 /// A title, and any detail under it, with a practice time after them, read by VoiceOver as one element:

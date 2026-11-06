@@ -42,6 +42,21 @@ struct SessionEditorModelTests {
         #expect(!SessionEditorModel(session: mine, history: history, now: clock.now).isReadOnly)
     }
 
+    @Test("HIS-1: the editor knows how many days History lists the session on, as edited so far")
+    func daysListedFollowsTheEdit() throws {
+        let midnight = Calendar.autoupdatingCurrent.startOfDay(for: clock.now)
+        var session = PracticeSession(startedAt: midnight - 1_800)
+        try session.stop(at: midnight - 600)
+        let history = InMemorySessionHistory()
+        history.save(session)
+        let editor = SessionEditorModel(session: session, history: history, now: midnight + 3_600)
+        #expect(editor.daysListed == 1)
+
+        editor.end = midnight + 600
+
+        #expect(editor.daysListed == 2)
+    }
+
     @Test(
         "SYN-1, #107: an edit saved after another device deleted the session says so and stays open, keeping what was typed"
     )
