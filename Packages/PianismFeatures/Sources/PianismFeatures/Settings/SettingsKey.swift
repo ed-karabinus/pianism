@@ -3,6 +3,8 @@
 enum SettingsKey {
     /// Kept since SES-5 by the editor's "Don't show again".
     static let showsOverlapWarning = "showsOverlapWarning"
+    /// Whether the first launch has been past the welcome, shown or not (ONB-1).
+    static let hasDecidedWelcome = "hasDecidedWelcome"
     /// The nudge, in seconds (SES-3).
     static let stillPracticingAfter = "stillPracticingAfter"
     /// The cap, in seconds (SES-4).

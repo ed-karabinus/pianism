@@ -9,6 +9,7 @@ final class LaunchTests: UITestCase {
     @MainActor
     func testAppLaunchesToRootScreen() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["PIANISM_SKIP_WELCOME"] = "1"
         app.launch()
 
         XCTAssertTrue(app.descendants(matching: .any)["root"].firstMatch.waitForExistence(timeout: 10))

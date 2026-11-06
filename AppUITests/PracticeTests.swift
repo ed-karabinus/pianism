@@ -169,7 +169,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.start")
         kill(app)
 
-        app = launch(at: midnight + 20 * 60)
+        app = launch(at: midnight + 20 * 60, undoSeconds: 60)
         tap(app, "practice.stop")
         openHistory(app)
         func match(_ format: String) -> XCUIElement {
@@ -1055,6 +1055,49 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
     }
 
+    /// ONB-1: the first launch with no practice says what Pianism does, and Start closes it and starts a session.
+    @MainActor
+    func testWelcomeStartsTheFirstSession() throws {
+        let app = launch(at: start, reset: true, welcome: true)
+        XCTAssertTrue(element(app, "welcome.start").waitForExistence(timeout: 10))
+        attachScreenshot(of: app, named: "Welcome")
+        tap(app, "welcome.start")
+        XCTAssertTrue(element(app, "practice.stop").waitForExistence(timeout: 5))
+        XCTAssertFalse(element(app, "welcome.start").exists)
+    }
+
+    /// ONB-1: the welcome closes without starting anything, and it shows once.
+    @MainActor
+    func testWelcomeClosesForGood() throws {
+        var app = launch(at: start, reset: true, welcome: true)
+        tap(app, "welcome.close")
+        XCTAssertTrue(element(app, "practice.start").waitForExistence(timeout: 5))
+        XCTAssertFalse(element(app, "welcome.start").exists)
+        kill(app)
+
+        app = launch(at: start + 60, welcome: true)
+        XCTAssertTrue(element(app, "practice.start").waitForExistence(timeout: 10))
+        XCTAssertFalse(element(app, "welcome.start").exists)
+    }
+
+    /// ONB-1: at the largest text, the welcome scrolls down to its buttons, and its words never run under them. Its link
+    /// opens Connect a piano.
+    @MainActor
+    func testWelcomeFitsAtTheLargestText() throws {
+        let app = launch(at: start, reset: true, textSize: "AccessibilityXXXL", welcome: true)
+        let startButton = element(app, "welcome.start")
+        let connect = element(app, "welcome.connect")
+        XCTAssertTrue(startButton.waitForExistence(timeout: 10))
+        attachScreenshot(of: app, named: "Welcome, largest text")
+        app.swipeUp()
+        app.swipeUp()
+        attachScreenshot(of: app, named: "Welcome, largest text, scrolled")
+        XCTAssertTrue(startButton.isHittable)
+        XCTAssertLessThanOrEqual(element(app, "welcome.words").frame.maxY, startButton.frame.minY)
+        connect.tap()
+        XCTAssertTrue(app.navigationBars["Connect a piano"].waitForExistence(timeout: 5))
+    }
+
     /// SES-5: a session that shares practice with another says so, but can still be saved. "Don't Show
     /// Again" turns the warning off, even after a relaunch, and Settings turns it back on (SET-1).
     @MainActor
@@ -1666,7 +1709,7 @@ final class PracticeTests: UITestCase {
         undoSeconds: Int? = nil, nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false,
         textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
         midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil, intent: String? = nil,
-        reminderMinute: Int? = nil
+        reminderMinute: Int? = nil, welcome: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -1703,6 +1746,9 @@ final class PracticeTests: UITestCase {
         }
         if reset {
             app.launchEnvironment["PIANISM_RESET"] = "1"
+        }
+        if !welcome {
+            app.launchEnvironment["PIANISM_SKIP_WELCOME"] = "1"
         }
         if breakHistory {
             app.launchEnvironment["PIANISM_BREAK_HISTORY"] = "1"
