@@ -89,6 +89,10 @@ struct PianismApp: App {
                 try? FileManager.default.removeItem(at: dataDirectory)
                 UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier ?? "")
             }
+            // Tests about something else pass the welcome with PIANISM_SKIP_WELCOME=1. Release builds ignore it.
+            if environment["PIANISM_SKIP_WELCOME"] == "1" {
+                PracticeModel.skipWelcome(in: .standard)
+            }
             if environment["PIANISM_BREAK_HISTORY"] == "1" {
                 historyURL = URL(filePath: "/dev/null/History.store")
             }

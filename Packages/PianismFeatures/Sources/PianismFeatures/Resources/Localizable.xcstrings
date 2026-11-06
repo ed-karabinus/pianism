@@ -58,6 +58,9 @@
     "Composer" : {
 
     },
+    "Connect a digital piano and sessions can start themselves while Pianism is open." : {
+
+    },
     "Connected" : {
 
     },
@@ -211,6 +214,9 @@
     "Paused at your last note, %@" : {
 
     },
+    "Pianism" : {
+
+    },
     "Pianism couldn't reach its storage. Try again in a moment." : {
 
     },
@@ -292,6 +298,9 @@
     "Start" : {
 
     },
+    "Start your first session" : {
+
+    },
     "Still practicing" : {
 
     },
@@ -332,6 +341,9 @@
 
     },
     "Time" : {
+
+    },
+    "Time your practice with one tap, tag what you worked on, and see your week build up." : {
 
     },
     "Today" : {
