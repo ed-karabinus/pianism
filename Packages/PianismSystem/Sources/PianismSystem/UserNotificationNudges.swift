@@ -91,11 +91,6 @@ public final class UserNotificationNudges: NSObject, PracticeNudges, UNUserNotif
     /// A notification's identifier stays with the system across app updates, so renaming this leaves strays behind.
     static func reminderIdentifier(_ index: Int) -> String { "daily-reminder-\(index)" }
 
-    /// By its identifier, as reminders already waiting with the system when the app updates have nothing else to go on.
-    static func isReminder(_ identifier: String) -> Bool {
-        (0..<DailyReminder.daysAhead).map(reminderIdentifier).contains(identifier)
-    }
-
     /// The reminder at this time. Tapping it opens Practice.
     static func reminder(at date: DateComponents, index: Int) -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
@@ -150,10 +145,9 @@ public final class UserNotificationNudges: NSObject, PracticeNudges, UNUserNotif
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let request = response.notification.request
-        if Self.isReminder(request.identifier) {
-            if Self.answer(to: response.actionIdentifier) != nil {
-                MainActor.assumeIsolated { reminderTapped() }
-            }
+        // The only other notification is the daily reminder, which has no buttons, so reaches here only by a tap.
+        if request.identifier != Self.category {  // mutate:ignore - needs an app
+            MainActor.assumeIsolated { reminderTapped() }  // mutate:ignore - as above
         } else if let id = (request.content.userInfo[Self.sessionKey] as? String).flatMap(UUID.init(uuidString:)),
             let answer = Self.answer(to: response.actionIdentifier)
         {

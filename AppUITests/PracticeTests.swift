@@ -470,7 +470,7 @@ final class PracticeTests: UITestCase {
     }
 
     /// SET-1: tapping the daily reminder opens Practice, though the app was left on Settings. On the real clock, as the
-    /// system fires it, so this waits up to two minutes.
+    /// system fires it, so this takes about two minutes.
     @MainActor
     func testTappingAReminderOpensPractice() throws {
         // Permission first, as the system asks once per install, and a banner needs it.

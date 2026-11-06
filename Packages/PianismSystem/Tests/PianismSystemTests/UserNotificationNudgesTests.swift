@@ -1,5 +1,4 @@
 import Foundation
-import PianismCore
 import Testing
 import UserNotifications
 
@@ -31,14 +30,6 @@ struct UserNotificationNudgesTests {
         let trigger = try #require(request.trigger as? UNCalendarNotificationTrigger)
         #expect(trigger.dateComponents == date)
         #expect(!trigger.repeats)
-    }
-
-    @Test("SET-1: every day's reminder is known by its name, and \"Still practicing?\" isn't one")
-    func remindersAreKnownByName() {
-        for index in 0..<DailyReminder.daysAhead {
-            #expect(UserNotificationNudges.isReminder(UserNotificationNudges.reminderIdentifier(index)))
-        }
-        #expect(!UserNotificationNudges.isReminder(UserNotificationNudges.category))
     }
 
     @Test("SET-1: the system's status reads as not asked, denied or, for all that deliver, allowed")
