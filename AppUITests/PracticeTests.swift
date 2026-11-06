@@ -1031,6 +1031,9 @@ final class PracticeTests: UITestCase {
     /// Again" turns the warning off, even after a relaunch, and Settings turns it back on (SET-1).
     @MainActor
     func testOverlapWarningCanBeTurnedOff() throws {
+        // Midday wherever this runs, as a session across midnight would have a second row.
+        let today = Calendar.current.startOfDay(for: Date(timeIntervalSince1970: start))
+        let start = today.addingTimeInterval(12 * 60 * 60).timeIntervalSince1970
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
         kill(app)
