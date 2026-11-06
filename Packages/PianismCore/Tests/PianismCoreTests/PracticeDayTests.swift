@@ -4,8 +4,8 @@ import Testing
 @testable import PianismCore
 
 struct PracticeDayTests {
-    @Test("HIS-1: sessions group by the day they started, newest day first, with each day's total")
-    func groupsByStartDay() throws {
+    @Test("HIS-1: sessions group by day, newest day first, with each day's total")
+    func groupsByDay() throws {
         let calendar = try calendar("America/Los_Angeles")
         let yesterday = try session(at: date(2026, 10, 14, 9, 0, in: calendar), minutes: 20)
         let morning = try session(at: date(2026, 10, 15, 8, 0, in: calendar), minutes: 30)
@@ -38,15 +38,111 @@ struct PracticeDayTests {
         #expect(PracticeDay.group(sessions, in: calendar).map(\.total) == [5 * 60 + 9])
     }
 
-    @Test("HIS-1: a session that runs past midnight counts toward the day it started")
-    func lateSessionCountsTowardStartDay() throws {
+    @Test("HIS-1: a session across midnight shows under both days, each with its minutes, and totals add the rows")
+    func acrossMidnightShowsOnBothDays() throws {
         let calendar = try calendar("America/Los_Angeles")
-        let late = try session(at: date(2026, 10, 14, 23, 30, in: calendar), minutes: 60)
+        let start = try date(2026, 10, 14, 23, 30, in: calendar)
+        let midnight = try date(2026, 10, 15, 0, 0, in: calendar)
+        let late = try session(at: start, minutes: 60)
 
         let days = PracticeDay.group([late], in: calendar)
 
+        let starts = [midnight, try date(2026, 10, 14, 0, 0, in: calendar)]
+        let totals: [TimeInterval] = [1_800, 1_800]
+        #expect(days.map(\.start) == starts)
+        #expect(days.map(\.sessions) == [[late], [late]])
+        #expect(days.map(\.total) == totals)
+        #expect(days[0].part(of: late).span == midnight..<(midnight + 1_800))
+        #expect(days[1].part(of: late).span == start..<midnight)
+    }
+
+    @Test("HIS-1: a session over several midnights shows on each day with practice, and not on a day it paused through")
+    func overSeveralMidnights() throws {
+        let calendar = try calendar("America/Los_Angeles")
+        let monday = try date(2026, 10, 12, 22, 0, in: calendar)
+        let wednesday = try date(2026, 10, 14, 6, 0, in: calendar)
+        let wednesdayStart = try date(2026, 10, 14, 0, 0, in: calendar)
+        let tuesdayStart = try date(2026, 10, 13, 0, 0, in: calendar)
+        let mondayStart = try date(2026, 10, 12, 0, 0, in: calendar)
+
+        var straight = PracticeSession(startedAt: monday)
+        try straight.stop(at: wednesday)
+        let straightDays = PracticeDay.group([straight], in: calendar)
+        #expect(straightDays.map(\.start) == [wednesdayStart, tuesdayStart, mondayStart])
+        let straightTotals: [TimeInterval] = [21_600, 86_400, 7_200]
+        #expect(straightDays.map(\.total) == straightTotals)
+
+        var paused = PracticeSession(startedAt: monday)
+        try paused.pause(at: monday + 3_600)
+        try paused.resume(at: wednesday)
+        try paused.stop(at: wednesday + 3_600)
+        let pausedDays = PracticeDay.group([paused], in: calendar)
+        #expect(pausedDays.map(\.start) == [wednesdayStart, mondayStart])
+        let pausedTotals: [TimeInterval] = [3_600, 3_600]
+        #expect(pausedDays.map(\.total) == pausedTotals)
+    }
+
+    @Test("HIS-1: each row rounds down on its own, so a day's total equals its rows, a second under the whole session")
+    func eachRowRoundsDownOnItsOwn() throws {
+        let calendar = try calendar("America/Los_Angeles")
+        let midnight = try date(2026, 10, 15, 0, 0, in: calendar)
+        var session = PracticeSession(startedAt: midnight - 2_399.6)
+        try session.stop(at: midnight + 1_199.6)
+
+        let days = PracticeDay.group([session], in: calendar)
+
+        let totals: [TimeInterval] = [1_199, 2_399]
+        #expect(days.map(\.total) == totals)
+        #expect(session.elapsed(at: midnight).rounded(.down) == 3_599)
+    }
+
+    @Test(
+        "HIS-1: a part needs a whole second to get a row, so one ending exactly at midnight stays on one day",
+        arguments: [(0.0, 1), (0.5, 1), (1.0, 2)])
+    func aPartNeedsAWholeSecond(pastMidnight: TimeInterval, rows: Int) throws {
+        let calendar = try calendar("America/Los_Angeles")
+        let midnight = try date(2026, 10, 15, 0, 0, in: calendar)
+        var session = PracticeSession(startedAt: midnight - 60)
+        try session.stop(at: midnight + pastMidnight)
+
+        #expect(PracticeDay.group([session], in: calendar).count == rows)
+    }
+
+    @Test("HIS-1: a session with no whole second on any day stays on the day it started, so it can still be deleted")
+    func noWholeSecondStaysOnItsFirstDay() throws {
+        let calendar = try calendar("America/Los_Angeles")
+        let midnight = try date(2026, 10, 15, 0, 0, in: calendar)
+        var session = PracticeSession(startedAt: midnight - 0.4)
+        try session.stop(at: midnight + 0.4)
+
+        let days = PracticeDay.group([session], in: calendar)
+
         #expect(days.map(\.start) == [try date(2026, 10, 14, 0, 0, in: calendar)])
-        #expect(days.map(\.total) == [60 * 60])
+        #expect(days.map(\.sessions) == [[session]])
+        #expect(days[0].total == 0)
+    }
+
+    @Test("HIS-1: where the clocks skip midnight, the split is at the day's first moment")
+    func whereTheClocksSkipMidnight() throws {
+        let santiago = try calendar("America/Santiago")
+        let late = try session(at: date(2027, 9, 4, 23, 30, in: santiago), minutes: 60)
+
+        let days = PracticeDay.group([late], in: santiago)
+
+        #expect(days.first?.start == (try date(2027, 9, 5, 1, 0, in: santiago)))
+        let totals: [TimeInterval] = [1_800, 1_800]
+        #expect(days.map(\.total) == totals)
+    }
+
+    @Test("HIS-1: on a day of 25 hours, the split comes after all 25")
+    func onALongDay() throws {
+        let calendar = try calendar("America/Los_Angeles")
+        let long = try session(at: date(2027, 11, 7, 0, 30, in: calendar), minutes: 1_500)
+
+        let days = PracticeDay.group([long], in: calendar)
+
+        let totals: [TimeInterval] = [1_800, 88_200]
+        #expect(days.map(\.total) == totals)
     }
 
     @Test("HIS-1, SES-2: paused time doesn't count toward a day's total")

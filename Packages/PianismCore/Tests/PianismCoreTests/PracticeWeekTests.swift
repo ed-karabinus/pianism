@@ -38,7 +38,7 @@ struct PracticeWeekTests {
         #expect(week.timeByTag(in: TagIndex([])).map(\.time) == [248])
     }
 
-    @Test("HIS-2: sessions outside the week don't count toward it")
+    @Test("HIS-2: sessions outside the week don't count, and one across its first midnight counts only inside it")
     func otherWeeksDontCount() throws {
         let calendar = try calendar(firstWeekday: 2)
         let lastSunday = try session(at: date(2026, 10, 11, 23, 30, in: calendar), minutes: 60)
@@ -47,8 +47,24 @@ struct PracticeWeekTests {
 
         let week = PracticeWeek(containing: try date(2026, 10, 15, 8, 0, in: calendar), days: days, in: calendar)
 
-        #expect(week.total == 0)
-        #expect(week.days.allSatisfy { $0.sessions.isEmpty })
+        #expect(week.total == 30 * 60)
+        let expected: [[PracticeSession]] = [[lastSunday], [], [], [], [], [], []]
+        #expect(week.days.map(\.sessions) == expected)
+    }
+
+    @Test("HIS-2: a tag's time adds a session's parts, so one across midnight counts once, and only inside the week")
+    func tagTimeAddsParts() throws {
+        let calendar = try calendar(firstWeekday: 2)
+        let scales = PianismCore.Tag(id: "scales", kind: .skill, name: "Scales", isArchived: false)
+        let midweek = try session(at: date(2026, 10, 13, 23, 30, in: calendar), minutes: 60, tags: ["scales"])
+        let intoTheWeek = try session(at: date(2026, 10, 11, 23, 30, in: calendar), minutes: 60, tags: ["scales"])
+        let days = PracticeDay.group([midweek, intoTheWeek], in: calendar)
+
+        let week = PracticeWeek(containing: try date(2026, 10, 15, 8, 0, in: calendar), days: days, in: calendar)
+
+        let expected: [PracticeWeek.TagTime] = [.init(tag: scales, time: 90 * 60)]
+        #expect(week.timeByTag(in: TagIndex([scales])) == expected)
+        #expect(week.total == 90 * 60)
     }
 
     @Test(

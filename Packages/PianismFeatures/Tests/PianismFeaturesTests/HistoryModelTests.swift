@@ -348,6 +348,63 @@ struct HistoryModelTests {
         #expect([editor.start, editor.end] == [clock.now - 4_500, clock.now - 2_700])
     }
 
+    @Test("SES-5, HIS-1: a session across midnight is on two days but is one session, newest first with the rest")
+    func aSessionAcrossMidnightIsOneSession() throws {
+        let calendar = Calendar.autoupdatingCurrent
+        let midnight = calendar.startOfDay(for: clock.now)
+        let history = InMemorySessionHistory()
+        var older = PracticeSession(startedAt: midnight - 7_200)
+        try older.stop(at: midnight - 3_600)
+        var across = PracticeSession(startedAt: midnight - 60)
+        try across.stop(at: midnight + 60)
+        history.save(older)
+        outbox.save(across)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock, glance: glance
+        )
+
+        model.refresh()
+
+        #expect(model.days.filter { $0.sessions.contains(across) }.count == 2)
+        #expect(model.sessions == [across, older])
+    }
+
+    @Test("HIS-1: a row of a session across midnight shows only its times, even the one ending at midnight")
+    func rowsAcrossMidnightShowOnlyTimes() throws {
+        let calendar = Calendar.autoupdatingCurrent
+        let midnight = calendar.startOfDay(for: clock.now)
+        var across = PracticeSession(startedAt: midnight - 600)
+        try across.stop(at: midnight + 1_200)
+        let days = PracticeDay.group([across], in: calendar)
+        let format = Date.FormatStyle().hour().minute()
+
+        let titles = days.map { $0.part(of: across).times }
+
+        #expect(titles.count == 2)
+        #expect(titles[1] == "\((midnight - 600).formatted(format)) – \(midnight.formatted(format))")
+        #expect(titles.allSatisfy { !$0.contains("/") })
+    }
+
+    @Test("SES-5: a session added keeps clear of a session waiting in the outbox, then of older ones it then meets")
+    func addedSessionKeepsClearInOrder() throws {
+        let history = InMemorySessionHistory()
+        var older = PracticeSession(startedAt: clock.now - 4_000)
+        try older.stop(at: clock.now - 2_000)
+        var newest = PracticeSession(startedAt: clock.now - 1_200)
+        try newest.stop(at: clock.now)
+        history.save(older)
+        outbox.save(newest)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock, glance: glance
+        )
+        model.refresh()
+
+        model.add()
+        let editor = try #require(model.editing?.editor)
+
+        #expect(editor.end == clock.now - 4_000)
+    }
+
     @Test(
         "SES-5: a session added or edited keeps clear of the running one, as if it ended now, its pauses left out",
         arguments: [false, true])

@@ -4,7 +4,7 @@ import Foundation
 public struct PracticeTotals: Sendable, Hashable, Codable {
     /// The day's first moment, in the calendar the app grouped sessions by when it wrote this.
     public let day: Date
-    /// Practice time of the sessions that started that day and have ended, excluding pauses (SES-2).
+    /// That day's practice time in the sessions that have ended, excluding pauses (SES-2).
     public let finished: TimeInterval
     /// The practice time at which a running session ends itself (SES-4), so the widget's clock can stop there with
     /// no process running, or `nil` when the app hasn't said: a file an older build wrote, or no cap.

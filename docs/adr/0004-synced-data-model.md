@@ -62,6 +62,12 @@ Grouping by day, day totals and week totals are pure core functions over values 
 are tested on Linux, including time zones and daylight-saving changes. **A session counts toward
 the day it started.**
 
+> Amended 2026-11-05 (HIS-1): a session that crosses midnight shows on each day it has practice in,
+> with that day's minutes, so "today's practice" is the minutes played today (decided with Ed,
+> 2026-11-04: students who practice late, and sessions of unknown length). Each day's total adds its
+> rows (#183). The stored session is unchanged; the split is worked out when History groups. Editing
+> or deleting any of its rows changes the one session.
+
 **Store models (schema v1, in `PianismPersistence`):**
 
 | `SessionRecord` | Type, default | Notes |

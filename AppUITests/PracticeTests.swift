@@ -158,6 +158,54 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(session.value as? String, "1 minute, 1 second")
     }
 
+    /// HIS-1, HIS-2, SES-5: a session across midnight shows on both days with each day's minutes, and in the week once.
+    /// Its editor shows all of it and says why, and deleting either row takes both.
+    @MainActor
+    func testASessionAcrossMidnightShowsOnBothDays() throws {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: start))
+        let midnight = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: today)).timeIntervalSince1970
+        var app = launch(at: midnight - 10 * 60, reset: true)
+        tap(app, "practice.start")
+        kill(app)
+
+        app = launch(at: midnight + 20 * 60)
+        tap(app, "practice.stop")
+        openHistory(app)
+        func match(_ format: String) -> XCUIElement {
+            app.descendants(matching: .any).matching(NSPredicate(format: format)).firstMatch
+        }
+        let todayRow = match("identifier == 'history.session' AND value == '20 minutes'")
+        let yesterdayRow = match("identifier == 'history.session' AND value == '10 minutes'")
+        XCTAssertTrue(todayRow.waitForExistence(timeout: 5), "No row with today's minutes")
+        XCTAssertEqual(element(app, "history.week").value as? String, "30 minutes")
+        XCTAssertTrue(match("identifier == 'history.day' AND label == 'Today' AND value == '20 minutes'").exists)
+        // On a small screen the week can push the second day off, and a list doesn't build rows off screen.
+        if !yesterdayRow.waitForExistence(timeout: 2) { app.swipeUp() }
+        XCTAssertTrue(yesterdayRow.waitForExistence(timeout: 5), "No row with yesterday's minutes")
+        XCTAssertTrue(match("identifier == 'history.day' AND label == 'Yesterday' AND value == '10 minutes'").exists)
+        attachScreenshot(of: app, named: "History, a session across midnight")
+
+        todayRow.tap()
+        XCTAssertTrue(app.navigationBars["Edit session"].waitForExistence(timeout: 5), "The editor didn't open")
+        XCTAssertTrue(match("label == 'Practice time' AND value == '30 minutes'").exists, "It isn't all of the time")
+        XCTAssertTrue(element(app, "editor.spans-days").waitForExistence(timeout: 5), "The editor doesn't say why")
+        attachScreenshot(of: app, named: "Editor, a session across midnight")
+        tap(app, "editor.cancel")
+        XCTAssertTrue(app.navigationBars["Edit session"].waitForNonExistence(timeout: 5), "Cancel asked to discard")
+
+        revealSwipeActions(yesterdayRow)
+        tap(app, "history.delete")
+        XCTAssertTrue(app.staticTexts["It's listed on two days. Both go."].waitForExistence(timeout: 5), "No note")
+        confirmDelete(app)
+        XCTAssertTrue(yesterdayRow.waitForNonExistence(timeout: 5), "Yesterday's row is still there")
+        XCTAssertFalse(todayRow.exists, "Today's row is still there")
+        tap(app, "history.undo")
+        XCTAssertTrue(todayRow.waitForExistence(timeout: 5), "Undo didn't bring today's row back")
+        if !yesterdayRow.waitForExistence(timeout: 2) { app.swipeUp() }
+        XCTAssertTrue(yesterdayRow.waitForExistence(timeout: 5), "Undo didn't bring yesterday's row back")
+    }
+
     /// SES-6: killed while running and while paused, the session comes back with the right time,
     /// and paused time never counts (SES-2).
     @MainActor
@@ -983,6 +1031,9 @@ final class PracticeTests: UITestCase {
     /// Again" turns the warning off, even after a relaunch, and Settings turns it back on (SET-1).
     @MainActor
     func testOverlapWarningCanBeTurnedOff() throws {
+        // Midday wherever this runs, as a session across midnight would have a second row.
+        let today = Calendar.current.startOfDay(for: Date(timeIntervalSince1970: start))
+        let start = today.addingTimeInterval(12 * 60 * 60).timeIntervalSince1970
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
         kill(app)

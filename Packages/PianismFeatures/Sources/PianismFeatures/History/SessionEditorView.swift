@@ -36,18 +36,27 @@ struct SessionEditorView: View {
                 } footer: {
                     if let refusal = editor.refusal {
                         Self.reason(for: refusal).accessibilityIdentifier(AccessibilityID.editorRefusal)
-                    } else if showsOverlapWarning, let overlap = editor.overlap {
+                    } else if editor.daysListed > 1 || (showsOverlapWarning && editor.overlap != nil) {
                         // A footer shows only its first view, so the button needs a stack to appear.
                         VStack(alignment: .leading) {
-                            Text(
-                                "This shares \(ElapsedTime.spoken(overlap.shared)) of practice with your \(overlap.session.times) session, so the day's total counts it twice.",
-                                bundle: .module
-                            )
-                            .accessibilityIdentifier(AccessibilityID.editorOverlap)
-                            Button(LocalizedStringResource("Don't show again", bundle: .module)) {
-                                showsOverlapWarning = false
+                            if editor.daysListed > 1 {
+                                Text(
+                                    "This session runs past midnight, so History lists it on each day it touches. Changes here change every row.",
+                                    bundle: .module
+                                )
+                                .accessibilityIdentifier(AccessibilityID.editorSpansDays)
                             }
-                            .accessibilityIdentifier(AccessibilityID.editorOverlapOff)
+                            if showsOverlapWarning, let overlap = editor.overlap {
+                                Text(
+                                    "This shares \(ElapsedTime.spoken(overlap.shared)) of practice with your \(overlap.session.times) session, so the day's total counts it twice.",
+                                    bundle: .module
+                                )
+                                .accessibilityIdentifier(AccessibilityID.editorOverlap)
+                                Button(LocalizedStringResource("Don't show again", bundle: .module)) {
+                                    showsOverlapWarning = false
+                                }
+                                .accessibilityIdentifier(AccessibilityID.editorOverlapOff)
+                            }
                         }
                     }
                 }
@@ -81,6 +90,8 @@ struct SessionEditorView: View {
                                 onDelete()
                             }
                             .accessibilityIdentifier(AccessibilityID.deleteConfirm)
+                        } message: {
+                            editor.original.deletionNote
                         }
                     }
                 }
@@ -139,6 +150,11 @@ struct SessionEditorView: View {
 
 #Preview("Deleted on another device") {
     let edit = SessionEdit.preview(deleted: true)
+    SessionEditorView(editor: edit.editor, tags: edit.tags)
+}
+
+#Preview("Across midnight") {
+    let edit = SessionEdit.preview(acrossMidnight: true)
     SessionEditorView(editor: edit.editor, tags: edit.tags)
 }
 

@@ -79,15 +79,16 @@ public struct PracticeSession: Sendable, Hashable, Codable, Identifiable {
         return end.timeIntervalSince(startedAt) - paused
     }
 
-    /// Practice time earlier than `date`, excluding pauses: what had been practiced by then, whenever this is
-    /// asked. A pause across `date` stops the count at the pause. The widget leaves this out of a total for a
-    /// day a session carries into (GLN-2).
-    public func practiced(before date: Date) -> TimeInterval {
+    /// Practice time from `from` up to `date`, excluding pauses: what had been practiced by then, whenever this is
+    /// asked. A pause across `date` stops the count at the pause. A day's part of a session is this between its two
+    /// midnights (HIS-1), and the widget leaves it out of a total for a day a session carries into (GLN-2). Clipped
+    /// once rather than subtracting two of these, which could land a hair under a whole second and lose it.
+    public func practiced(from: Date = .distantPast, before date: Date) -> TimeInterval {
         let end = min(date, endedAt ?? date)
         guard end > startedAt else { return 0 }  // mutate:ignore - at equal times the sum below is 0 too
         let starts = [startedAt] + pauses.map { $0.end ?? end }
         let ends = pauses.map(\.start) + [end]
-        return zip(starts, ends).reduce(0) { $0 + max(0, min($1.1, end).timeIntervalSince($1.0)) }
+        return zip(starts, ends).reduce(0) { $0 + max(0, min($1.1, end).timeIntervalSince(max($1.0, from))) }
     }
 
     /// The range a clock for the day beginning at `dayStart` counts over, on top of that day's `finished`

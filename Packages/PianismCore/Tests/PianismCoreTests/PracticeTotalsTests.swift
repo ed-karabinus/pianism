@@ -50,13 +50,13 @@ struct PracticeTotalsTests {
         #expect(totals.today(at: try date(2026, 10, 15, 0, 30), in: calendar) == 0)
     }
 
-    @Test("GLN-2, ADR 0004: a finished session that ran past midnight counts toward the day it started")
-    func sessionPastMidnightCountsTowardItsStartDay() throws {
+    @Test("GLN-2, ADR 0004: a finished session that ran past midnight counts its minutes toward each day")
+    func sessionPastMidnightCountsTowardEachDay() throws {
         let late = try session(at: date(2026, 10, 14, 23, 30), minutes: 60)
         let days = PracticeDay.group([late], in: calendar)
 
-        #expect(PracticeTotals(from: days, at: try date(2026, 10, 14, 23, 45), in: calendar).finished == 60 * 60)
-        #expect(PracticeTotals(from: days, at: try date(2026, 10, 15, 0, 45), in: calendar).finished == 0)
+        #expect(PracticeTotals(from: days, at: try date(2026, 10, 14, 23, 45), in: calendar).finished == 30 * 60)
+        #expect(PracticeTotals(from: days, at: try date(2026, 10, 15, 0, 45), in: calendar).finished == 30 * 60)
     }
 
     @Test(

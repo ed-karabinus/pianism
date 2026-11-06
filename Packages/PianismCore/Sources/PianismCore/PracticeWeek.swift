@@ -17,21 +17,24 @@ public struct PracticeWeek: Sendable {
         self.days = (0..<7).map { offset in
             // Where the clocks change at midnight, as in Santiago, a day starts at 1:00, as `group` keys it.
             let day = calendar.startOfDay(for: calendar.date(byAdding: .day, value: offset, to: start) ?? start)
-            return byStart[day] ?? PracticeDay(start: day, sessions: [], total: 0)
+            return byStart[day] ?? PracticeDay(start: day, in: calendar)
         }
     }
 
     /// The week's practice time with each tag, longest first, ties by name as the tag picker sorts them, and then any
     /// untagged time. A session with several tags counts in full toward each, and a merged tag as the tag it was
-    /// merged into.
+    /// merged into. Each day counts its own part of a session, so one across midnight isn't counted twice, and one
+    /// across the week's edge counts only the minutes inside it.
     public func timeByTag(in index: TagIndex) -> [TagTime] {
         var byTag: [Tag.ID: TagTime] = [:]
         var untagged = TagTime(tag: nil, time: 0)
-        for session in days.flatMap(\.sessions) {
-            let time = session.wholeSecondsPracticed
-            let tags = index.tags(for: session.tagIDs)
-            if tags.isEmpty { untagged.time += time }
-            for tag in tags { byTag[tag.id, default: TagTime(tag: tag, time: 0)].time += time }
+        for day in days {
+            for session in day.sessions {
+                let time = day.part(of: session).practiced
+                let tags = index.tags(for: session.tagIDs)
+                if tags.isEmpty { untagged.time += time }
+                for tag in tags { byTag[tag.id, default: TagTime(tag: tag, time: 0)].time += time }
+            }
         }
         let tagged = byTag.values.sorted { first, second in
             guard first.time == second.time else {

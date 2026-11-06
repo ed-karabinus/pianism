@@ -3,12 +3,14 @@ import Observation
 import PianismCore
 import os
 
-/// State for the History screen (HIS-1): finished sessions, grouped by the day they started.
+/// State for the History screen (HIS-1): finished sessions, grouped by the days they have practice in.
 @MainActor
 @Observable
 public final class HistoryModel {
     /// Days with practice, newest first, including sessions still waiting to be saved.
     private(set) var days: [PracticeDay] = []
+    /// The sessions `days` lists, each once, though one across midnight is on several days; newest first.
+    private(set) var sessions: [PracticeSession] = []
     /// The week shown atop History, with each day's practice (HIS-2): this week, or an earlier one picked.
     var week: PracticeWeek { PracticeWeek(containing: pickedWeek ?? now, days: days, in: calendar) }
     /// A day in the earlier week picked, or nil for this week, which then moves along with each refresh.
@@ -82,7 +84,8 @@ public final class HistoryModel {
         let savedIDs = Set(saved.map(\.id))
         let unsaved = waiting.filter { !savedIDs.contains($0.id) }
         waitingIDs = Set(unsaved.map(\.id))
-        days = PracticeDay.group((saved + unsaved).filter { $0.id != pendingDeletion?.id }, in: calendar)
+        sessions = (saved + unsaved).filter { $0.id != pendingDeletion?.id }.sorted { $0.startedAt > $1.startedAt }
+        days = PracticeDay.group(sessions, in: calendar)
         // Not while history can't load, so an outage can't zero the widget (GLN-2).
         if !loadFailed {
             glance.show(PracticeTotals(from: days, at: now, in: calendar))
@@ -171,7 +174,7 @@ public final class HistoryModel {
     /// date (SES-4). Nothing opens if it's gone.
     func edit(id: UUID) {
         refresh()
-        if let session = days.lazy.flatMap(\.sessions).first(where: { $0.id == id }) {
+        if let session = sessions.first(where: { $0.id == id }) {
             edit(session)
         }
     }
@@ -199,11 +202,11 @@ public final class HistoryModel {
     /// the shown ones, newest first (SES-5). The running session's store isn't changed.
     private func otherSessions(at now: Date) -> [PracticeSession] {
         // A store that can't be read is reported by Practice.
-        guard var current = try? running.current() else { return days.flatMap(\.sessions) }
+        guard var current = try? running.current() else { return sessions }
         // No earlier than its last change, so a clock set back still ends the copy, and the warning still names it.
         if current.state != .ended {
             try? current.stop(at: max(now, current.latestEvent, current.lastNoteAt ?? .distantPast))
         }
-        return [current] + days.flatMap(\.sessions)
+        return [current] + sessions
     }
 }

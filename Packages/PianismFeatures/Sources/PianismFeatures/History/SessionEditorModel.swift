@@ -30,7 +30,7 @@ final class SessionEditorModel: TagTarget {
     }
 
     /// The session as it was opened, so moving its start or end works from the original pauses.
-    private let original: PracticeSession
+    let original: PracticeSession
     /// History's other sessions, to warn when this one overlaps them.
     private let others: [PracticeSession]
     private let history: any SessionHistory
@@ -65,6 +65,9 @@ final class SessionEditorModel: TagTarget {
             .map { ($0, $0.sharedPractice(with: self.session)) }
             .first { $0.shared >= 60 }
     }
+
+    /// How many days History lists the session on as edited so far, which a change to any of its rows reaches (HIS-1).
+    var daysListed: Int { session.days(in: .autoupdatingCurrent).count }
 
     var start: Date {
         get { session.startedAt }
