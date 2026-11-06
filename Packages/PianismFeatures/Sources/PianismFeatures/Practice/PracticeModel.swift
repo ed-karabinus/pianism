@@ -14,6 +14,8 @@ public final class PracticeModel: TagTarget {
     /// The running or paused session, or `nil` when ready to start. Also an ended session that neither
     /// history nor the outbox could take, which shows as ready to start.
     private(set) var session: PracticeSession?
+    /// Whether the welcome is showing (ONB-1). A session starting closes it, even from a piano's notes.
+    var isShowingWelcome = false
     /// The session that just ended and was kept, shown until the next one starts.
     private(set) var lastSession: PracticeSession?
     /// How many finished sessions are waiting to move into history, which couldn't save them yet.
@@ -184,6 +186,16 @@ public final class PracticeModel: TagTarget {
         // launch the app in the background.
         readyUntil = clock.now + Self.readyAwake
         tick()
+    }
+
+    /// Opens the welcome on the first launch that finds no practice at all. It's decided once, so someone who already
+    /// practiced never sees it, even after deleting every session, but not while storage can't say (ONB-1).
+    func offerWelcome(historyIsEmpty: Bool?) {
+        guard let historyIsEmpty, !isShowingStorageError, !defaults.bool(forKey: SettingsKey.hasDecidedWelcome) else {
+            return
+        }
+        defaults.set(true, forKey: SettingsKey.hasDecidedWelcome)
+        isShowingWelcome = historyIsEmpty && session == nil
     }
 
     /// Starts a session (SES-1). Public for the widget's Start, which the app runs through this model (ADR 0010).
@@ -447,6 +459,11 @@ public final class PracticeModel: TagTarget {
         session?.state == .paused && detector.isPausedBySilence || detector.pauseDue(at: now) != nil
     }
 
+    /// Keeps the welcome from showing, for end-to-end tests that are about something else.
+    public static func skipWelcome(in defaults: UserDefaults) {
+        defaults.set(true, forKey: SettingsKey.hasDecidedWelcome)
+    }
+
     /// The nudge set in Settings, or 90 minutes, for the app to launch with (SET-1, SES-3).
     public static func storedNudge(in defaults: UserDefaults) -> TimeInterval {
         stored(SettingsKey.stillPracticingAfter, in: defaults) ?? 90 * 60
@@ -538,6 +555,7 @@ public final class PracticeModel: TagTarget {
         }
         do {
             session = try recorder.current()
+            if session != nil { isShowingWelcome = false }
         } catch {
             logger.error("Couldn't load the running session: \(error, privacy: .public)")
             isShowingStorageError = true
