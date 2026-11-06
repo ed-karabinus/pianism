@@ -38,6 +38,7 @@ public struct RootView: View {
                 SettingsView(practice: practice)
             }
         }
+        .sheet(isPresented: Bindable(practice).isShowingWelcome) { WelcomeView(practice: practice) }
         // Asks "Still practicing?", ends a timer session at the cap, and pauses or ends a silent MIDI session, while
         // the app is on screen on any tab, as on an iPad on a music stand (SES-3, SES-4, MIDI-1). Only while the app
         // is in front: away, the notification asks, and a refresh at the nudge would cancel it as it arrives. The
@@ -90,6 +91,7 @@ public struct RootView: View {
             if scenePhase == .active {
                 practice.cameToFront()
                 history.refresh()
+                practice.offerWelcome(historyIsEmpty: history.isEmpty)
             } else {
                 // A deletion first, so today's reminder knows whether a session is left.
                 if scenePhase == .background { history.commitDelete() }
@@ -157,6 +159,10 @@ enum AccessibilityID {
     static let historyDelete = "history.delete"
     static let historyUndo = "history.undo"
     static let deleteConfirm = "delete.confirm"
+    static let welcomeWords = "welcome.words"
+    static let welcomeStart = "welcome.start"
+    static let welcomeConnect = "welcome.connect"
+    static let welcomeClose = "welcome.close"
     static let settingsPianos = "settings.pianos"
     static let settingsNotifications = "settings.notifications"
     static let settingsOpenNotificationSettings = "settings.open-notification-settings"
