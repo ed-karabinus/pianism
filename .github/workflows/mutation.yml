@@ -48,8 +48,7 @@ jobs:
           name: mutation-log
           path: mutate.log
           if-no-files-found: ignore
-      # Last, so a failure here still leaves the report and the log. `make mutate` itself exits cleanly on survivors, as
-      # it's also run by hand on a branch to see what's left.
+      # `make mutate` itself exits cleanly on survivors, as it's also run by hand on a branch to see what's left.
       - name: Fail on survivors
         run: |
           if grep "^survived " mutate.log; then
