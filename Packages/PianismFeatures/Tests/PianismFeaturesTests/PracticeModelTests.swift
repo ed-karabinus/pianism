@@ -618,7 +618,184 @@ struct PracticeModelTests {
         #expect(nudges.waitingReminders.count == 14)
         #expect(
             nudges.waitingReminders.first
-                == DailyReminder.dates(atMinute: 18 * 60, after: clock.now, in: .autoupdatingCurrent).first)
+                == DailyReminder.dates(
+                    atMinute: 18 * 60, after: clock.now, skippingToday: false, in: .autoupdatingCurrent
+                ).first)
+    }
+
+    /// The first reminder if today counts as practiced or not. The clock starts before 6:00 PM in every time zone.
+    private func firstReminder(skippingToday: Bool) -> DateComponents? {
+        DailyReminder.dates(
+            atMinute: 18 * 60, after: clock.now, skippingToday: skippingToday, in: .autoupdatingCurrent
+        ).first
+    }
+
+    /// A model with the reminder on, and its reminders planned.
+    private func modelReminding(
+        history: any SessionHistory = InMemorySessionHistory(),
+        outbox: any SessionOutbox = InMemorySessionHistory()
+    ) async -> PracticeModel {
+        nudges.setPermission(.allowed)
+        defaults.set(true, forKey: SettingsKey.remindsDaily)
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: history, outbox: outbox, clock: clock, nudges: nudges,
+            glance: glance, defaults: defaults, nudge: 90 * 60, cap: 4 * 60 * 60)
+        await model.checkNudges()
+        return model
+    }
+
+    @Test("SET-1: today's reminder goes as the app leaves with a session going, and stays gone once it's saved")
+    func practicingTodayMovesTheReminderToTomorrow() async {
+        let model = await modelReminding()
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: false))
+
+        model.start()
+        clock.advance(by: 60)
+        model.leaveForeground()
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: true))
+        #expect(nudges.waitingReminders.count == 14)
+
+        model.cameToFront()
+        model.stop()
+        model.leaveForeground()
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: true))
+    }
+
+    @Test("SET-1: a session running since before midnight counts as practice today")
+    func aSessionRunningPastMidnightCountsAsPractice() async throws {
+        let model = await modelReminding()
+        let calendar = Calendar.autoupdatingCurrent
+        let midnight = try #require(calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: clock.now)))
+        clock.advance(by: midnight.timeIntervalSince(clock.now) - 60)
+        model.start()
+
+        clock.advance(by: 120)
+        model.leaveForeground()
+
+        #expect(model.session?.state == .running)
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: true))
+    }
+
+    @Test("SET-1: a session paused on an earlier day doesn't silence today's reminder, as nothing ends it")
+    func aSessionPausedYesterdayIsNotPractice() async {
+        let model = await modelReminding()
+        model.start()
+        clock.advance(by: 60)
+        model.pause()
+
+        clock.advance(by: 24 * 60 * 60)
+        model.leaveForeground()
+
+        #expect(model.session?.state == .paused)
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: false))
+    }
+
+    @Test("SET-1: a session stuck after storage failed counts for the day it started, not the days after")
+    func aStuckSessionCountsOnlyForItsDay() async {
+        let model = await modelReminding(history: FlakyHistory(), outbox: UnavailableOutbox())
+        model.start()
+        clock.advance(by: 60)
+        model.stop()
+        model.leaveForeground()
+        #expect(model.session?.state == .ended)
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: true))
+
+        clock.advance(by: 24 * 60 * 60)
+        model.leaveForeground()
+
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: false))
+    }
+
+    @Test("SET-1: a session paused today counts as practice today")
+    func aPausedSessionCountsAsPractice() async {
+        let model = await modelReminding()
+
+        model.start()
+        clock.advance(by: 60)
+        model.pause()
+        model.leaveForeground()
+
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: true))
+    }
+
+    @Test("SET-1: a session that was too short to keep leaves today's reminder alone")
+    func aSessionTooShortToKeepIsNoPractice() async {
+        let model = await modelReminding()
+
+        model.start()
+        clock.advance(by: 5)
+        model.stop()
+        model.leaveForeground()
+
+        #expect(model.lastSession == nil)
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: false))
+    }
+
+    @Test("SET-1: yesterday's practice leaves today's reminder alone")
+    func yesterdaysPracticeIsNotToday() async {
+        let model = await modelReminding()
+        model.start()
+        clock.advance(by: 60)
+        model.stop()
+
+        clock.advance(by: 24 * 60 * 60)
+        model.leaveForeground()
+
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: false))
+    }
+
+    @Test("SET-1: a session waiting in the outbox counts as practice today, as History shows it")
+    func aSessionInTheOutboxCountsAsPractice() async {
+        let outbox = InMemorySessionHistory()
+        let model = await modelReminding(history: FlakyHistory(), outbox: outbox)
+        model.start()
+        clock.advance(by: 60)
+        model.stop()
+        #expect(outbox.sessions().count == 1)
+
+        model.leaveForeground()
+
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: true))
+    }
+
+    @Test("SET-1: leaving before the system has answered keeps the reminders, as when a button launches the app")
+    func aBackgroundLaunchKeepsTheReminders() async {
+        _ = await modelReminding()
+        let waiting = nudges.waitingReminders
+
+        // The app's next launch, in the background: it never came to the front, so nothing has asked the system yet.
+        makeModel().leaveForeground()
+
+        #expect(nudges.waitingReminders == waiting)
+        #expect(waiting.count == 14)
+    }
+
+    @Test("SET-1: turning the reminder off before the system has answered still cancels what's waiting")
+    func turningItOffNeedsNoAnswer() async {
+        _ = await modelReminding()
+        #expect(nudges.waitingReminders.count == 14)
+
+        let relaunched = makeModel()
+        relaunched.remindsDaily = false
+
+        #expect(nudges.waitingReminders.isEmpty)
+    }
+
+    @Test("SET-1: deleting today's only session brings today's reminder back")
+    func deletingTodaysPracticeBringsTheReminderBack() async throws {
+        let history = InMemorySessionHistory()
+        let model = await modelReminding(history: history)
+        model.start()
+        clock.advance(by: 60)
+        model.stop()
+        model.leaveForeground()
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: true))
+
+        let saved = try #require(history.sessions().first)
+        try history.delete(id: saved.id)
+        model.leaveForeground()
+
+        #expect(nudges.waitingReminders.first == firstReminder(skippingToday: false))
     }
 
     @Test("SES-3: the notification opens Practice to the question, or with \"I stopped earlier\" to picking the end")

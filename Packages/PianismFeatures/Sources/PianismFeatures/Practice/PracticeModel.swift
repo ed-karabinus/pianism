@@ -253,15 +253,30 @@ public final class PracticeModel: TagTarget {
     }
 
     /// Reads what the system allows, and tops the reminders up, as they run out unless the app is opened (SET-1).
-    func checkNudges() async {
+    /// Public for the widget's and the Live Activity's buttons, which change a session without opening the app.
+    public func checkNudges() async {
         notificationPermission = await nudges.permission()
         planReminders()
     }
 
     private func planReminders() {
+        // Not before the system has answered, as when a button launches the app in the background: the reminder would
+        // read as off, and all of them would go. Turning it off needs no answer.
+        if wantsDailyReminder && notificationPermission == nil { return }
         guard remindsDaily else { return nudges.cancelReminders() }
         nudges.scheduleReminders(
-            at: DailyReminder.dates(atMinute: dailyReminderMinute, after: clock.now, in: calendar))
+            at: DailyReminder.dates(
+                atMinute: dailyReminderMinute, after: clock.now, skippingToday: hasPracticedToday, in: calendar))
+    }
+
+    /// Whether a session started today, or one is running, whenever it started. Not one paused on an earlier day, which
+    /// nothing ends, as it would silence the reminder until it's stopped (decided with Ed, 2026-11-05). If history can't
+    /// be read, today counts as not practiced, as a reminder too many costs less than a day missed.
+    private var hasPracticedToday: Bool {
+        guard session?.state != .running else { return true }
+        let sessions =
+            [session].compactMap { $0 } + ((try? history.sessions()) ?? []) + ((try? outbox.sessions()) ?? [])
+        return sessions.contains { calendar.isDate($0.startedAt, inSameDayAs: clock.now) }
     }
 
     /// Asks for the notification, if the system hasn't asked yet, and adds it for the session running, which the
@@ -302,9 +317,12 @@ public final class PracticeModel: TagTarget {
     }
 
     /// Stores the MIDI session's last note as the app leaves the screen, so if it's killed while away, the silence
-    /// counts from that note, not from the last change (MIDI-1). Either way, the glance learns the app has gone.
+    /// counts from that note, not from the last change (MIDI-1). Either way, the glance learns the app has gone, and
+    /// today's reminder goes if today's practice is done (SET-1): sessions change while the app is open, and the
+    /// system shows no reminder in front of it.
     func leaveForeground() {
         isOnScreen = false
+        defer { planReminders() }
         // The detector has a last note only while a MIDI session is playing.
         guard let lastNote = detector.lastNote else { return refresh() }
         perform { try recorder.noteLastPlayed(at: lastNote) }

@@ -108,7 +108,8 @@ Run a build on the iPhone, with the widget from W1 added. The running session sh
 
 | # | Check | Result |
 | --- | --- | --- |
-| R1 | **It arrives:** in Settings, turn on "Daily reminder" and set the time a couple of minutes ahead. Go to the Home Screen. "Time to practice" with "Your piano's waiting." arrives at that time, once. Tap it: Pianism opens. It comes at a time of day from the system's own clock, and tests run on a fixed clock or a shared simulator, so a test covers what's asked for (`turningTheReminderOnAndOff`, `aReminderIsOnceAtItsDate`) and this row covers its arrival | Not run yet. |
+| R1 | **It arrives:** on a day with no practice yet, in Settings, turn on "Daily reminder" and set the time a couple of minutes ahead. Go to the Home Screen. "Time to practice" with "Your piano's waiting." arrives at that time, once. Tap it: Pianism opens. It comes at a time of day from the system's own clock, and tests run on a fixed clock or a shared simulator, so a test covers what's asked for (`turningTheReminderOnAndOff`, `aReminderIsOnceAtItsDate`) and this row covers its arrival | Not run yet. |
+| R2 | **Practice from the widget skips it:** on a day with no practice yet, with "Daily reminder" set a few minutes ahead, leave Pianism closed and tap Start on the Home Screen widget. No "Time to practice" comes at that time. The buttons reach the app in the background only on a real system, with no way for a test to read what's waiting there; `practicingTodayMovesTheReminderToTomorrow` covers the rule. | Not run yet. |
 
 ## iCloud sync (SYN-1, issue #15)
 

@@ -91,8 +91,9 @@ public struct RootView: View {
                 practice.cameToFront()
                 history.refresh()
             } else {
-                practice.leaveForeground()
+                // A deletion first, so today's reminder knows whether a session is left.
                 if scenePhase == .background { history.commitDelete() }
+                practice.leaveForeground()
             }
         }
     }

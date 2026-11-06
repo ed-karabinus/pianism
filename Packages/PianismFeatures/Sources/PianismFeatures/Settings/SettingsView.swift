@@ -104,7 +104,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Reminder", bundle: .module)
                 } footer: {
-                    Text("Reminds you to practice once a day.", bundle: .module)
+                    Text("Reminds you on days you haven't practiced yet.", bundle: .module)
                 }
                 Section {
                     Toggle(isOn: $showsOverlapWarning) {
