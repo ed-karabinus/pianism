@@ -189,9 +189,11 @@ public final class PracticeModel: TagTarget {
     }
 
     /// Opens the welcome on the first launch that finds no practice at all. It's decided once, so someone who already
-    /// practiced never sees it, even after deleting every session (ONB-1).
-    func offerWelcome(historyIsEmpty: Bool) {
-        guard !defaults.bool(forKey: SettingsKey.hasDecidedWelcome) else { return }
+    /// practiced never sees it, even after deleting every session, but not while storage can't say (ONB-1).
+    func offerWelcome(historyIsEmpty: Bool?) {
+        guard let historyIsEmpty, !isShowingStorageError, !defaults.bool(forKey: SettingsKey.hasDecidedWelcome) else {
+            return
+        }
         defaults.set(true, forKey: SettingsKey.hasDecidedWelcome)
         isShowingWelcome = historyIsEmpty && session == nil
     }

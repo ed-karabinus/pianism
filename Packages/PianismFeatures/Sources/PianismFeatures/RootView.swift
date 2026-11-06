@@ -91,7 +91,7 @@ public struct RootView: View {
             if scenePhase == .active {
                 practice.cameToFront()
                 history.refresh()
-                practice.offerWelcome(historyIsEmpty: history.isKnownEmpty)
+                practice.offerWelcome(historyIsEmpty: history.isEmpty)
             } else {
                 // A deletion first, so today's reminder knows whether a session is left.
                 if scenePhase == .background { history.commitDelete() }

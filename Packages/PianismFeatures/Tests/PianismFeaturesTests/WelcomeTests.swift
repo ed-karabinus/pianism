@@ -38,15 +38,28 @@ struct WelcomeTests {
         #expect(!relaunched.isShowingWelcome)
     }
 
-    @Test("ONB-1: returning to the app while it's up doesn't open a welcome that was closed")
-    func aClosedWelcomeStaysClosed() {
+    @Test("ONB-1: a launch that can't read the history doesn't decide, so a later one still welcomes")
+    func unreadableHistoryDecidesNothing() {
         let model = launch()
-        model.offerWelcome(historyIsEmpty: true)
-        model.isShowingWelcome = false
 
-        model.offerWelcome(historyIsEmpty: true)
-
+        model.offerWelcome(historyIsEmpty: nil)
         #expect(!model.isShowingWelcome)
+
+        model.offerWelcome(historyIsEmpty: true)
+        #expect(model.isShowingWelcome)
+    }
+
+    @Test("ONB-1: a storage alert isn't hidden under the welcome, which waits for a launch without one")
+    func aStorageAlertHoldsTheWelcomeBack() {
+        let model = launch()
+        model.isShowingStorageError = true
+
+        model.offerWelcome(historyIsEmpty: true)
+        #expect(!model.isShowingWelcome)
+
+        let later = launch()
+        later.offerWelcome(historyIsEmpty: true)
+        #expect(later.isShowingWelcome)
     }
 
     @Test("ONB-1: someone with practice never sees the welcome, even after deleting all of it")

@@ -105,8 +105,8 @@ struct HistoryModelTests {
         #expect(!model.loadFailed)
     }
 
-    @Test("ONB-1: history is known empty only with nothing saved, waiting, unreadable or unshowable")
-    func knownEmptyMeansNoPracticeAtAll() throws {
+    @Test("ONB-1: history is empty only with nothing saved, waiting or unshowable, and unknown if unreadable")
+    func emptyMeansNoPracticeAtAll() throws {
         func refreshed(_ history: any SessionHistory, outbox: InMemorySessionHistory = .init()) -> HistoryModel {
             let model = HistoryModel(
                 history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock,
@@ -119,11 +119,11 @@ struct HistoryModelTests {
         let saved = InMemorySessionHistory()
         saved.save(try endedSession(startingAfter: 0))
 
-        #expect(refreshed(InMemorySessionHistory()).isKnownEmpty)
-        #expect(!refreshed(saved).isKnownEmpty)
-        #expect(!refreshed(InMemorySessionHistory(), outbox: waiting).isKnownEmpty)
-        #expect(!refreshed(FlakyHistory()).isKnownEmpty)
-        #expect(!refreshed(InMemorySessionHistory(unshowable: 1)).isKnownEmpty)
+        #expect(refreshed(InMemorySessionHistory()).isEmpty == true)
+        #expect(refreshed(saved).isEmpty == false)
+        #expect(refreshed(InMemorySessionHistory(), outbox: waiting).isEmpty == false)
+        #expect(refreshed(FlakyHistory()).isEmpty == nil)
+        #expect(refreshed(InMemorySessionHistory(unshowable: 1)).isEmpty == false)
     }
 
     @Test("HIS-1, ADR 0006: History counts saved sessions it can't show, beside those it can")

@@ -39,7 +39,7 @@ struct WelcomeView: View {
                 .font(.system(size: 56))
                 .foregroundStyle(.tint)
                 .accessibilityHidden(true)
-            Text("Pianism", bundle: .module)
+            Text(verbatim: "Pianism")
                 .font(.largeTitle.bold())
                 .accessibilityAddTraits(.isHeader)
             Text(
