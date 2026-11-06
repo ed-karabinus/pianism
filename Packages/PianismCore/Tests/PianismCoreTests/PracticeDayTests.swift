@@ -4,8 +4,8 @@ import Testing
 @testable import PianismCore
 
 struct PracticeDayTests {
-    @Test("HIS-1: sessions group by the day they started, newest day first, with each day's total")
-    func groupsByStartDay() throws {
+    @Test("HIS-1: sessions group by day, newest day first, with each day's total")
+    func groupsByDay() throws {
         let calendar = try calendar("America/Los_Angeles")
         let yesterday = try session(at: date(2026, 10, 14, 9, 0, in: calendar), minutes: 20)
         let morning = try session(at: date(2026, 10, 15, 8, 0, in: calendar), minutes: 30)
@@ -67,10 +67,10 @@ struct PracticeDayTests {
 
         var straight = PracticeSession(startedAt: monday)
         try straight.stop(at: wednesday)
-        let straightDays = PracticeDay.group([straight], in: calendar).map(\.start)
-        #expect(straightDays == [wednesdayStart, tuesdayStart, mondayStart])
+        let straightDays = PracticeDay.group([straight], in: calendar)
+        #expect(straightDays.map(\.start) == [wednesdayStart, tuesdayStart, mondayStart])
         let straightTotals: [TimeInterval] = [21_600, 86_400, 7_200]
-        #expect(PracticeDay.group([straight], in: calendar).map(\.total) == straightTotals)
+        #expect(straightDays.map(\.total) == straightTotals)
 
         var paused = PracticeSession(startedAt: monday)
         try paused.pause(at: monday + 3_600)

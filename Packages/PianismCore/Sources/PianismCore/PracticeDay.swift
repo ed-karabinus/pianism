@@ -7,7 +7,7 @@ public struct PracticeDay: Sendable, Hashable, Identifiable {
     /// The day's first moment, in the calendar the sessions were grouped by.
     public let start: Date
     /// The next day's first moment.
-    public let end: Date
+    let end: Date
     public let sessions: [PracticeSession]
 
     public var id: Date { start }

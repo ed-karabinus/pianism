@@ -30,7 +30,7 @@ final class SessionEditorModel: TagTarget {
     }
 
     /// The session as it was opened, so moving its start or end works from the original pauses.
-    private let original: PracticeSession
+    let original: PracticeSession
     /// History's other sessions, to warn when this one overlaps them.
     private let others: [PracticeSession]
     private let history: any SessionHistory

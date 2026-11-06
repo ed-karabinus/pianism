@@ -670,9 +670,7 @@ struct PracticeModelTests {
     @Test("SET-1: a session running since before midnight counts as practice today")
     func aSessionRunningPastMidnightCountsAsPractice() async throws {
         let model = await modelReminding()
-        let calendar = Calendar.autoupdatingCurrent
-        let midnight = try #require(calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: clock.now)))
-        clock.advance(by: midnight.timeIntervalSince(clock.now) - 60)
+        clock.advance(by: try secondsToMidnight() - 60)
         model.start()
 
         clock.advance(by: 120)
@@ -757,7 +755,7 @@ struct PracticeModelTests {
         #expect(nudges.waitingReminders.first == firstReminder(skippingToday: false))
     }
 
-    @Test("SET-1: a session stuck after storage failed counts for the day it started, not the days after")
+    @Test("SET-1: a session stuck after storage failed counts for the day it was played, not the days after")
     func aStuckSessionCountsOnlyForItsDay() async {
         let model = await modelReminding(history: FlakyHistory(), outbox: UnavailableOutbox())
         model.start()

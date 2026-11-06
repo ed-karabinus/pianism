@@ -91,7 +91,7 @@ struct SessionEditorView: View {
                             }
                             .accessibilityIdentifier(AccessibilityID.deleteConfirm)
                         } message: {
-                            editor.session.deletionNote
+                            editor.original.deletionNote
                         }
                     }
                 }

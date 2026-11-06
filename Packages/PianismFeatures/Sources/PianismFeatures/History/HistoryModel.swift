@@ -3,7 +3,7 @@ import Observation
 import PianismCore
 import os
 
-/// State for the History screen (HIS-1): finished sessions, grouped by the day they started.
+/// State for the History screen (HIS-1): finished sessions, grouped by the days they have practice in.
 @MainActor
 @Observable
 public final class HistoryModel {
