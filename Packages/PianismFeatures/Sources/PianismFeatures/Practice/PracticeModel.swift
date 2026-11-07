@@ -264,6 +264,11 @@ public final class PracticeModel: TagTarget {
         nudgeOpened = NudgeOpening(sessionID: id, pickingEnd: pickingEnd)
     }
 
+    /// Shows Practice after a tap on the daily reminder, whichever tab was open (SET-1).
+    public func openFromReminder() {
+        nudgeOpened = NudgeOpening(sessionID: nil, pickingEnd: false)
+    }
+
     /// Reads what the system allows, and tops the reminders up, as they run out unless the app is opened (SET-1).
     /// Public for the widget's and the Live Activity's buttons, which change a session without opening the app.
     public func checkNudges() async {
@@ -598,9 +603,9 @@ public final class PracticeModel: TagTarget {
     }
 }
 
-/// What the notification opened Practice to show (SES-3).
+/// What a notification opened Practice to show (SES-3). The daily reminder is about no session (SET-1).
 struct NudgeOpening: Equatable {
-    let sessionID: UUID
+    let sessionID: UUID?
     let pickingEnd: Bool
 }
 

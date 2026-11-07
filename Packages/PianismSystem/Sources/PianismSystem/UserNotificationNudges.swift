@@ -19,15 +19,19 @@ public final class UserNotificationNudges: NSObject, PracticeNudges, UNUserNotif
 
     private let answered: @MainActor @Sendable (UUID) -> Void
     private let opened: @MainActor @Sendable (_ sessionID: UUID, _ pickingEnd: Bool) -> Void
+    private let reminderTapped: @MainActor @Sendable () -> Void
 
     /// Registers the notification's buttons and takes its answers: `answered` for "Still practicing", `opened`
-    /// for "I stopped earlier" or a tap. An answer can launch the app, so create this as the app launches.
+    /// for "I stopped earlier" or a tap, and `reminderTapped` for a tap on the daily reminder. An answer can launch
+    /// the app, so create this as the app launches.
     public init(
         answered: @escaping @MainActor @Sendable (UUID) -> Void,
-        opened: @escaping @MainActor @Sendable (_ sessionID: UUID, _ pickingEnd: Bool) -> Void
+        opened: @escaping @MainActor @Sendable (_ sessionID: UUID, _ pickingEnd: Bool) -> Void,
+        reminderTapped: @escaping @MainActor @Sendable () -> Void
     ) {
         self.answered = answered
         self.opened = opened
+        self.reminderTapped = reminderTapped
         super.init()
         let center = UNUserNotificationCenter.current()
         center.setNotificationCategories([Self.answers])  // mutate:ignore - needs an app
@@ -87,7 +91,7 @@ public final class UserNotificationNudges: NSObject, PracticeNudges, UNUserNotif
     /// A notification's identifier stays with the system across app updates, so renaming this leaves strays behind.
     static func reminderIdentifier(_ index: Int) -> String { "daily-reminder-\(index)" }
 
-    /// The reminder at this time. Tapping it just opens the app.
+    /// The reminder at this time. Tapping it opens Practice.
     static func reminder(at date: DateComponents, index: Int) -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
         content.title = String(localized: "Time to practice", bundle: .module)
@@ -140,8 +144,11 @@ public final class UserNotificationNudges: NSObject, PracticeNudges, UNUserNotif
         _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        let info = response.notification.request.content.userInfo
-        if let id = (info[Self.sessionKey] as? String).flatMap(UUID.init(uuidString:)),
+        let request = response.notification.request
+        // The only other notification is the daily reminder, which has no buttons, so reaches here only by a tap.
+        if request.identifier != Self.category {  // mutate:ignore - needs an app
+            MainActor.assumeIsolated { reminderTapped() }  // mutate:ignore - as above
+        } else if let id = (request.content.userInfo[Self.sessionKey] as? String).flatMap(UUID.init(uuidString:)),
             let answer = Self.answer(to: response.actionIdentifier)
         {
             MainActor.assumeIsolated {

@@ -469,6 +469,34 @@ final class PracticeTests: UITestCase {
                 .firstMatch.waitForExistence(timeout: 5), "The daily reminder wasn't kept")
     }
 
+    /// SET-1: tapping the daily reminder opens Practice, though the app was left on Settings. On the real clock, as the
+    /// system fires it, so this takes about two minutes.
+    @MainActor
+    func testTappingAReminderOpensPractice() throws {
+        // Permission first, as the system asks once per install, and a banner needs it.
+        var app = launch(at: nil, reset: true)
+        openSettings(app)
+        if !app.switches["settings.daily-reminder"].waitForExistence(timeout: 2) { app.swipeUp() }
+        setNotificationSwitch(app, "settings.daily-reminder", on: true)
+        app.terminate()
+
+        // Reminders come on the minute. At least a minute away, as the app has to be away by then: the system shows
+        // no banner for the app in front.
+        let now = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        let minute = (try XCTUnwrap(now.hour) * 60 + XCTUnwrap(now.minute) + 2) % (24 * 60)
+        app = launch(at: nil, reset: false, reminderMinute: minute)
+        openSettings(app)
+        goHome()
+
+        let reminder = springboard.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS 'Your piano'")).firstMatch
+        XCTAssertTrue(reminder.waitForExistence(timeout: 180), "No reminder")
+        reminder.tap()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15), "The reminder didn't open the app")
+        XCTAssertTrue(app.buttons["practice.start"].waitForExistence(timeout: 10), "It didn't open Practice")
+        XCTAssertFalse(app.navigationBars["Settings"].exists, "It stayed on Settings")
+    }
+
     /// SET-1, SES-3: with "Notify me when I'm away" off in Settings, a session past the nudge sends no notification, and
     /// with it back on, the next one does. On the real clock, with a nudge of 20 s, as the notification test explains.
     @MainActor
@@ -1730,7 +1758,7 @@ final class PracticeTests: UITestCase {
         undoSeconds: Int? = nil, nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false,
         textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
         midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil, intent: String? = nil,
-        welcome: Bool = false
+        reminderMinute: Int? = nil, welcome: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -1742,6 +1770,13 @@ final class PracticeTests: UITestCase {
         app.launchEnvironment["OS_ACTIVITY_DT_MODE"] = "NO"
         if let textSize {
             app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategory\(textSize)"]
+        }
+        // As launch arguments, these override the stored settings without any test code in the app. The minute is typed
+        // as an integer, as a plain number would arrive as a string, which the app wouldn't read as a time.
+        if let reminderMinute {
+            app.launchArguments += [
+                "-remindsDaily", "YES", "-dailyReminderMinute", "<integer>\(reminderMinute)</integer>",
+            ]
         }
         if let now {
             app.launchEnvironment["PIANISM_NOW"] = String(now)
