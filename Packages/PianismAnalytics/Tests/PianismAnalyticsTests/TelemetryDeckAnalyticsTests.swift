@@ -63,6 +63,36 @@ struct TelemetryDeckAnalyticsTests {
             transmitInterval: 0.1)
     }
 
+    /// What ADR 0011 lists the SDK adding to every signal, from its source. Only some show on a Mac, where this runs,
+    /// but a new version adding one in common code fails here, so the ADR changes first.
+    private static let listed: Set<String> = Set(
+        [
+            "Accessibility.isBoldTextEnabled", "Accessibility.isDarkerSystemColorsEnabled",
+            "Accessibility.isInvertColorsEnabled", "Accessibility.isReduceMotionEnabled",
+            "Accessibility.isReduceTransparencyEnabled", "Accessibility.preferredContentSizeCategory",
+            "Accessibility.shouldDifferentiateWithoutColor", "Acquisition.firstSessionDate",
+            "AppInfo.buildNumber", "AppInfo.version", "AppInfo.versionAndBuildNumber", "Calendar.dayOfMonth",
+            "Calendar.dayOfWeek", "Calendar.dayOfYear", "Calendar.hourOfDay", "Calendar.isWeekend",
+            "Calendar.monthOfYear", "Calendar.quarterOfYear", "Calendar.weekOfYear", "Device.architecture",
+            "Device.modelName", "Device.operatingSystem", "Device.orientation", "Device.platform",
+            "Device.screenResolutionHeight", "Device.screenResolutionWidth", "Device.screenScaleFactor",
+            "Device.systemMajorMinorVersion", "Device.systemMajorVersion", "Device.systemVersion",
+            "Device.timeZone", "Retention.averageSessionSeconds", "Retention.distinctDaysUsed",
+            "Retention.distinctDaysUsedLastMonth", "Retention.previousSessionSeconds",
+            "Retention.totalSessionsCount", "RunContext.extensionIdentifier", "RunContext.isAppStore",
+            "RunContext.isDebug", "RunContext.isSimulator", "RunContext.isTestFlight", "RunContext.language",
+            "RunContext.locale", "RunContext.targetEnvironment", "SDK.name", "SDK.nameAndVersion",
+            "SDK.version", "UserPreference.colorScheme", "UserPreference.language",
+            "UserPreference.layoutDirection", "UserPreference.region",
+        ].map { "TelemetryDeck." + $0 }
+    ).union([
+        "appLanguage", "appVersion", "architecture", "buildNumber", "extensionIdentifier", "isAppStore",
+        "isDebug", "isSimulator", "isTestFlight", "locale", "majorMinorSystemVersion", "majorSystemVersion",
+        "modelName", "operatingSystem", "platform", "preferredLanguage", "region", "systemVersion",
+        "targetEnvironment", "telemetryClientVersion",
+        "source",
+    ])
+
     private var posted: String { FakeNetwork.posted.joined() }
 
     private func waitForPost(of text: String) async throws {
@@ -98,6 +128,17 @@ struct TelemetryDeckAnalyticsTests {
     /// so the setting is what can be checked.
     @Test func theSDKsSessionStatisticsAreOff() {
         #expect(!analytics.makeConfig().sessionStatsEnabled)
+    }
+
+    @Test func aSignalCarriesOnlyWhatTheADRLists() async throws {
+        struct Posted: Decodable { let payload: [String: String] }
+        analytics.setEnabled(true)
+        analytics.send(.sessionSaved(.midi))
+        try await waitForPost(of: "Practice.sessionSaved")
+        analytics.setEnabled(false)
+        let signals = try FakeNetwork.posted.flatMap { try JSONDecoder().decode([Posted].self, from: Data($0.utf8)) }
+        #expect(!signals.isEmpty)
+        #expect(Set(signals.flatMap(\.payload.keys)).subtracting(Self.listed).isEmpty)
     }
 
     /// With the SDK not started at all, as when analytics is off at launch. Sending would trap here, in a Debug build.

@@ -57,4 +57,13 @@ struct AnalyticsTests {
         #expect(restored == progress)
         #expect(reached(&restored, at: [launch]) == [true])
     }
+
+    /// This version's stored format, as a phone holds it after an update. If this fails, what's stored needs a migration.
+    @Test func progressStoredByThisVersionStillReads() throws {
+        let first = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))
+        let sample = #"{"firstLaunch":820454400,"isCounting":true,"saved":["00000000-0000-0000-0000-000000000001"]}"#
+        var expected = ActivationProgress(firstLaunch: launch, isCounting: true)
+        _ = expected.sessionSaved(id: first, at: launch)
+        #expect(try JSONDecoder().decode(ActivationProgress.self, from: Data(sample.utf8)) == expected)
+    }
 }

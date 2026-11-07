@@ -55,7 +55,7 @@ public struct ActivationProgress: Codable, Hashable, Sendable {
 
     /// Counts a saved session, and returns whether this one reached activation, which happens once.
     public mutating func sessionSaved(id: UUID, at date: Date) -> Bool {
-        guard isCounting, saved.count < Self.sessionsNeeded, date <= firstLaunch + Self.days else { return false }
+        guard isCounting, date <= firstLaunch + Self.days else { return false }
         return saved.insert(id).inserted && saved.count == Self.sessionsNeeded
     }
 }
