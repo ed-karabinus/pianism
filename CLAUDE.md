@@ -22,7 +22,7 @@ to the owner.
 | `make test` | All of the above |
 | `make lint` / `make format` | Check / apply swift-format |
 | `make unused` | Fails on unused code in the app and the package code it builds (Periphery, pinned by checksum). Keep an intentional exception with `// periphery:ignore - <reason>` |
-| `make mutate` | Mutation testing of the core and adapters (minutes). Run it for PRs that add logic there; a survivor on a line the PR changed gets a test, a deletion or `// mutate:ignore - <reason>` (owner, 2026-10-19). CI also runs all of it nightly on main, report only: survivors are in that job's summary (owner, 2026-11-05) |
+| `make mutate` | Mutation testing of the core and adapters (minutes). Run it for PRs that add logic there; a survivor on a line the PR changed gets a test, a deletion or `// mutate:ignore - <reason>` (owner, 2026-10-19). CI also runs all of it nightly on main; a survivor fails that job, which isn't a required check, so it blocks no merge (owner, 2026-11-06) |
 | `make build` | Release build for the simulator, as the app ships; the tests build Debug |
 | `scripts/agent-check.sh` | Run before a heavy job (build, test run, mutation): fails if you're not in your own worktree, another simulator run is going, or memory is low |
 | `make evidence` | Exports the screenshots the last `test-app` run captured, for the PR's Testing section |

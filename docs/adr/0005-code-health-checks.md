@@ -78,7 +78,9 @@ dependency.
 - `make mutate` runs it. It runs before every milestone check, and by hand for a PR that adds
   logic to those packages. It isn't a CI check: it takes minutes, and some survivors need a person
   to judge them. (Amended 2026-11-05: CI runs all of it nightly on main, as a report that blocks
-  nothing, in its own workflow, as runs by hand had become rare. It still isn't a required check.)
+  nothing, in its own workflow, as runs by hand had become rare. It still isn't a required check.
+  Amended 2026-11-06: after its first full run had no survivors, a survivor fails that nightly job.
+  It still blocks no merge, so a survivor shows on main the morning after, for a person to judge.)
 - Every survivor gets one of three outcomes, recorded in the milestone report: a new test, a
   deleted line, or a note that the mutation doesn't change behaviour.
 
@@ -109,4 +111,6 @@ the race test missed its first planted bug in #27.
   never touches a statement split across lines, for example. It is a floor, not a full mutation
   tester.
 - Bad: some surviving mutations don't change behaviour, and deciding which ones takes a person.
-  That's why the script reports to the milestone check rather than failing CI.
+  That's why the script reports to the milestone check rather than failing CI. (Amended 2026-11-06:
+  the nightly job now fails on a survivor, as they're all judged, with `mutate:ignore` for those that
+  don't change behaviour. A red nightly asks a person to decide, and PRs still aren't held up by it.)
