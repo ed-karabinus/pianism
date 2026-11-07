@@ -27,7 +27,9 @@ status=$?
 # and grep -a keep a stray non-UTF-8 byte in the log from stopping sed or grep, and checking the
 # output rather than the pipeline's status means an error there can't hide a warning.
 esc=$'\033'
-warnings=$(LC_ALL=C sed "s/${esc}\[[0-9;]*m//g" "$log" | LC_ALL=C grep -aE '^[^ ].*:[0-9]+:[0-9]+: warning: ' | sort -u)
+# Third-party source, the only kind in a checkouts folder, isn't ours to fix (ADR 0011).
+warnings=$(LC_ALL=C sed "s/${esc}\[[0-9;]*m//g" "$log" | LC_ALL=C grep -aE '^[^ ].*:[0-9]+:[0-9]+: warning: ' |
+    LC_ALL=C grep -av '/checkouts/' | sort -u)
 if [ -n "$warnings" ]; then
     echo "error: the compiler warned. Fix each warning:" >&2
     echo "$warnings" >&2

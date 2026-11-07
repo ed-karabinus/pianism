@@ -34,12 +34,14 @@ final class SessionEditorModel: TagTarget {
     /// History's other sessions, to warn when this one overlaps them.
     private let others: [PracticeSession]
     private let history: any SessionHistory
+    private let onAdded: @MainActor (PracticeSession) -> Void
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "history")
 
     init(
         session: PracticeSession, isNew: Bool = false, others: [PracticeSession] = [], history: any SessionHistory,
-        now: Date
+        now: Date, onAdded: @escaping @MainActor (PracticeSession) -> Void = { _ in }
     ) {
+        self.onAdded = onAdded
         self.session = session
         self.isNew = isNew
         latestEnd = max(now, session.endedAt ?? now)
@@ -127,6 +129,7 @@ final class SessionEditorModel: TagTarget {
         do {
             if isNew {
                 try history.save(session)
+                onAdded(session)
             } else {
                 let stored = try history.sessions().first { $0.id == session.id } ?? session
                 try history.edit(edited(stored))
@@ -175,10 +178,11 @@ struct SessionEdit: Identifiable {
     @MainActor
     init(
         session: PracticeSession, isNew: Bool = false, others: [PracticeSession], history: any SessionHistory,
-        library: any TagLibrary, now: Date
+        library: any TagLibrary, now: Date, onAdded: @escaping @MainActor (PracticeSession) -> Void = { _ in }
     ) {
         id = session.id
-        editor = SessionEditorModel(session: session, isNew: isNew, others: others, history: history, now: now)
+        editor = SessionEditorModel(
+            session: session, isNew: isNew, others: others, history: history, now: now, onAdded: onAdded)
         tags = TagPickerModel(target: editor, library: library)
     }
 }

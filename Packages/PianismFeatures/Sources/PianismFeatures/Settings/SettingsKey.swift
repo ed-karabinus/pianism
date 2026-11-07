@@ -19,6 +19,10 @@ enum SettingsKey {
     static let remindsDaily = "remindsDaily"
     /// The daily reminder's time, in minutes after local midnight (SET-1).
     static let dailyReminderMinute = "dailyReminderMinute"
+    /// Whether anonymous analytics is on (ADR 0011).
+    static let sharesUsage = "sharesUsage"
+    /// How far this install is toward activation, as JSON (ADR 0011).
+    static let activationProgress = "activationProgress"
     /// How many notes start a MIDI session (MIDI-1).
     static let midiStartNotes = "midiStartNotes"
     /// The silence that pauses a MIDI session, in seconds (MIDI-1).

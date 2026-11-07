@@ -12,6 +12,7 @@
 		0A0000000000000000000078 /* PianismCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000077 /* PianismCore */; };
 		0A0000000000000000000081 /* PianismSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000080 /* PianismSystem */; };
 		0A0000000000000000000084 /* PianismMIDI in Frameworks */ = {isa = PBXBuildFile; productRef = 0A0000000000000000000083 /* PianismMIDI */; };
+		0A00000000000000000000D2 /* PianismAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 0A00000000000000000000D1 /* PianismAnalytics */; };
 		0A00000000000000000000AE /* PianismWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0A00000000000000000000A0 /* PianismWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		0A00000000000000000000AF /* PianismCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0A00000000000000000000B0 /* PianismCore */; };
 		0A00000000000000000000B1 /* PianismPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = 0A00000000000000000000B2 /* PianismPersistence */; };
@@ -90,6 +91,7 @@
 				0A0000000000000000000078 /* PianismCore in Frameworks */,
 				0A0000000000000000000081 /* PianismSystem in Frameworks */,
 				0A0000000000000000000084 /* PianismMIDI in Frameworks */,
+				0A00000000000000000000D2 /* PianismAnalytics in Frameworks */,
 				0A00000000000000000000C2 /* PianismGlance in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -175,6 +177,7 @@
 				0A0000000000000000000077 /* PianismCore */,
 				0A0000000000000000000080 /* PianismSystem */,
 				0A0000000000000000000083 /* PianismMIDI */,
+				0A00000000000000000000D1 /* PianismAnalytics */,
 				0A00000000000000000000C1 /* PianismGlance */,
 			);
 			productName = Pianism;
@@ -266,6 +269,7 @@
 				0A0000000000000000000076 /* XCLocalSwiftPackageReference "Packages/PianismCore" */,
 				0A0000000000000000000079 /* XCLocalSwiftPackageReference "Packages/PianismSystem" */,
 				0A0000000000000000000082 /* XCLocalSwiftPackageReference "Packages/PianismMIDI" */,
+				0A00000000000000000000D0 /* XCLocalSwiftPackageReference "Packages/PianismAnalytics" */,
 				0A00000000000000000000C0 /* XCLocalSwiftPackageReference "Packages/PianismGlance" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -440,6 +444,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		0A00000000000000000000D0 /* XCLocalSwiftPackageReference "Packages/PianismAnalytics" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/PianismAnalytics;
+		};
 		0A0000000000000000000070 /* XCLocalSwiftPackageReference "Packages/PianismFeatures" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/PianismFeatures;
@@ -482,6 +490,10 @@
 		0A0000000000000000000080 /* PianismSystem */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PianismSystem;
+		};
+		0A00000000000000000000D1 /* PianismAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PianismAnalytics;
 		};
 		0A0000000000000000000083 /* PianismMIDI */ = {
 			isa = XCSwiftPackageProductDependency;

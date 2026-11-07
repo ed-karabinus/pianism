@@ -190,3 +190,12 @@ private final class PreviewStore: RunningSessionStore {
         }
     }
 }
+
+extension AnalyticsModel {
+    /// On, sending nothing, and with its own defaults, so a preview's switch stays in the preview.
+    static func preview() -> AnalyticsModel {
+        AnalyticsModel(
+            analytics: NoAnalytics(), defaults: UserDefaults(suiteName: "AnalyticsModel preview") ?? .standard,
+            clock: SystemClock())
+    }
+}
