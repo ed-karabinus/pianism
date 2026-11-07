@@ -8,6 +8,7 @@ import SwiftUI
 public struct RootView: View {
     let practice: PracticeModel
     let analytics: AnalyticsModel
+    let pro: ProModel
     let tags: TagPickerModel
     let history: HistoryModel
 
@@ -16,9 +17,12 @@ public struct RootView: View {
 
     private var keepsScreenAwake: Bool { practice.keepsScreenAwake(showingPractice: tab == .practice) }
 
-    public init(practice: PracticeModel, analytics: AnalyticsModel, tags: TagPickerModel, history: HistoryModel) {
+    public init(
+        practice: PracticeModel, analytics: AnalyticsModel, pro: ProModel, tags: TagPickerModel, history: HistoryModel
+    ) {
         self.practice = practice
         self.analytics = analytics
+        self.pro = pro
         self.tags = tags
         self.history = history
     }
@@ -37,7 +41,7 @@ public struct RootView: View {
                 HistoryView(model: history)
             }
             Tab(LocalizedStringResource("Settings", bundle: .module), systemImage: "gearshape", value: .settings) {
-                SettingsView(practice: practice, analytics: analytics)
+                SettingsView(practice: practice, analytics: analytics, pro: pro)
             }
         }
         .sheet(isPresented: Bindable(practice).isShowingWelcome) { WelcomeView(practice: practice) }
@@ -177,6 +181,9 @@ enum AccessibilityID {
     static let settingsDailyReminderTime = "settings.daily-reminder-time"
     static let settingsOverlapWarning = "settings.overlap-warning"
     static let settingsSharesUsage = "settings.shares-usage"
+    static let settingsPro = "settings.pro"
+    static let settingsRestore = "settings.restore"
+    static let settingsRestoreNotice = "settings.restore-notice"
     static let settingsNudge = "settings.nudge"
     static let settingsCap = "settings.cap"
     static let settingsStartNotes = "settings.startNotes"
@@ -191,7 +198,8 @@ private enum AppTab {
 
 #Preview {
     let practice = PracticeModel.preview(.ready)
-    RootView(practice: practice, analytics: .preview(), tags: .preview(for: practice), history: .preview())
+    RootView(
+        practice: practice, analytics: .preview(), pro: .preview(), tags: .preview(for: practice), history: .preview())
 }
 
 #if os(iOS)

@@ -5,3 +5,7 @@ PRODUCT_BUNDLE_IDENTIFIER = com.edkarabinus.PianismUITests
 GENERATE_INFOPLIST_FILE = YES
 TEST_TARGET_NAME = Pianism
 LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks @loader_path/Frameworks
+
+// Importing StoreKitTest fails under GCC_TREAT_WARNINGS_AS_ERRORS, as Apple's own header uses a deprecated type
+// (ADR 0012). Only this warning, and only in the target that imports it.
+OTHER_SWIFT_FLAGS = $(inherited) -Xcc -Wno-error=deprecated-declarations -Xcc -Wno-deprecated-declarations

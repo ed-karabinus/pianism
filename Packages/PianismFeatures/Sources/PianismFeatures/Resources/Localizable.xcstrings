@@ -94,6 +94,9 @@
     "Couldn't load your history" : {
 
     },
+    "Couldn't reach the App Store. Try again." : {
+
+    },
     "Couldn't save that change" : {
 
     },
@@ -184,6 +187,9 @@
     "Name" : {
 
     },
+    "No purchase found." : {
+
+    },
     "No piano connected" : {
 
     },
@@ -271,6 +277,12 @@
     "Reminder" : {
 
     },
+    "Pro" : {
+
+    },
+    "Pro is unlocked" : {
+
+    },
     "Reminds you on days you haven't practiced yet." : {
 
     },
@@ -281,6 +293,9 @@
       "comment" : "A built-in skill"
     },
     "Restart Pianism to try again." : {
+
+    },
+    "Restore Purchases" : {
 
     },
     "Resume" : {

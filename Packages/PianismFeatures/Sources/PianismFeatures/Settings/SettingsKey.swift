@@ -23,6 +23,8 @@ enum SettingsKey {
     static let sharesUsage = "sharesUsage"
     /// How far this install is toward activation, as JSON (ADR 0011).
     static let activationProgress = "activationProgress"
+    /// Whether Apple has confirmed Pro on this device, kept until a refund (ADR 0012).
+    static let proUnlocked = "proUnlocked"
     /// How many notes start a MIDI session (MIDI-1).
     static let midiStartNotes = "midiStartNotes"
     /// The silence that pauses a MIDI session, in seconds (MIDI-1).

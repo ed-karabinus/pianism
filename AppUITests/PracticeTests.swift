@@ -1,4 +1,6 @@
 import CoreMIDI
+import StoreKit
+import StoreKitTest
 import XCTest
 import notify
 
@@ -1147,6 +1149,101 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.navigationBars["Connect a piano"].waitForExistence(timeout: 5))
     }
 
+    /// Scrolls to Pro's section of Settings, the last one, which a Form may not have built yet (PRO-1).
+    @MainActor
+    private func proRow(_ id: String, in app: XCUIApplication) -> XCUIElement {
+        let row = app.descendants(matching: .any)[id].firstMatch
+        for _ in 0..<8 where !(row.exists && row.isHittable) { app.swipeUp() }
+        return row
+    }
+
+    /// PRO-1: with a scripted store, on every simulator. Pro stays through an empty answer at the next launch, and only
+    /// a refund takes it away, so someone who paid never sees it disappear (ADR 0012).
+    @MainActor
+    func testRestoreUnlocksProWhichStaysUntilARefund() throws {
+        var app = launch(at: start, reset: true, restoreFinds: true)
+        openSettings(app)
+        attachScreenshot(of: app, named: "Settings, Pro not unlocked")
+        proRow("settings.restore", in: app).tap()
+        XCTAssertTrue(proRow("settings.pro", in: app).waitForExistence(timeout: 10), "Restoring didn't unlock Pro")
+        attachScreenshot(of: app, named: "Settings, Pro unlocked")
+        kill(app)
+
+        app = launch(at: start)
+        openSettings(app)
+        let pro = proRow("settings.pro", in: app)
+        XCTAssertTrue(pro.waitForExistence(timeout: 5), "Pro went away when the store said nothing")
+
+        notify_post("com.edkarabinus.Pianism.pro-refunded")
+        XCTAssertTrue(pro.waitForNonExistence(timeout: 10), "A refund left Pro on")
+        XCTAssertTrue(proRow("settings.restore", in: app).waitForExistence(timeout: 5), "No way to restore after one")
+    }
+
+    /// PRO-1: a restore that finds nothing says so, and leaves the button there to try again.
+    @MainActor
+    func testRestoreFindingNothingSaysSo() throws {
+        let app = launch(at: start, reset: true)
+        openSettings(app)
+        let restore = proRow("settings.restore", in: app)
+        restore.tap()
+        XCTAssertTrue(proRow("settings.restore-notice", in: app).waitForExistence(timeout: 10), "It said nothing")
+        XCTAssertEqual(app.staticTexts["settings.restore-notice"].label, "No purchase found.")
+        attachScreenshot(of: app, named: "Settings, no purchase found")
+        XCTAssertTrue(restore.exists, "The button should still be there")
+    }
+
+    /// A session of real StoreKit, driven from this process, with no purchases and none of the last run's settings.
+    /// Ask to Buy lasts across runs on a simulator, so it's set here. On CI's iOS 26 the product never loads (#205), so
+    /// these run on iOS 27, and a device checks what they can't (ADR 0012).
+    @MainActor
+    private func realStore() throws -> SKTestSession {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 27, "StoreKit Testing needs iOS 27 on CI")
+        let session = try SKTestSession(configurationFileNamed: "Pianism")
+        session.disableDialogs = true
+        session.clearTransactions()
+        session.askToBuyEnabled = false
+        return session
+    }
+
+    /// PRO-1, through real StoreKit: a purchase shows at launch with nothing stored, and a refund reaches the open app.
+    @MainActor
+    func testRealStoreKitUnlocksProAndARefundTurnsItOff() async throws {
+        let session = try realStore()
+        try await session.buyProduct(identifier: "com.edkarabinus.Pianism.pro")
+        let app = launch(at: start, reset: true, realStore: true)
+        openSettings(app)
+        let pro = proRow("settings.pro", in: app)
+        XCTAssertTrue(pro.waitForExistence(timeout: 30), "A purchase didn't unlock Pro")
+
+        let transaction = try XCTUnwrap(session.allTransactions().first)
+        try session.refundTransaction(identifier: transaction.identifier)
+        XCTAssertTrue(pro.waitForNonExistence(timeout: 60), "A refund didn't reach the app")
+    }
+
+    /// PRO-1, through real StoreKit: Pro needs no network, and Pro comes back on a launch with nothing stored.
+    @MainActor
+    func testRealStoreKitKeepsProWithTheStoreUnreachable() async throws {
+        let session = try realStore()
+        try await session.buyProduct(identifier: "com.edkarabinus.Pianism.pro")
+        try await session.setSimulatedError(
+            .generic(.networkError(URLError(.notConnectedToInternet))), forAPI: .loadProducts)
+        addTeardownBlock { try? await session.setSimulatedError(nil, forAPI: .loadProducts) }
+        let app = launch(at: start, reset: true, realStore: true)
+        openSettings(app)
+        XCTAssertTrue(proRow("settings.pro", in: app).waitForExistence(timeout: 30), "Pro needs the store")
+    }
+
+    /// PRO-1, through real StoreKit: the restore call itself, finding nothing, with no account to sign in to.
+    @MainActor
+    func testRealStoreKitRestoreFindingNothingSaysSo() throws {
+        _ = try realStore()
+        let app = launch(at: start, reset: true, realStore: true)
+        openSettings(app)
+        proRow("settings.restore", in: app).tap()
+        XCTAssertTrue(proRow("settings.restore-notice", in: app).waitForExistence(timeout: 30), "It said nothing")
+    }
+
     /// ADR 0011: sharing anonymous usage is on until it's turned off in Settings, and stays as it was left. Debug builds
     /// send nothing, so the adapter's tests check what's sent and stopped, against a fake network.
     @MainActor
@@ -1789,7 +1886,7 @@ final class PracticeTests: UITestCase {
         undoSeconds: Int? = nil, nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false,
         textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
         midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil, intent: String? = nil,
-        reminderMinute: Int? = nil, welcome: Bool = false
+        reminderMinute: Int? = nil, welcome: Bool = false, realStore: Bool = false, restoreFinds: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -1826,6 +1923,12 @@ final class PracticeTests: UITestCase {
         }
         if reset {
             app.launchEnvironment["PIANISM_RESET"] = "1"
+        }
+        if !realStore {
+            app.launchEnvironment["PIANISM_STORE"] = "free"
+        }
+        if restoreFinds {
+            app.launchEnvironment["PIANISM_RESTORE_FINDS"] = "1"
         }
         if !welcome {
             app.launchEnvironment["PIANISM_SKIP_WELCOME"] = "1"
