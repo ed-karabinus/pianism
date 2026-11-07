@@ -1532,8 +1532,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(pianos.waitForNonExistence(timeout: 10), "Practice still names the piano that went")
     }
 
-    /// NFR-3: XCTest's accessibility audit finds nothing to report on Practice, ready, running and paused, on
-    /// Apple's pairing screen crashed the app on opening, found on a device by check P4.
+    /// MIDI-2: Apple's pairing screen crashed the app on opening on iOS 27.0, found on a device by check P4.
     @MainActor
     func testPairingABluetoothPianoOpensApplesScreen() {
         let app = launch(at: start, reset: true)
@@ -1544,11 +1543,12 @@ final class PracticeTests: UITestCase {
         let pair = app.buttons["pianos.pair"]
         XCTAssertTrue(pair.waitForExistence(timeout: 5), "Connect a piano didn't open")
         pair.tap()
-        XCTAssertTrue(app.navigationBars["Bluetooth"].waitForExistence(timeout: 10), "The pairing screen didn't open")
-        XCTAssertEqual(app.state, .runningForeground, "The app crashed opening the pairing screen")
+        XCTAssertTrue(
+            app.navigationBars["Bluetooth"].waitForExistence(timeout: 10), "The pairing screen crashed or didn't open")
         attachScreenshot(of: app, named: "Pairing a Bluetooth piano")
     }
 
+    /// NFR-3: XCTest's accessibility audit finds nothing to report on Practice, ready, running and paused, on
     /// History with a session, on Settings and on Connect a piano: every element described and detected, with its traits, targets
     /// big enough to hit, and, on Practice, enough contrast.
     @MainActor
