@@ -79,6 +79,9 @@ as an automatic new-install signal with its date. `Install.firstLaunch` does tha
 - **There's no prompt, and the welcome screen doesn't mention it.** People are told by that switch, the App Store
   privacy label and the privacy policy. TelemetryDeck's position is that an opt-out isn't legally required, as what it
   stores isn't personal data. We offer one anyway, because of P7.
+- **Not sold in Europe for now.** That position is TelemetryDeck's own, and the EU's ePrivacy rule may cover reading a
+  device ID even when nothing personal is stored. Rather than pay for a legal opinion, the owner decided on 2026-11-07
+  to stay out of Europe, and to answer this question, which may mean a prompt there, before any expansion (#57).
 - **Off means nothing further goes out.** The SDK's own `analyticsDisabled` isn't enough: it stops new signals, but its
   send loop doesn't check it, so signals already queued still go, within 10 s by default. And it can't safely be shut
   down: `TelemetryDeck.terminate()` leaves scheduled work behind that calls its shared manager, which traps in Debug
