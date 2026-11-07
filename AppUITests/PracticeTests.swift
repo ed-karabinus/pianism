@@ -760,14 +760,16 @@ final class PracticeTests: UITestCase {
         element(app, "history.week-chart").swipeRight()
         XCTAssertTrue(shown.wait(for: \.label, toEqual: firstWeek, timeout: 5), "The swipe didn't show an earlier week")
 
-        // A tap on Thursday's bar scrolls to its session, unless it's on screen already, as on an iPad.
+        // A tap on its day's bar scrolls to its session, unless it's on screen already, as on an iPad. The day depends
+        // on the time zone: Thursday in California, Friday on CI, which runs in UTC.
         let session = app.descendants(matching: .any).matching(identifier: "history.session")
             .matching(NSPredicate(format: "value == '25 minutes'")).firstMatch
         let wasShown = session.exists && session.isHittable
-        element(app, "history.week-chart").descendants(matching: .any)["Thursday"].tap()
+        let day = Date(timeIntervalSince1970: start).formatted(.dateTime.weekday(.wide))
+        element(app, "history.week-chart").descendants(matching: .any)[day].tap()
         if !wasShown {
             XCTAssertTrue(session.waitForExistence(timeout: 5))
-            XCTAssertTrue(session.wait(for: \.isHittable, toEqual: true, timeout: 5), "The tap didn't show Thursday")
+            XCTAssertTrue(session.wait(for: \.isHittable, toEqual: true, timeout: 5), "The tap didn't show \(day)")
         }
         attachScreenshot(of: app, named: "History, a tapped day")
     }
