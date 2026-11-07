@@ -1,6 +1,6 @@
 # 11. Anonymous, opt-out analytics with TelemetryDeck
 
-- Status: accepted, by the owner on 2026-11-06
+- Status: accepted, by the owner on 2026-11-06; the fuller list of what the SDK adds approved on 2026-11-07
 - Date: 2026-11-06
 - Issue: #19
 
@@ -35,16 +35,28 @@ Decided by the owner on 2026-11-06.
 
 | Signal | When | Extra details |
 | --- | --- | --- |
-| `TelemetryDeck.Session.started` (automatic) | Each time the app opens or comes back from the background | None |
+| `TelemetryDeck.Session.started` (automatic) | Each time the app opens or comes back from the background, and when a widget's Start launches it unseen | None |
 | `Install.firstLaunch` | Once, on first launch, if analytics is on then | None |
 | `Practice.sessionSaved` | Each time a session is saved | `source`: `timer`, `midi` or `manual` |
 | `Activation.reached` | Once, on the 3rd session within 7 days of first launch | None |
 | `Paywall.shown`, `Paywall.purchased`, `Paywall.restored` | From PRO-1, when the paywall exists | None |
 
-**The SDK adds these to every signal,** and we found no setting to remove them: a hash of an ID for this install, a
-session ID, device model and architecture, OS and version, screen size and orientation, app version and build,
-language, region, time zone, color scheme, layout direction, text size, bold text, and whether it's an App Store,
-TestFlight, debug or simulator build.
+**The SDK adds these to every signal,** and has no setting to remove them. This list comes from its source
+(`Signal.swift`), as its README leaves some out, and a test fails if a new version adds to it. (Amended 2026-11-07: the
+first list was short, as PR review found. The owner approved this one.)
+
+- **Who, anonymously:** a hash of an ID for this install, and a session ID.
+- **The device:** model and architecture, platform, OS and version, screen size and scale, and orientation.
+- **The app:** version and build, the SDK's name and version, and whether it's an App Store, TestFlight, debug or
+  simulator build.
+- **Language and place:** language, locale, region and time zone.
+- **Display and accessibility settings:** color scheme, layout direction, text size, bold text, reduce motion, invert
+  colors, darker colors, reduce transparency and differentiate without color.
+- **When, in the person's time:** hour of the day, day of the week, month and year, week, month, quarter, and whether
+  it's a weekend.
+- **How much the app's been used:** the number of days it's been used, ever and in the last 30 days. With the SDK's
+  session statistics off, its other counts carry nothing real: sessions 0, average length -1, and first session always
+  today.
 
 A new signal, or a new detail on one, needs this list changed first.
 
@@ -53,6 +65,9 @@ A new signal, or a new detail on one, needs this list changed first.
 Practice content of any kind: piece names, skill names, tags, notes, session times or lengths, goals, the number of
 sessions beyond the signals above, the piano's name, and anything else a person typed. Also no name, email, Apple ID
 or iCloud identifier. `source` is the only value we attach, and it comes from a fixed list, never from a person.
+
+The hour on a signal does show roughly when it was sent. So `Practice.sessionSaved` shows about when a session was
+saved, though not when it began or how long it was.
 
 ### What counts as activation
 
@@ -70,8 +85,9 @@ The SDK's default: a salted hash of the system's per-vendor install ID. It lets 
 funnel, without being able to tell who anyone is. We also considered sending one same ID from everyone, which removes
 Device ID from the label but leaves no count of active people. The owner chose the per-install hash on 2026-11-06.
 
-The SDK's session statistics are turned off (`sessionStatsEnabled = false`), since they send more than this list, such
-as an automatic new-install signal with its date. `Install.firstLaunch` does that job.
+The SDK's session statistics are turned off (`sessionStatsEnabled = false`), since they add an automatic new-install
+signal, and app session counts and lengths. `Install.firstLaunch` does the first job. The count of days used still goes,
+as nothing turns it off.
 
 ### The opt-out
 
@@ -95,8 +111,9 @@ as an automatic new-install signal with its date. `Install.firstLaunch` does tha
 ### Which builds send
 
 Only Release builds with an App ID: App Store and TestFlight, which the SDK marks apart, and the owner's own Release
-installs, whose switch the owner can turn off. Debug builds, simulators, tests and CI never start the SDK, so they can't pollute the
-numbers or reach the network.
+installs, whose switch the owner can turn off. Debug builds, tests and CI never start the SDK, so they can't pollute
+the numbers or reach the network. Nothing stops a Release build with the App ID running on a simulator, but nothing here
+runs one, and the SDK would mark it as a simulator.
 
 **The App ID stays out of this public repository.** It's in the shipped app, but publishing it would make it trivial
 for anyone to send fake signals and use up the monthly allowance. It lives in the owner's git-ignored
