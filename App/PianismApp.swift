@@ -266,6 +266,7 @@ struct PianismApp: App {
     var body: some Scene {
         WindowGroup {
             RootView(practice: practice, analytics: analytics, tags: tags, history: history)
+                .overlay { if ProcessInfo.processInfo.environment["PIANISM_STOREKIT_PROBE"] != nil { StoreProbe() } }
                 // Shows what iCloud brings from the user's other devices while the app is open (SYN-1). Practice
                 // shows nothing synced but tag names, which the picker refreshes.
                 .task {

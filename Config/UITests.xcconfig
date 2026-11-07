@@ -5,3 +5,6 @@ PRODUCT_BUNDLE_IDENTIFIER = com.edkarabinus.PianismUITests
 GENERATE_INFOPLIST_FILE = YES
 TEST_TARGET_NAME = Pianism
 LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks @loader_path/Frameworks
+
+// THROWAWAY: StoreKitTest's own header uses a deprecated type
+OTHER_SWIFT_FLAGS = $(inherited) -Xcc -Wno-error=deprecated-declarations -Xcc -Wno-deprecated-declarations

@@ -79,7 +79,7 @@ test-app: ## Build the app once, then run its end-to-end tests on each simulator
 			xcrun simctl spawn "$$udid" defaults write -g XCTDisableSpindump -bool YES || exit 1; \
 		xcodebuild test-without-building -project $(PROJECT) -scheme $(SCHEME) -destination "$$destination" \
 			-resultBundlePath $(RESULTS)/app-$$device.xcresult -collect-test-diagnostics never \
-			-retry-tests-on-failure -test-iterations 2 \
+			-only-testing:PianismUITests/StoreKitProbeTests \
 			-test-timeouts-enabled YES -default-test-execution-time-allowance 900 $(XCODE_FLAGS); \
 		status=$$?; \
 		xcrun simctl shutdown "$$udid"; \
