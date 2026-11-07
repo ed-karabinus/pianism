@@ -20,3 +20,4 @@ changed and why; git history keeps the original. Each record's status is in its 
 | [9](0009-what-a-midi-session-stores.md) | A MIDI session stores nothing new; its played time comes from its pauses |
 | [10](0010-widget-extension-and-app-group-boundary.md) | A widget extension shows practice outside the app, and only the app writes what it shows |
 | [11](0011-anonymous-analytics-with-telemetrydeck.md) | Anonymous, opt-out analytics with TelemetryDeck, behind its own adapter |
+| [12](0012-pro-from-storekit-and-free-count-from-records.md) | Pro comes from StoreKit behind a port, and the free count from the session records |
