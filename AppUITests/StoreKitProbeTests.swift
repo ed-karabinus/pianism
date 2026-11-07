@@ -20,7 +20,9 @@ final class StoreKitProbeTests: UITestCase {
 
     @MainActor
     private func report(_ app: XCUIApplication, _ step: String) {
-        print("PROBE \(step): price=\(label(app, "probe.price")) entitled=\(label(app, "probe.entitled")) error=\(label(app, "probe.error"))")
+        print(
+            "PROBE \(step): price=\(label(app, "probe.price")) entitled=\(label(app, "probe.entitled")) error=\(label(app, "probe.error"))"
+        )
     }
 
     @MainActor
