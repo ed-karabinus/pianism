@@ -61,7 +61,17 @@ struct ConnectPianoView: View {
     /// Apple's screen that finds Bluetooth MIDI devices nearby and pairs them, which CoreMIDI then hears.
     private struct BluetoothPairingView: UIViewControllerRepresentable {
         func makeUIViewController(context _: Context) -> CABTMIDICentralViewController {
-            CABTMIDICentralViewController()
+            let controller = CABTMIDICentralViewController()
+            // On iOS 27.0, the screen's own `loadView` crashes building its list with a height of NaN (Apple's bug,
+            // FB25301268, reported fixed in 27.2). This is Apple's workaround from its developer forums: giving it a
+            // list skips `loadView`, and `viewDidLoad` is what starts the search for pianos.
+            if #available(iOS 27, *) {
+                if #unavailable(iOS 27.2) {
+                    controller.tableView = UITableView(frame: .zero, style: .grouped)
+                    controller.viewDidLoad()
+                }
+            }
+            return controller
         }
 
         func updateUIViewController(_: CABTMIDICentralViewController, context _: Context) {}
