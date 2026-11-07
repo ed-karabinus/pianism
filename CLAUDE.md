@@ -117,6 +117,10 @@ Agents write code quickly, so the main risk is code that works but shouldn't exi
    be automated, the issue says why and the check becomes an entry in `docs/device-checklist.md`
    (start the file with its first entry). When the owner reports a problem from using the app,
    write a test that fails on it before fixing it. The same goes for any bug: the failing test first.
+   An issue with rows left in that file stays open until they pass: its last PR says "Part of", not
+   "Closes", and the agent closes the issue with a short comment when the last row passes. A row that
+   needs hardware the owner doesn't have says so and doesn't hold the issue open. With no rows left,
+   the last PR says "Closes".
 9. Before calling a change done, plant bugs in the new logic (two to five, each a likely mistake) and
    show the tests catch each one; the PR lists them. A plant no test catches means a missing test.
    The PR names its tier, and the higher one wins a doubt:
