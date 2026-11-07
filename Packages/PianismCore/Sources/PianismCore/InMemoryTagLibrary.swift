@@ -34,6 +34,20 @@ public final class InMemoryTagLibrary: TagLibrary {
         }
     }
 
+    public func merge(id: Tag.ID, into kept: Tag.ID) throws {
+        try change(id) {
+            $0.mergedInto = kept
+            $0.isArchived = true
+        }
+    }
+
+    public func unmerge(id: Tag.ID) throws {
+        try change(id) {
+            $0.mergedInto = nil
+            $0.isArchived = false
+        }
+    }
+
     private func change(_ id: Tag.ID, _ apply: (inout Tag) -> Void) throws {
         try stored.withLock { tags in
             guard let index = tags.firstIndex(where: { $0.id == id }) else { return }

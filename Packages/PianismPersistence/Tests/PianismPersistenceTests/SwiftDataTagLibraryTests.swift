@@ -122,6 +122,8 @@ final class SwiftDataTagLibraryTests {
         #expect(throws: RecordFromNewerVersion.self) {
             try self.library.setDetails(composer: "Chopin", targetTempo: 72, id: "a")
         }
+        #expect(throws: RecordFromNewerVersion.self) { try self.library.merge(id: "a", into: "b") }
+        #expect(throws: RecordFromNewerVersion.self) { try self.library.unmerge(id: "a") }
         #expect(try library.tags().map(\.name) == ["Étude"])
     }
 
@@ -145,6 +147,67 @@ final class SwiftDataTagLibraryTests {
 
     private func records() throws -> [TagRecord] {
         try ModelContext(HistoryStore(url: storeURL).container()).fetch(FetchDescriptor<TagRecord>())
+    }
+
+    @Test("TAG-4, ADR 0004: a merge is stored and archives the tag; undoing it restores the tag exactly")
+    func mergeAndUndoAreStored() throws {
+        let duplicate = try library.add(name: "Ballade", kind: .piece)
+        let kept = try library.add(name: "Ballade No. 1", kind: .piece)
+        try library.setDetails(composer: "Chopin", targetTempo: 72, id: duplicate.id)
+        let before = try library.tags()
+        clock.advance(by: 60)
+
+        try library.merge(id: duplicate.id, into: kept.id)
+
+        var tags = Dictionary(uniqueKeysWithValues: try library.tags().map { ($0.id, $0) })
+        #expect(tags[duplicate.id]?.mergedInto == kept.id)
+        #expect(tags[duplicate.id]?.isArchived == true)
+        #expect(tags[kept.id]?.mergedInto == nil)
+        #expect(tags[kept.id]?.isArchived == false)
+        // Sync's "latest copy wins" needs a merge to count as a change.
+        #expect(try records().first { $0.id == duplicate.id }?.modifiedAt == clock.now)
+
+        try library.unmerge(id: duplicate.id)
+
+        tags = Dictionary(uniqueKeysWithValues: try library.tags().map { ($0.id, $0) })
+        #expect(Set(tags.values) == Set(before))
+        #expect(try records().first { $0.id == duplicate.id }?.mergedInto == "")
+    }
+
+    @Test("TAG-4, ADR 0004: merging and undoing leave sessions as they were, which count toward the kept tag")
+    func mergeNeverRewritesSessions() throws {
+        let duplicate = try library.add(name: "Ballade", kind: .piece)
+        let kept = try library.add(name: "Ballade No. 1", kind: .piece)
+        let sessions = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
+        var session = PracticeSession(startedAt: clock.now)
+        try session.setTags([duplicate.id])
+        try session.stop(at: clock.now + 60)
+        try sessions.save(session)
+        let before = try sessions.sessions()
+
+        try library.merge(id: duplicate.id, into: kept.id)
+
+        #expect(try sessions.sessions() == before)
+        #expect(TagIndex(try library.tags()).tags(for: session.tagIDs).map(\.id) == [kept.id])
+
+        try library.unmerge(id: duplicate.id)
+
+        #expect(try sessions.sessions() == before)
+        #expect(TagIndex(try library.tags()).tags(for: session.tagIDs).map(\.id) == [duplicate.id])
+    }
+
+    @Test("TAG-4, ADR 0004: opposite merges, as two devices' would sync, settle on the tag created first")
+    func oppositeMergesSettle() throws {
+        let first = try library.add(name: "Ballade", kind: .piece)
+        clock.advance(by: 60)
+        let second = try library.add(name: "Ballade No. 1", kind: .piece)
+
+        try library.merge(id: first.id, into: second.id)
+        try library.merge(id: second.id, into: first.id)
+
+        let index = TagIndex(try library.tags())
+        #expect(index[first.id]?.id == first.id)
+        #expect(index[second.id]?.id == first.id)
     }
 
     /// Inserts a record as sync would deliver it, bypassing the library.

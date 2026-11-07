@@ -56,6 +56,20 @@ public final class SwiftDataTagLibrary: TagLibrary {
         }
     }
 
+    public func merge(id: Tag.ID, into kept: Tag.ID) throws {
+        try change(id) {
+            $0.mergedInto = kept
+            $0.isArchived = true
+        }
+    }
+
+    public func unmerge(id: Tag.ID) throws {
+        try change(id) {
+            $0.mergedInto = ""
+            $0.isArchived = false
+        }
+    }
+
     /// Applies `apply` to the copy of `id` that ``tags()`` shows, unless a newer version wrote it,
     /// and keeps that copy the latest, so the other copies' older values never show again.
     private func change(_ id: Tag.ID, _ apply: (TagRecord) -> Void) throws {

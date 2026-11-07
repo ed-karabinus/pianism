@@ -73,6 +73,17 @@ struct TagIndexTests {
         #expect(["a", "b", "c"].map { index[$0]?.id } == ["b", "b", "b"])
     }
 
+    @Test("TAG-4: the tag opposite merges settle on is no longer merged or archived; the other one still is")
+    func cycleKeptTagStands() {
+        let a = Tag(id: "a", kind: .piece, name: "A", isArchived: true, mergedInto: "b", createdAt: .distantPast)
+        let b = Tag(id: "b", kind: .piece, name: "B", isArchived: true, mergedInto: "a", createdAt: .distantFuture)
+        let index = TagIndex([a, b])
+
+        #expect(index["a"]?.isArchived == false)
+        #expect(index["a"]?.mergedInto == nil)
+        #expect(index["b"] == index["a"])
+    }
+
     @Test("ADR 0004: in a cycle of tags created at once, the lowest ID wins")
     func cycleTieBreaksByID() {
         let index = TagIndex([tag("b", mergedInto: "a"), tag("a", mergedInto: "b")])
@@ -98,7 +109,7 @@ struct TagIndexTests {
         let index = TagIndex([waiting, selfMerged])
 
         #expect(index["a"] == waiting)
-        #expect(index["s"] == selfMerged)
+        #expect(index["s"]?.id == "s")
         #expect(index["not-synced"] == nil)
     }
 
