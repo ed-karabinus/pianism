@@ -34,6 +34,108 @@ struct TagPickerModelTests {
         #expect(Array(tags.dropFirst(6)) == [ballade, nocturne])
     }
 
+    @Test("TAG-4: merging moves a session's tag to the kept one and lists it to undo, which puts both back")
+    func mergeAndUndo() throws {
+        let duplicate = PianismCore.Tag(id: "dup", kind: .piece, name: "Ballade", isArchived: false)
+        let model = TagPickerModel(practice: practice, library: InMemoryTagLibrary([ballade, duplicate]))
+        model.toggle(duplicate)
+        model.toggle(ballade)
+        let before = try #require(model.selected.first)
+
+        model.merge(duplicate, into: ballade)
+
+        #expect(model.selected.map(\.id) == ["ballade"])
+        #expect(practice.session?.tagIDs == ["dup", "ballade"], "A session is never rewritten")
+        #expect(model.shown(.piece).map(\.id) == ["ballade"])
+        #expect(model.merged.map(\.tag.id) == ["dup"])
+        #expect(model.merged.map(\.kept.id) == ["ballade"])
+
+        model.undoMerge(try #require(model.merged.first?.tag))
+
+        #expect(model.selected.map(\.id) == ["dup", "ballade"])
+        #expect(model.selected.first == before)
+        #expect(model.shown(.piece).map(\.id) == ["dup", "ballade"])
+        #expect(model.merged.isEmpty)
+    }
+
+    @Test("TAG-4: a tag merges into others of its kind on offer, built-in skills too, and a merged one isn't offered")
+    func mergeTargets() {
+        let piece = PianismCore.Tag(id: "piece", kind: .piece, name: "Etude", isArchived: false)
+        let skill = PianismCore.Tag(id: "skill", kind: .skill, name: "Pedalling", isArchived: false)
+        let merged = PianismCore.Tag(id: "old", kind: .piece, name: "Old", isArchived: true, mergedInto: "ballade")
+        let zeta = PianismCore.Tag(id: "zeta", kind: .piece, name: "Zeta", isArchived: false)
+        let model = TagPickerModel(
+            practice: practice, library: InMemoryTagLibrary([zeta, piece, ballade, nocturne, merged, skill]))
+
+        #expect(model.mergeTargets(for: piece).map(\.id) == ["ballade", "zeta"], "By name, without the tag itself")
+        #expect(model.mergeTargets(for: skill).count == BuiltInSkill.allCases.count)
+        #expect(model.mergeTargets(for: skill).contains { $0.id == BuiltInSkill.scales.rawValue })
+    }
+
+    @Test("TAG-4: only a user's tag that's on offer, with another to merge into, can be merged")
+    func canMerge() throws {
+        let readOnly = PianismCore.Tag(id: "new", kind: .piece, name: "Newer", isArchived: false, isReadOnly: true)
+        let model = TagPickerModel(practice: practice, library: InMemoryTagLibrary([ballade, nocturne, readOnly]))
+        let alone = TagPickerModel(practice: practice, library: InMemoryTagLibrary([ballade, nocturne]))
+
+        #expect(model.canMerge(ballade))
+        #expect(!model.canMerge(nocturne), "Undoing would unarchive it")
+        #expect(!model.canMerge(readOnly), "A newer version wrote it")
+        #expect(!model.canMerge(BuiltInSkill.scales.tag), "It has no record")
+        #expect(!alone.canMerge(ballade), "Nothing to merge it into: the other is archived")
+    }
+
+    @Test("TAG-4: Merged is hidden while searching, and a tag waiting for its kept tag to sync isn't in it")
+    func mergedList() {
+        let merged = PianismCore.Tag(id: "old", kind: .piece, name: "Old", isArchived: true, mergedInto: "ballade")
+        let waiting = PianismCore.Tag(id: "wait", kind: .piece, name: "Wait", isArchived: true, mergedInto: "later")
+        let earlier = PianismCore.Tag(id: "e", kind: .piece, name: "Earlier", isArchived: true, mergedInto: "ballade")
+        let model = TagPickerModel(
+            practice: practice, library: InMemoryTagLibrary([ballade, merged, waiting, earlier]))
+
+        #expect(model.merged.map(\.tag.id) == ["e", "old"], "By name")
+        model.query = "Ballade"
+        #expect(model.merged.isEmpty)
+    }
+
+    @Test("TAG-4: after opposite merges the tag they settled on is offered and the other can be undone, twice to split")
+    func oppositeMerges() throws {
+        let first = PianismCore.Tag(
+            id: "first", kind: .piece, name: "First", isArchived: false, createdAt: .distantPast)
+        let second = PianismCore.Tag(id: "second", kind: .piece, name: "Second", isArchived: false, createdAt: .now)
+        let library = InMemoryTagLibrary([first, second])
+        let model = TagPickerModel(practice: practice, library: library)
+        try library.merge(id: "first", into: "second")
+        try library.merge(id: "second", into: "first")
+        model.refresh()
+
+        #expect(model.shown(.piece).map(\.id) == ["first"])
+        #expect(model.shown(.piece).first?.isArchived == false)
+        model.query = "Fir"
+        #expect(model.shown(.piece).map(\.id) == ["first"], "Search finds it too")
+        model.query = ""
+        #expect(model.merged.map(\.tag.id) == ["second"])
+
+        model.undoMerge(second)
+
+        #expect(model.shown(.piece).map(\.id) == ["second"], "The other device's merge still stands")
+        #expect(model.merged.map(\.tag.id) == ["first"])
+
+        model.undoMerge(first)
+
+        #expect(model.shown(.piece).map(\.id) == ["first", "second"])
+        #expect(model.merged.isEmpty)
+    }
+
+    @Test("TAG-4: the kept tag can take a merged tag's name, but not a name that's still on offer or archived")
+    func renameToAMergedName() {
+        let merged = PianismCore.Tag(id: "old", kind: .piece, name: "Old", isArchived: true, mergedInto: "ballade")
+        let model = TagPickerModel(practice: practice, library: InMemoryTagLibrary([ballade, nocturne, merged]))
+
+        #expect(model.canRename(ballade, to: "Old"))
+        #expect(!model.canRename(ballade, to: "Nocturne"))
+    }
+
     @Test("TAG-1, TAG-2: a new piece is added, tags the running session, and clears the query")
     func addsAndTags() throws {
         let model = TagPickerModel(practice: practice, library: library)
@@ -261,4 +363,6 @@ private struct UnavailableTagLibrary: TagLibrary {
     func rename(id _: String, to _: String) throws { throw Failure() }
     func setArchived(_: Bool, id _: String) throws { throw Failure() }
     func setDetails(composer _: String, targetTempo _: Int?, id _: String) throws { throw Failure() }
+    func merge(id _: String, into _: String) throws { throw Failure() }
+    func unmerge(id _: String) throws { throw Failure() }
 }
