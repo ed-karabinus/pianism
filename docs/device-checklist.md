@@ -111,6 +111,17 @@ Run a build on the iPhone, with the widget from W1 added. The running session sh
 | R1 | **It arrives:** on a day with no practice yet, in Settings, turn on "Daily reminder" and set the time a couple of minutes ahead. Go to the Home Screen. "Time to practice" with "Your piano's waiting." arrives at that time, once. Tap it: Pianism opens on Practice. A test covers what's asked for (`turningTheReminderOnAndOff`, `aReminderIsOnceAtItsDate`) and where a tap lands (`testTappingAReminderOpensPractice`, on a simulator), and this row covers its arrival on a real phone, locked or not | 2026-11-06: passed on the iPhone, Release of main at #193: set for 11:28, it came 2 to 3 s after, on the Lock Screen, once. The tap opened Pianism on the tab it was on, as that build did, which led to the change to open on Practice. |
 | R2 | **Practice from the widget skips it:** on a day with no practice yet, with "Daily reminder" set a few minutes ahead, leave Pianism closed and tap Start on the Home Screen widget. No "Time to practice" comes at that time. The buttons reach the app in the background only on a real system, with no way for a test to read what's waiting there; `practicingTodayMovesTheReminderToTomorrow` covers the rule. | 2026-11-06: passed on the iPhone, Release of main at #193: set for 11:39, with Pianism closed. Start on the widget started the session without opening the app, and no reminder came by a minute past. |
 
+## Analytics (ADR 0011, issue #19)
+
+Needs a Release build with the owner's App ID and TelemetryDeck's dashboard, which CI has neither of. The adapter's tests
+cover what's sent and stopped, against a fake network; this covers the App ID, the wiring in `App/PianismApp.swift` and
+the real service.
+
+| # | Check | Result |
+| --- | --- | --- |
+| A1 | **Signals arrive:** on a TestFlight build, delete Pianism and install it again, save a session, then wait about a minute. TelemetryDeck's dashboard shows `Install.firstLaunch`, `TelemetryDeck.Session.started` and `Practice.sessionSaved` with `source`, marked as TestFlight. | Not yet run |
+| A2 | **Off stops them:** in Settings, turn off "Share anonymous usage", save another session, leave the app and come back, then wait a few minutes. The dashboard shows nothing new from this install. Turn it back on, save a session, and it shows again. | Not yet run |
+
 ## iCloud sync (SYN-1, issue #15)
 
 | # | Check | Last result |

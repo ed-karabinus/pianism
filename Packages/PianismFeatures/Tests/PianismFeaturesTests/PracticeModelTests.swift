@@ -41,6 +41,28 @@ struct PracticeModelTests {
         #expect(history.saved.sessions().map(\.id) == [model.lastSession?.id])
     }
 
+    @Test("ADR 0011: a saved session reaches analytics once, even by way of the outbox; one too short to keep doesn't")
+    func aSavedSessionReachesAnalyticsOnce() {
+        let recording = RecordingAnalytics()
+        let history = FlakyHistory()
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 4 * 60 * 60,
+            analytics: AnalyticsModel(analytics: recording, defaults: defaults, clock: clock))
+
+        model.start()
+        clock.advance(by: 5)
+        model.stop()
+        #expect(recording.sent == [.firstLaunch])
+
+        model.start()
+        clock.advance(by: 600)
+        model.stop()
+        history.heal()
+        model.refresh()
+        #expect(recording.sent == [.firstLaunch, .sessionSaved(.timer)])
+    }
+
     @Test("NFR-10: only a running session is counting, so the screen needn't tick otherwise")
     func onlyARunningSessionIsCounting() {
         let model = PracticeModel(

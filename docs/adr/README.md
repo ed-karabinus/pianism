@@ -19,3 +19,4 @@ changed and why; git history keeps the original. Each record's status is in its 
 | [8](0008-icloud-sync-environments-and-deploy.md) | History syncs through CloudKit, with Debug and Release builds kept apart, and one checked deploy |
 | [9](0009-what-a-midi-session-stores.md) | A MIDI session stores nothing new; its played time comes from its pauses |
 | [10](0010-widget-extension-and-app-group-boundary.md) | A widget extension shows practice outside the app, and only the app writes what it shows |
+| [11](0011-anonymous-analytics-with-telemetrydeck.md) | Anonymous, opt-out analytics with TelemetryDeck, behind its own adapter |

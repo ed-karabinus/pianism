@@ -156,6 +156,29 @@ struct HistoryModelTests {
         #expect(!model.loadFailed)
     }
 
+    @Test("ADR 0011: a session added by hand reaches analytics when saved, and not before; an edit isn't a new session")
+    func anAddedSessionReachesAnalyticsAndAnEditDoesNot() throws {
+        let recording = RecordingAnalytics()
+        let defaults = try #require(UserDefaults(suiteName: "HistoryModelTests.\(UUID().uuidString)"))
+        let history = InMemorySessionHistory()
+        let saved = try endedSession(startingAfter: 0)
+        history.save(saved)
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock,
+            glance: glance, analytics: AnalyticsModel(analytics: recording, defaults: defaults, clock: clock))
+
+        model.add()
+        #expect(recording.sent == [.firstLaunch])
+        #expect(try #require(model.editing?.editor).save())
+        #expect(recording.sent == [.firstLaunch, .sessionSaved(.manual)])
+
+        model.edit(saved)
+        let editor = try #require(model.editing?.editor)
+        editor.note = "Edited"
+        #expect(editor.save())
+        #expect(recording.sent == [.firstLaunch, .sessionSaved(.manual)])
+    }
+
     @Test(
         "SES-5: an added session ends when it's added, lasts 30 minutes, is marked as added, and reaches history only when saved"
     )

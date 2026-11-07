@@ -6,6 +6,7 @@ import SwiftUI
 /// settings join it one section at a time.
 struct SettingsView: View {
     @Bindable var practice: PracticeModel
+    @Bindable var analytics: AnalyticsModel
 
     @AppStorage(SettingsKey.showsOverlapWarning) private var showsOverlapWarning = true
     @AppStorage(SettingsKey.weeklyGoalDays) private var goalDays = WeeklyGoal.defaultDays
@@ -142,6 +143,18 @@ struct SettingsView: View {
                         "Warns when a session you add or edit shares practice time with another. The day's total counts that time twice.",
                         bundle: .module)
                 }
+                Section {
+                    Toggle(isOn: $analytics.isOn) {
+                        Text("Share anonymous usage", bundle: .module)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.settingsSharesUsage)
+                } header: {
+                    Text("Privacy", bundle: .module)
+                } footer: {
+                    Text(
+                        "Sends counts, like sessions saved, with device details, like its model and language, to show how Pianism is used. Never what you practice or anything you type.",
+                        bundle: .module)
+                }
             }
             .navigationTitle(Text("Settings", bundle: .module))
         }
@@ -153,21 +166,21 @@ struct SettingsView: View {
 }
 
 #Preview("No piano") {
-    SettingsView(practice: .preview(.ready))
+    SettingsView(practice: .preview(.ready), analytics: .preview())
 }
 
 #Preview("Daily reminder on") {
     let practice = PracticeModel.preview(.ready, notifications: .allowed)
     practice.remindsDaily = true
-    return SettingsView(practice: practice)
+    return SettingsView(practice: practice, analytics: .preview())
 }
 
 #Preview("Notifications off in the Settings app") {
-    SettingsView(practice: .preview(.ready, notifications: .denied))
+    SettingsView(practice: .preview(.ready, notifications: .denied), analytics: .preview())
 }
 
 #Preview("Notifications off in the Settings app, dark, AX5") {
-    SettingsView(practice: .preview(.running, notifications: .denied))
+    SettingsView(practice: .preview(.running, notifications: .denied), analytics: .preview())
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }
@@ -175,7 +188,7 @@ struct SettingsView: View {
 #Preview("A session running, a piano, dark, AX5") {
     let practice = PracticeModel.preview(.running)
     practice.connectedPianos = ["MIDI KEYBOARD"]
-    return SettingsView(practice: practice)
+    return SettingsView(practice: practice, analytics: .preview())
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }

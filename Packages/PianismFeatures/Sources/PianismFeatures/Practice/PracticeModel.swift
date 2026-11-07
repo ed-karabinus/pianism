@@ -148,6 +148,7 @@ public final class PracticeModel: TagTarget {
     private let outbox: any SessionOutbox
     private let nudges: any PracticeNudges
     private let glance: any PracticeGlance
+    private let analytics: AnalyticsModel?
     private let defaults: UserDefaults
     private let calendar = Calendar.autoupdatingCurrent
     /// Says a line to VoiceOver, whose user can't see the time drop back. A seam, so the model's tests hear it.
@@ -159,7 +160,7 @@ public final class PracticeModel: TagTarget {
     public init(
         store: any RunningSessionStore, history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock,
         nudges: any PracticeNudges, glance: any PracticeGlance, defaults: UserDefaults, nudge: TimeInterval,
-        cap: TimeInterval, midi: MIDISettings = .init(),
+        cap: TimeInterval, midi: MIDISettings = .init(), analytics: AnalyticsModel? = nil,
         announce: @escaping @MainActor (String) -> Void = PracticeModel.tellVoiceOver
     ) {
         self.recorder = SessionRecorder(store: store, clock: clock, midi: midi)
@@ -169,6 +170,7 @@ public final class PracticeModel: TagTarget {
         self.clock = clock
         self.nudges = nudges
         self.glance = glance
+        self.analytics = analytics
         self.defaults = defaults
         self.announce = announce
         self.nudge = nudge
@@ -551,6 +553,7 @@ public final class PracticeModel: TagTarget {
             }
             if let archived = try recorder.archive(to: history, or: outbox) {
                 lastSession = archived
+                analytics?.sessionSaved(archived)
             }
             waitingCount = try outbox.sessions().count
         } catch {

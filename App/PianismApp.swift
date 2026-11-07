@@ -1,5 +1,6 @@
 import AppIntents
 import Foundation
+import PianismAnalytics
 import PianismCore
 import PianismFeatures
 import PianismGlance
@@ -19,6 +20,7 @@ struct PianismApp: App {
     static let iCloudContainer = "iCloud.com.edkarabinus.Pianism"
 
     @State private var practice: PracticeModel
+    @State private var analytics: AnalyticsModel
     @State private var tags: TagPickerModel
     @State private var history: HistoryModel
     private let historyStore: HistoryStore
@@ -167,6 +169,12 @@ struct PianismApp: App {
             let nudges = notifications
         #endif
         let glance = SystemPracticeGlance(file: totals)
+        // Only Release has an App ID, so the Debug path finds none, and sends nothing (ADR 0011).
+        let analyticsAppID = Bundle.main.object(forInfoDictionaryKey: "PianismAnalyticsAppID") as? String ?? ""
+        let analytics = AnalyticsModel(
+            analytics: analyticsAppID.isEmpty ? NoAnalytics() : TelemetryDeckAnalytics(appID: analyticsAppID),
+            defaults: .standard, clock: clock)
+        self.analytics = analytics
         var midiSettings = PracticeModel.storedMIDI(in: .standard)
         midiSettings.pauseAfter = midiPause ?? midiSettings.pauseAfter
         midiSettings.saveAfter = midiSave ?? midiSettings.saveAfter
@@ -174,7 +182,8 @@ struct PianismApp: App {
         let practice = PracticeModel(
             store: store, history: sessions, outbox: outbox, clock: clock, nudges: nudges, glance: glance,
             defaults: .standard, nudge: nudge ?? PracticeModel.storedNudge(in: .standard),
-            cap: cap ?? PracticeModel.storedCap(in: .standard), midi: midiSettings)
+            cap: cap ?? PracticeModel.storedCap(in: .standard), midi: midiSettings,
+            analytics: analytics)
         answering.practice = practice
         self.practice = practice
         // The widget's and the Live Activity's buttons run in this process as intents, which find the model through
@@ -243,7 +252,8 @@ struct PianismApp: App {
         #endif
         tags = TagPickerModel(practice: practice, library: library)
         let history = HistoryModel(
-            history: sessions, tags: library, outbox: outbox, running: store, clock: clock, glance: glance)
+            history: sessions, tags: library, outbox: outbox, running: store, clock: clock, glance: glance,
+            analytics: analytics)
         #if DEBUG
             // End-to-end tests lengthen Undo with PIANISM_UNDO_SECONDS. Release builds ignore it.
             if let seconds = ProcessInfo.processInfo.environment["PIANISM_UNDO_SECONDS"].flatMap(Int.init) {
@@ -255,7 +265,7 @@ struct PianismApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(practice: practice, tags: tags, history: history)
+            RootView(practice: practice, analytics: analytics, tags: tags, history: history)
                 // Shows what iCloud brings from the user's other devices while the app is open (SYN-1). Practice
                 // shows nothing synced but tag names, which the picker refreshes.
                 .task {
