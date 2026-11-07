@@ -677,6 +677,53 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(relaunched.value as? String, "25 minutes, 3 seconds")
     }
 
+    /// HIS-3: under the chart, how many days of the week counted and how many weeks met the goal, following the goal
+    /// and the daily minimum in Settings. The model tests count the weeks.
+    @MainActor
+    func testTheWeekSaysHowConsistentPracticeIs() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        kill(app)
+        app = launch(at: start + 25 * 60)
+        tap(app, "practice.stop")
+
+        // One day in a week is short of the goal of three, and nothing is said about weeks until one meets it.
+        openHistory(app)
+        XCTAssertEqual(text(app, "history.week-days"), "Practiced 1 of 7 days")
+        let weeksMet = app.staticTexts["history.weeks-met"]
+        XCTAssertFalse(weeksMet.exists, "It reported weeks before any met the goal")
+        attachScreenshot(of: app, named: "The week, with no week yet meeting the goal")
+
+        func setGoal(_ identifier: String, _ choice: String) {
+            openSettings(app)
+            // Below the fold on a shorter screen.
+            if !element(app, identifier).waitForExistence(timeout: 2) { app.swipeUp() }
+            choose(app, identifier, choice)
+            attachScreenshot(of: app, named: "Settings, \(choice)")
+            openHistory(app)
+        }
+        setGoal("settings.goal-days", "1 day")
+        XCTAssertEqual(text(app, "history.weeks-met"), "1 week met your goal in the past year")
+
+        // The 25 minutes fall short of a 30-minute day, then clear a 15-minute one.
+        setGoal("settings.daily-minimum", "30 minutes")
+        XCTAssertEqual(text(app, "history.week-days"), "30 minutes or more on 0 of 7 days")
+        XCTAssertFalse(weeksMet.exists, "A day short of the minimum met the goal")
+        setGoal("settings.daily-minimum", "15 minutes")
+        XCTAssertEqual(text(app, "history.week-days"), "15 minutes or more on 1 of 7 days")
+        XCTAssertEqual(text(app, "history.weeks-met"), "1 week met your goal in the past year")
+        attachScreenshot(of: app, named: "The week with a daily minimum, its line across the chart")
+
+        // Kept across a relaunch, and at the largest text size.
+        kill(app)
+        app = launch(at: start + 26 * 60, textSize: "AccessibilityXXXL")
+        openHistory(app)
+        // Below the fold there on a shorter screen, under the chart.
+        for _ in 0..<3 where !app.staticTexts["history.week-days"].isHittable { app.swipeUp() }
+        XCTAssertEqual(text(app, "history.week-days"), "15 minutes or more on 1 of 7 days")
+        attachScreenshot(of: app, named: "The week at the largest text")
+    }
+
     /// HIS-2: History shows this week, and earlier weeks with the arrows or a swipe on the chart, back to the week of
     /// the first session. A week before last is titled by its dates, with the year when it isn't this one. A tap on a
     /// day scrolls to its sessions.
@@ -713,14 +760,16 @@ final class PracticeTests: UITestCase {
         element(app, "history.week-chart").swipeRight()
         XCTAssertTrue(shown.wait(for: \.label, toEqual: firstWeek, timeout: 5), "The swipe didn't show an earlier week")
 
-        // A tap on Thursday's bar scrolls to its session, unless it's on screen already, as on an iPad.
+        // A tap on its day's bar scrolls to its session, unless it's on screen already, as on an iPad. The day depends
+        // on the time zone: Thursday in California, Friday on CI, which runs in UTC.
         let session = app.descendants(matching: .any).matching(identifier: "history.session")
             .matching(NSPredicate(format: "value == '25 minutes'")).firstMatch
         let wasShown = session.exists && session.isHittable
-        element(app, "history.week-chart").descendants(matching: .any)["Thursday"].tap()
+        let day = Date(timeIntervalSince1970: start).formatted(.dateTime.weekday(.wide))
+        element(app, "history.week-chart").descendants(matching: .any)[day].tap()
         if !wasShown {
             XCTAssertTrue(session.waitForExistence(timeout: 5))
-            XCTAssertTrue(session.wait(for: \.isHittable, toEqual: true, timeout: 5), "The tap didn't show Thursday")
+            XCTAssertTrue(session.wait(for: \.isHittable, toEqual: true, timeout: 5), "The tap didn't show \(day)")
         }
         attachScreenshot(of: app, named: "History, a tapped day")
     }

@@ -4,11 +4,32 @@
     "%@ connected" : {
       "comment" : "The pianos Pianism hears, by the names the system gives them"
     },
+    "%@ or more on %lld of 7 days" : {
+
+    },
     "%@, %@" : {
+
+    },
+    "%@, not saved yet" : {
 
     },
     "%lld BPM" : {
       "comment" : "A target tempo"
+    },
+    "^[%lld day](inflect: true)" : {
+
+    },
+    "^[%lld session](inflect: true) couldn't be shown. Try updating Pianism." : {
+
+    },
+    "^[%lld session](inflect: true) waiting to be saved" : {
+
+    },
+    "^[%lld week](inflect: true) met your goal in the past year" : {
+
+    },
+    "A day counts after" : {
+
     },
     "A newer version of Pianism changed this session. Update Pianism to change it." : {
 
@@ -32,6 +53,9 @@
 
     },
     "Add tags" : {
+
+    },
+    "Any amount" : {
 
     },
     "Archive" : {
@@ -61,13 +85,13 @@
     "Connect a digital piano and sessions can start themselves while Pianism is open." : {
 
     },
-    "Connected" : {
+    "Connect a piano" : {
 
     },
     "Connect the cable to your piano's USB port and to this device." : {
 
     },
-    "Connect a piano" : {
+    "Connected" : {
 
     },
     "Couldn't change your tags" : {
@@ -89,6 +113,9 @@
 
     },
     "Day" : {
+
+    },
+    "Days a week" : {
 
     },
     "Delete" : {
@@ -130,13 +157,16 @@
     "History" : {
 
     },
+    "History shows how many weeks met this in the past year." : {
+
+    },
     "I stopped earlier" : {
 
     },
-    "If your piano doesn't show up, unplug the cable at the piano's end and plug it back in." : {
+    "If it still doesn't show up, turn off Bluetooth MIDI on the piano: many pianos stay quiet over USB while it's connected." : {
 
     },
-    "If it still doesn't show up, turn off Bluetooth MIDI on the piano: many pianos stay quiet over USB while it's connected." : {
+    "If your piano doesn't show up, unplug the cable at the piano's end and plug it back in." : {
 
     },
     "Improvisation" : {
@@ -170,9 +200,6 @@
 
     },
     "No practice yet" : {
-
-    },
-    "%@, not saved yet" : {
 
     },
     "None" : {
@@ -236,6 +263,9 @@
 
     },
     "Practice time" : {
+
+    },
+    "Practiced %lld of 7 days" : {
 
     },
     "Practicing" : {
@@ -328,10 +358,10 @@
     "This session runs past midnight, so History lists it on each day it touches. Changes here change every row." : {
 
     },
-    "This shares %@ of practice with your %@ session, so the day's total counts it twice." : {
+    "This session was deleted on another device." : {
 
     },
-    "This session was deleted on another device." : {
+    "This shares %@ of practice with your %@ session, so the day's total counts it twice." : {
 
     },
     "This week" : {
@@ -361,6 +391,9 @@
     "Warns when a session you add or edit shares practice time with another. The day's total counts that time twice." : {
 
     },
+    "Weekly goal" : {
+
+    },
     "Yesterday" : {
 
     },
@@ -368,12 +401,6 @@
 
     },
     "Your history isn't syncing. In the Settings app, sign in to iCloud and turn it on for Pianism." : {
-
-    },
-    "^[%lld session](inflect: true) couldn't be shown. Try updating Pianism." : {
-
-    },
-    "^[%lld session](inflect: true) waiting to be saved" : {
 
     }
   },

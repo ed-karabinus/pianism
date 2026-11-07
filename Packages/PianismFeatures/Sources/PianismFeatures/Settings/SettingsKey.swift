@@ -3,6 +3,10 @@
 enum SettingsKey {
     /// Kept since SES-5 by the editor's "Don't show again".
     static let showsOverlapWarning = "showsOverlapWarning"
+    /// The days a week ``WeeklyGoal`` asks for (HIS-3).
+    static let weeklyGoalDays = "weeklyGoalDays"
+    /// A day's least practice to count toward it, in seconds (HIS-3).
+    static let dailyMinimum = "dailyMinimum"
     /// Whether the first launch has been past the welcome, shown or not (ONB-1).
     static let hasDecidedWelcome = "hasDecidedWelcome"
     /// The nudge, in seconds (SES-3).
