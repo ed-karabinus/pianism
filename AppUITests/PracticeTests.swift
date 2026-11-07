@@ -1850,11 +1850,6 @@ final class PracticeTests: UITestCase {
             app.launchEnvironment["PIANISM_INTENT"] = intent
         }
         app.launch()
-        // A slow simulator can return from a launch with no process for XCTest to reach (#136). That launch tested
-        // nothing, and a crash fails the test by itself, so this tries once more, and says so to be counted in the logs.
-        if !app.wait(for: .runningForeground, timeout: 10) {
-            XCTContext.runActivity(named: "Relaunched after a lost launch") { _ in app.launch() }
-        }
         XCTAssertTrue(app.staticTexts["practice.status"].waitForExistence(timeout: 10))
         return app
     }
