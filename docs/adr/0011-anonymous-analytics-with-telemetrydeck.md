@@ -1,6 +1,6 @@
 # 11. Anonymous, opt-out analytics with TelemetryDeck
 
-- Status: proposed
+- Status: accepted, by the owner on 2026-11-06
 - Date: 2026-11-06
 - Issue: #19
 
@@ -80,10 +80,14 @@ as an automatic new-install signal with its date. `Install.firstLaunch` does tha
   privacy label and the privacy policy. TelemetryDeck's position is that an opt-out isn't legally required, as what it
   stores isn't personal data. We offer one anyway, because of P7.
 - **Off means nothing further goes out.** The SDK's own `analyticsDisabled` isn't enough: it stops new signals, but its
-  send loop doesn't check it, so signals already queued still go, within 10 s by default. So the adapter never starts
-  the SDK while analytics is off, and shuts it down with `TelemetryDeck.terminate()` when it's turned off. An adapter
-  test proves this against a fake network, since it's the promise the switch makes.
-- **Turning it back on** may send what was queued in the seconds before it was turned off.
+  send loop doesn't check it, so signals already queued still go, within 10 s by default. And it can't safely be shut
+  down: `TelemetryDeck.terminate()` leaves scheduled work behind that calls its shared manager, which traps in Debug
+  and, in Release, makes a new one with no App ID. So the adapter never starts the SDK while analytics is off, and
+  turning it off sets `analyticsDisabled` and swaps in a network that discards everything, which empties the queue
+  without anything leaving. Adapter tests prove this against a fake network, since it's the promise the switch makes.
+  (Amended 2026-11-06, while building: this first said to use `terminate()`, which a test showed to be unsafe.)
+- **Turning it back on** can send only what the SDK saved to disk just before the app last left the screen, if it had
+  no chance to discard it. What was queued while the app stayed open is gone.
 
 ### Which builds send
 
@@ -102,7 +106,8 @@ broken. The submission checklist gains a check that a TestFlight build's signals
   recording fake. Nothing outside the adapter sees TelemetryDeck's types.
 - **A new `PianismAnalytics` package holds the adapter,** and is the only package that depends on the SDK. So the core,
   features and other adapters stay free of it, and removing it means deleting one package.
-- **`App/PianismApp.swift` wires it in,** as with every other adapter.
+- **`App/PianismApp.swift` wires it in,** as with every other adapter. It reads the App ID from `Info.plist`, which
+  only Release fills in, so the Debug path through the same code finds none and uses the port's do-nothing version.
 
 ### The privacy label and manifest
 
@@ -121,7 +126,8 @@ Connect with #56. The privacy policy, which the website doesn't have yet, has to
   will say so.
 - The app makes one more kind of network call, as P7 already allows. E8's "nothing leaves the device except through
   Apple" concerns logs and crash reports, and stays true of those.
-- `make test-adapters`, and so CI, now fetches a package from GitHub.
+- `make test-adapters`, and so CI, now fetches a package from GitHub. The SDK's own code has compiler warnings, so
+  `scripts/fail-on-warnings.sh` skips third-party checkouts. Warnings in our own code still fail.
 - The free plan should hold for launch: at 1,000 downloads in 90 days, our rough estimate is well under its 50,000
   events a month. Past the limit, new events stop until the month resets, and TelemetryDeck says it may move an
   account to a bigger plan after two months over. Its 3 months of data is enough to read activation weekly.

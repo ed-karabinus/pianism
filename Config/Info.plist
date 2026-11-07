@@ -8,6 +8,9 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<!-- TelemetryDeck's App ID, in Release only; empty otherwise, which sends nothing (ADR 0011). -->
+	<key>PianismAnalyticsAppID</key>
+	<string>$(PIANISM_ANALYTICS_APP_ID)</string>
 	<!-- Pianism uses only the system's encryption, such as HTTPS and iCloud's, so App Store Connect
 	     asks no export questions on upload (NFR-9). -->
 	<key>ITSAppUsesNonExemptEncryption</key>
