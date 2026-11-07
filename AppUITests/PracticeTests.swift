@@ -735,10 +735,12 @@ final class PracticeTests: UITestCase {
 
         // The 25 minutes fall short of a 30-minute day, then clear a 15-minute one.
         setGoal("settings.daily-minimum", "30 minutes")
-        XCTAssertEqual(text(app, "history.week-days"), "Practiced 30 minutes or more on 0\u{00A0}of\u{00A0}7\u{00A0}days")
+        XCTAssertEqual(
+            text(app, "history.week-days"), "Practiced 30 minutes or more on 0\u{00A0}of\u{00A0}7\u{00A0}days")
         XCTAssertFalse(weeksMet.exists, "A day short of the minimum met the goal")
         setGoal("settings.daily-minimum", "15 minutes")
-        XCTAssertEqual(text(app, "history.week-days"), "Practiced 15 minutes or more on 1\u{00A0}of\u{00A0}7\u{00A0}days")
+        XCTAssertEqual(
+            text(app, "history.week-days"), "Practiced 15 minutes or more on 1\u{00A0}of\u{00A0}7\u{00A0}days")
         XCTAssertEqual(text(app, "history.weeks-met"), "1 week met your goal in the past year")
         attachScreenshot(of: app, named: "The week with a daily minimum, its line across the chart")
 
@@ -748,7 +750,8 @@ final class PracticeTests: UITestCase {
         openHistory(app)
         // Below the fold there on a shorter screen, under the chart.
         for _ in 0..<3 where !app.staticTexts["history.week-days"].isHittable { app.swipeUp() }
-        XCTAssertEqual(text(app, "history.week-days"), "Practiced 15 minutes or more on 1\u{00A0}of\u{00A0}7\u{00A0}days")
+        XCTAssertEqual(
+            text(app, "history.week-days"), "Practiced 15 minutes or more on 1\u{00A0}of\u{00A0}7\u{00A0}days")
         attachScreenshot(of: app, named: "The week at the largest text")
     }
 
