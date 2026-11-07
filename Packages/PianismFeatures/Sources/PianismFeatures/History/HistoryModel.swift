@@ -43,6 +43,7 @@ public final class HistoryModel {
 
     let calendar = Calendar.autoupdatingCurrent
     private let clock: any WallClock
+    private let analytics: AnalyticsModel?
     private let history: any SessionHistory
     private let tags: any TagLibrary
     private let outbox: any SessionOutbox
@@ -52,8 +53,9 @@ public final class HistoryModel {
 
     public init(
         history: any SessionHistory, tags: any TagLibrary, outbox: any SessionOutbox, running: any RunningSessionStore,
-        clock: any WallClock, glance: any PracticeGlance
+        clock: any WallClock, glance: any PracticeGlance, analytics: AnalyticsModel? = nil
     ) {
+        self.analytics = analytics
         self.history = history
         self.tags = tags
         self.outbox = outbox
@@ -198,7 +200,8 @@ public final class HistoryModel {
         // Can't fail: the session is running, and ends after it started.
         try? session.stop(at: end)
         editing = SessionEdit(
-            session: session, isNew: true, others: others, history: history, library: tags, now: now)
+            session: session, isNew: true, others: others, history: history, library: tags, now: now,
+            onAdded: { [analytics] in analytics?.sessionSaved($0) })
     }
 
     /// The sessions a session being edited or added keeps clear of: the running one, as if it ended at `now`, then

@@ -16,18 +16,6 @@
     "%lld BPM" : {
       "comment" : "A target tempo"
     },
-    "^[%lld day](inflect: true)" : {
-
-    },
-    "^[%lld session](inflect: true) couldn't be shown. Try updating Pianism." : {
-
-    },
-    "^[%lld session](inflect: true) waiting to be saved" : {
-
-    },
-    "^[%lld week](inflect: true) met your goal in the past year" : {
-
-    },
     "A day counts after" : {
 
     },
@@ -286,6 +274,9 @@
     "Practicing" : {
 
     },
+    "Privacy" : {
+
+    },
     "Ready to practice" : {
 
     },
@@ -319,6 +310,9 @@
     "Scales" : {
       "comment" : "A built-in skill"
     },
+    "Sends counts, like sessions saved, with device details, like its model and language, to show how Pianism is used. Never what you practice or anything you type." : {
+
+    },
     "Session deleted" : {
 
     },
@@ -329,6 +323,9 @@
 
     },
     "Settings" : {
+
+    },
+    "Share anonymous usage" : {
 
     },
     "Sight-reading" : {
@@ -397,6 +394,9 @@
     "Too short to save" : {
 
     },
+    "USB" : {
+
+    },
     "Undo" : {
 
     },
@@ -404,9 +404,6 @@
 
     },
     "Untagged" : {
-
-    },
-    "USB" : {
 
     },
     "Warns when a session you add or edit shares practice time with another. The day's total counts that time twice." : {
@@ -422,6 +419,18 @@
 
     },
     "Your history isn't syncing. In the Settings app, sign in to iCloud and turn it on for Pianism." : {
+
+    },
+    "^[%lld day](inflect: true)" : {
+
+    },
+    "^[%lld session](inflect: true) couldn't be shown. Try updating Pianism." : {
+
+    },
+    "^[%lld session](inflect: true) waiting to be saved" : {
+
+    },
+    "^[%lld week](inflect: true) met your goal in the past year" : {
 
     }
   },

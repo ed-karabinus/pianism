@@ -1210,6 +1210,37 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.navigationBars["Connect a piano"].waitForExistence(timeout: 5))
     }
 
+    /// ADR 0011: sharing anonymous usage is on until it's turned off in Settings, and stays as it was left. Debug builds
+    /// send nothing, so the adapter's tests check what's sent and stopped, against a fake network.
+    @MainActor
+    func testSharingUsageIsOnUntilTurnedOff() throws {
+        func sharingSwitch(in app: XCUIApplication) -> XCUIElement {
+            openSettings(app)
+            let sharing = app.switches["settings.shares-usage"]
+            // The last section, below the fold, where a Form may not have built the row yet.
+            for _ in 0..<8 where !(sharing.exists && sharing.isHittable) { app.swipeUp() }
+            XCTAssertTrue(sharing.waitForExistence(timeout: 5), "No switch for sharing usage in Settings")
+            return sharing
+        }
+
+        var app = launch(at: start, reset: true)
+        var sharing = sharingSwitch(in: app)
+        XCTAssertEqual(sharing.value as? String, "1", "Sharing usage isn't on by default")
+        attachScreenshot(of: app, named: "Settings, sharing anonymous usage")
+        let off = app.switches.matching(NSPredicate(format: "identifier == 'settings.shares-usage' AND value == '0'"))
+            .firstMatch
+        // As the overlap warning's switch: it sometimes takes the tap only on its own control, and waiting first means
+        // a tap that took but hadn't shown yet isn't undone.
+        sharing.tap()
+        if !off.waitForExistence(timeout: 3) { sharing.switches.firstMatch.tap() }
+        XCTAssertTrue(off.waitForExistence(timeout: 5), "The switch didn't turn off")
+        kill(app)
+
+        app = launch(at: start + 60)
+        sharing = sharingSwitch(in: app)
+        XCTAssertEqual(sharing.value as? String, "0", "Sharing usage came back on after a relaunch")
+    }
+
     /// SES-5: a session that shares practice with another says so, but can still be saved. "Don't Show
     /// Again" turns the warning off, even after a relaunch, and Settings turns it back on (SET-1).
     @MainActor

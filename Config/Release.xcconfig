@@ -6,3 +6,6 @@ VALIDATE_PRODUCT = YES
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
 // The CloudKit environment this build syncs with (SYN-1; see Pianism.entitlements).
 PIANISM_CLOUDKIT_ENVIRONMENT = Production
+// Only Release sends analytics (ADR 0011). The ID stays out of this public repository: PIANISM_TELEMETRY_APP_ID goes in
+// Config/Local.xcconfig, and a build without it sends nothing.
+PIANISM_ANALYTICS_APP_ID = $(PIANISM_TELEMETRY_APP_ID)
