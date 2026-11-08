@@ -124,6 +124,14 @@ public final class HistoryModel {
         week.days.first { calendar.isDate($0.start, inSameDayAs: date) && !$0.sessions.isEmpty }?.start
     }
 
+    /// The row to scroll to the top for a tapped day's date to show right under it: the last session of the day above,
+    /// or Time per piece's row above the newest day (HIS-2, Ed's picks 2026-11-08).
+    func row(above day: Date) -> HistoryRow? {
+        guard let index = days.firstIndex(where: { $0.start == day }) else { return nil }
+        guard index > 0, let session = days[index - 1].sessions.last else { return .pieceStats }
+        return .session(day: days[index - 1].start, id: session.id)
+    }
+
     /// Whether `session` can be deleted: one still waiting can, and a saved one can when it can be edited.
     func canDelete(_ session: PracticeSession) -> Bool {
         // As in the editor, if history can't say, deleting is offered, and committing reports what went wrong.
@@ -217,4 +225,11 @@ public final class HistoryModel {
         }
         return [current] + sessions
     }
+}
+
+/// A row in History a tapped day can scroll to: Time per piece's, or a session's on one day, as a session across
+/// midnight has a row on each of its days.
+enum HistoryRow: Hashable {
+    case pieceStats
+    case session(day: Date, id: PracticeSession.ID)
 }

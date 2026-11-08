@@ -5,7 +5,8 @@
 
     /// The App Store screenshots' sample practice (#56), with PIANISM_SHOWCASE=1 on a reset install: four weeks of
     /// evenings on four well-known pieces and two skills, mostly started by a piano, a session this morning, and a
-    /// piano session 12 minutes 41 seconds in. Release builds leave it out.
+    /// piano session 12 minutes 41 seconds in. Release builds leave it out. `testATappedDayShowsItsDate` scrolls it too,
+    /// relying on sessions yesterday and today, and on enough below them to scroll at the largest text.
     enum Showcase {
         static func seed(into store: HistoryStore, running: any RunningSessionStore, clock: any WallClock) {
             let library = SwiftDataTagLibrary(store: store, clock: clock)

@@ -301,6 +301,38 @@ struct HistoryModelTests {
         #expect(model.dayWithPractice(at: first + 60) == first)
     }
 
+    @Test("HIS-2: a tapped day scrolls the row above its date to the top: the day above's last, or Time per piece's")
+    func theRowAboveATappedDay() throws {
+        // Given two sessions yesterday, and one the day before after one across midnight into it
+        let history = InMemorySessionHistory()
+        let today = Calendar.autoupdatingCurrent.startOfDay(for: clock.now)
+        func session(from start: TimeInterval, minutes: TimeInterval) throws -> PracticeSession {
+            var session = PracticeSession(startedAt: today + start)
+            try session.stop(at: today + start + minutes * 60)
+            return session
+        }
+        let yesterdayLater = try session(from: -86_400 + 7_200, minutes: 10)
+        let yesterdayEarlier = try session(from: -86_400 + 3_600, minutes: 10)
+        let dayBefore = try session(from: -2 * 86_400 + 3_600, minutes: 10)
+        let acrossMidnight = try session(from: -2 * 86_400 - 600, minutes: 20)
+        for session in [yesterdayLater, yesterdayEarlier, dayBefore, acrossMidnight] { history.save(session) }
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock, glance: glance
+        )
+
+        // When History lists them
+        model.refresh()
+
+        // Then each day's row above is the newer day's earliest session, or Time per piece's for the newest day
+        let days = model.days.map(\.start)
+        try #require(days.count == 3)
+        #expect(model.row(above: days[0]) == .pieceStats)
+        #expect(model.row(above: days[1]) == .session(day: days[0], id: yesterdayEarlier.id))
+        // The day above's part of the session across midnight, not the tapped day's part, its first row.
+        #expect(model.row(above: days[2]) == .session(day: days[1], id: acrossMidnight.id))
+        #expect(model.row(above: today - 10 * 86_400) == nil)
+    }
+
     @Test("HIS-2: earlier weeks show back to the week of the first session, gaps included, and on to this week")
     func earlierWeeks() throws {
         let history = InMemorySessionHistory()
