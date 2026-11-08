@@ -6,6 +6,7 @@ import PianismFeatures
 import PianismGlance
 import PianismMIDI
 import PianismPersistence
+import PianismPurchases
 import PianismSystem
 import SwiftUI
 
@@ -21,6 +22,7 @@ struct PianismApp: App {
 
     @State private var practice: PracticeModel
     @State private var analytics: AnalyticsModel
+    @State private var pro: ProModel
     @State private var tags: TagPickerModel
     @State private var history: HistoryModel
     private let historyStore: HistoryStore
@@ -175,6 +177,28 @@ struct PianismApp: App {
             analytics: analyticsAppID.isEmpty ? NoAnalytics() : TelemetryDeckAnalytics(appID: analyticsAppID),
             defaults: .standard, clock: clock)
         self.analytics = analytics
+        // Started here, as a refund or a purchase elsewhere can arrive as soon as the app launches (ADR 0012).
+        #if DEBUG
+            // End-to-end tests script the store with PIANISM_STORE=free, and all but the ones about real StoreKit do.
+            // PIANISM_RESTORE_FINDS=1 has a restore find the purchase, and a test posts the notification below for a
+            // refund while the app is open. Release builds ignore them.
+            let proStore: any ProStore
+            if ProcessInfo.processInfo.environment["PIANISM_STORE"] == "free" {
+                let scripted = InMemoryProStore(
+                    restoreFinds: ProcessInfo.processInfo.environment["PIANISM_RESTORE_FINDS"] == "1")
+                var refunding: Int32 = 0
+                notify_register_dispatch("com.edkarabinus.Pianism.pro-refunded", &refunding, .global()) {
+                    @Sendable [scripted] _ in
+                    Task { await scripted.set(.revoked) }
+                }
+                proStore = scripted
+            } else {
+                proStore = StoreKitPro()
+            }
+        #else
+            let proStore = StoreKitPro()
+        #endif
+        pro = ProModel(store: proStore, defaults: .standard)
         var midiSettings = PracticeModel.storedMIDI(in: .standard)
         midiSettings.pauseAfter = midiPause ?? midiSettings.pauseAfter
         midiSettings.saveAfter = midiSave ?? midiSettings.saveAfter
@@ -265,7 +289,8 @@ struct PianismApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(practice: practice, analytics: analytics, tags: tags, history: history)
+            RootView(practice: practice, analytics: analytics, pro: pro, tags: tags, history: history)
+                .task { await pro.keepUpToDate() }
                 // Shows what iCloud brings from the user's other devices while the app is open (SYN-1). Practice
                 // shows nothing synced but tag names, which the picker refreshes.
                 .task {

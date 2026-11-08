@@ -191,6 +191,14 @@ private final class PreviewStore: RunningSessionStore {
     }
 }
 
+extension ProModel {
+    /// Not unlocked, with a store that finds nothing and its state kept nowhere that lasts.
+    static func preview() -> ProModel {
+        ProModel(
+            store: InMemoryProStore(), defaults: UserDefaults(suiteName: "ProModel preview") ?? .standard)
+    }
+}
+
 extension AnalyticsModel {
     /// On, sending nothing, and with its own defaults, so a preview's switch stays in the preview.
     static func preview() -> AnalyticsModel {

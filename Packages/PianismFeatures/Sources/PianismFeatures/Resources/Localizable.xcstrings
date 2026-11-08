@@ -91,6 +91,9 @@
     "Couldn't load your history" : {
 
     },
+    "Couldn't reach the App Store. Try again." : {
+
+    },
     "Couldn't save that change" : {
 
     },
@@ -202,6 +205,9 @@
     "No practice yet" : {
 
     },
+    "No purchase found." : {
+
+    },
     "None" : {
 
     },
@@ -277,6 +283,12 @@
     "Privacy" : {
 
     },
+    "Pro" : {
+
+    },
+    "Pro is unlocked" : {
+
+    },
     "Ready to practice" : {
 
     },
@@ -296,6 +308,9 @@
       "comment" : "A built-in skill"
     },
     "Restart Pianism to try again." : {
+
+    },
+    "Restore Purchases" : {
 
     },
     "Resume" : {

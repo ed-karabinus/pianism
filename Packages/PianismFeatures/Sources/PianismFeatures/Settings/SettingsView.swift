@@ -7,6 +7,7 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable var practice: PracticeModel
     @Bindable var analytics: AnalyticsModel
+    let pro: ProModel
 
     @AppStorage(SettingsKey.showsOverlapWarning) private var showsOverlapWarning = true
     @AppStorage(SettingsKey.weeklyGoalDays) private var goalDays = WeeklyGoal.defaultDays
@@ -155,6 +156,27 @@ struct SettingsView: View {
                         "Sends counts, like sessions saved, with device details, like its model and language, to show how Pianism is used. Never what you practice or anything you type.",
                         bundle: .module)
                 }
+                Section {
+                    if pro.isPro {
+                        Text("Pro is unlocked", bundle: .module)
+                            .accessibilityIdentifier(AccessibilityID.settingsPro)
+                    } else {
+                        Button {
+                            Task { await pro.restore() }
+                        } label: {
+                            Text("Restore Purchases", bundle: .module)
+                        }
+                        .disabled(pro.isRestoring)
+                        .accessibilityIdentifier(AccessibilityID.settingsRestore)
+                    }
+                } header: {
+                    Text("Pro", bundle: .module)
+                } footer: {
+                    if let notice = pro.restoreNotice {
+                        Text(notice.message)
+                            .accessibilityIdentifier(AccessibilityID.settingsRestoreNotice)
+                    }
+                }
             }
             .navigationTitle(Text("Settings", bundle: .module))
         }
@@ -166,21 +188,21 @@ struct SettingsView: View {
 }
 
 #Preview("No piano") {
-    SettingsView(practice: .preview(.ready), analytics: .preview())
+    SettingsView(practice: .preview(.ready), analytics: .preview(), pro: .preview())
 }
 
 #Preview("Daily reminder on") {
     let practice = PracticeModel.preview(.ready, notifications: .allowed)
     practice.remindsDaily = true
-    return SettingsView(practice: practice, analytics: .preview())
+    return SettingsView(practice: practice, analytics: .preview(), pro: .preview())
 }
 
 #Preview("Notifications off in the Settings app") {
-    SettingsView(practice: .preview(.ready, notifications: .denied), analytics: .preview())
+    SettingsView(practice: .preview(.ready, notifications: .denied), analytics: .preview(), pro: .preview())
 }
 
 #Preview("Notifications off in the Settings app, dark, AX5") {
-    SettingsView(practice: .preview(.running, notifications: .denied), analytics: .preview())
+    SettingsView(practice: .preview(.running, notifications: .denied), analytics: .preview(), pro: .preview())
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }
@@ -188,7 +210,7 @@ struct SettingsView: View {
 #Preview("A session running, a piano, dark, AX5") {
     let practice = PracticeModel.preview(.running)
     practice.connectedPianos = ["MIDI KEYBOARD"]
-    return SettingsView(practice: practice, analytics: .preview())
+    return SettingsView(practice: practice, analytics: .preview(), pro: .preview())
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }

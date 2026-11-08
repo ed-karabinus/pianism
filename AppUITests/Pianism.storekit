@@ -1,0 +1,27 @@
+{
+  "identifier" : "A1B2C3D4",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "14.99",
+      "familyShareable" : false,
+      "internalID" : "6700000001",
+      "localizations" : [
+        {
+          "description" : "Sessions that start themselves, and per-piece stats.",
+          "displayName" : "Pianism Pro",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.edkarabinus.Pianism.pro",
+      "referenceName" : "Pianism Pro",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_compatibilityTimeRate" : { "3" : 6 },
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [],
+  "version" : { "major" : 4, "minor" : 0 }
+}
