@@ -65,7 +65,7 @@ struct PianismApp: App {
             // or settings with PIANISM_RESET=1, make the history fail to open with PIANISM_BREAK_HISTORY=1,
             // add sessions this version can't show with PIANISM_UNSHOWABLE_SESSIONS (a count), and sync with
             // iCloud's Development environment with PIANISM_SYNC=1. The owner creates the CloudKit schema there
-            // with PIANISM_INIT_CLOUDKIT_SCHEMA=1 (ADR 0008). Release builds ignore all nine, the last one
+            // with PIANISM_INIT_CLOUDKIT_SCHEMA=1 (ADR 0008). Release builds ignore them all, the last one
             // below.
             let environment = ProcessInfo.processInfo.environment
             if let seconds = environment["PIANISM_NOW"].flatMap(TimeInterval.init) {
@@ -124,6 +124,10 @@ struct PianismApp: App {
         #if DEBUG
             if let count = environment["PIANISM_UNSHOWABLE_SESSIONS"].flatMap(Int.init) {
                 try? historyStore.addUnshowableSessions(count)
+            }
+            // The App Store screenshots fill the app with sample practice with PIANISM_SHOWCASE=1 (#56).
+            if environment["PIANISM_SHOWCASE"] == "1" {
+                Showcase.seed(into: historyStore, running: store, clock: clock)
             }
             // End-to-end tests have another device's changes arrive while the app is open with
             // PIANISM_SYNC_ARRIVES_SECONDS: after that long a piece, and after as long again a 30-minute session
@@ -189,7 +193,9 @@ struct PianismApp: App {
                 let buying: [String: PurchaseOutcome] = [
                     "pending": .pending, "cancelled": .cancelled, "failed": .failed,
                 ]
+                // The screenshots start with Pro, with PIANISM_PRO=1.
                 let scripted = InMemoryProStore(
+                    status: environment["PIANISM_PRO"] == "1" ? .entitled : .unknown,
                     restoreFinds: environment["PIANISM_RESTORE_FINDS"] == "1",
                     offer: environment["PIANISM_NO_OFFER"] == "1" ? nil : ProOffer(displayPrice: "$14.99"),
                     buying: environment["PIANISM_BUY"].flatMap { buying[$0] } ?? .purchased)
