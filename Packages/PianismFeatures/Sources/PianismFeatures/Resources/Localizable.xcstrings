@@ -4,9 +4,6 @@
     "%@ connected" : {
       "comment" : "The pianos Pianism hears, by the names the system gives them"
     },
-    "%@ or more on %lld of 7 days" : {
-
-    },
     "%@, %@" : {
 
     },
@@ -251,6 +248,9 @@
 
     },
     "Practice time" : {
+
+    },
+    "Practiced %@ or more on %lld of 7 days" : {
 
     },
     "Practiced %lld of 7 days" : {
