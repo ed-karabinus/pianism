@@ -73,7 +73,7 @@ struct PaywallView: View {
             .accessibilityIdentifier(AccessibilityID.paywallBuy)
         } else if pro.isOfferUnavailable {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Couldn't reach the App Store for the price.", bundle: .module)
+                Text("The price isn't available right now.", bundle: .module)
                 Button {
                     Task { await pro.loadOffer() }
                 } label: {

@@ -1265,7 +1265,7 @@ final class PracticeTests: UITestCase {
         let included = app.staticTexts["Piano sessions start, pause and save themselves while Pianism is open."]
         XCTAssertTrue(included.exists, "Nothing's listed as included")
         XCTAssertTrue(app.buttons["paywall.restore"].exists, "No Restore")
-        try audit(app, "Pro screen", contrast: false, stallsOnIPadIOS26: true)
+        try audit(app, "Pro screen", contrast: false, stallsOnIPadIOS26: true, overASheet: true)
         close.tap()
         XCTAssertTrue(close.waitForNonExistence(timeout: 5), "Close didn't close it")
         XCTAssertTrue(app.navigationBars["Settings"].exists)
@@ -1312,7 +1312,7 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true, noOffer: true)
         let close = openPaywall(app)
         XCTAssertTrue(app.buttons["paywall.retry"].waitForExistence(timeout: 5), "No way to try again")
-        XCTAssertTrue(app.staticTexts["Couldn't reach the App Store for the price."].exists)
+        XCTAssertTrue(app.staticTexts["The price isn't available right now."].exists)
         XCTAssertFalse(app.buttons["paywall.buy"].exists, "A price showed with no store")
         attachScreenshot(of: app, named: "Pro screen, no App Store")
         app.buttons["paywall.retry"].tap()
@@ -1867,10 +1867,13 @@ final class PracticeTests: UITestCase {
     /// unless `contrast` is false, with enough contrast (#165). History, Settings and Connect a piano pass
     /// `contrast: false`, as the system's gray secondary text there nearly fails it. Dynamic Type and clipping are
     /// noted in the results instead, as what the audit finds there is a design call (#165). A screen that
-    /// `stallsOnIPadIOS26` is skipped there, with the reason in the results.
+    /// `stallsOnIPadIOS26` is skipped there, with the reason in the results. A screen `overASheet` notes, rather than
+    /// fails, text the audit can't tie to an element: on an iPad, the dimmed screen around a sheet, which VoiceOver
+    /// rightly can't reach.
     @MainActor
     private func audit(
-        _ app: XCUIApplication, _ name: String, contrast: Bool = true, stallsOnIPadIOS26: Bool = false
+        _ app: XCUIApplication, _ name: String, contrast: Bool = true, stallsOnIPadIOS26: Bool = false,
+        overASheet: Bool = false
     ) throws {
         attachScreenshot(of: app, named: name)
         if stallsOnIPadIOS26, UIDevice.current.userInterfaceIdiom == .pad {
@@ -1892,7 +1895,8 @@ final class PracticeTests: UITestCase {
             try app.performAccessibilityAudit { issue in
                 let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)' \($0.frame)" } ?? "?"
                 let line = "\(issue.compactDescription): \(element)"
-                if failing.contains(issue.auditType) {
+                let behindTheSheet = overASheet && issue.auditType == .elementDetection && issue.element == nil
+                if failing.contains(issue.auditType), !behindTheSheet {
                     found.append(line)
                 } else {
                     noted.append(line)

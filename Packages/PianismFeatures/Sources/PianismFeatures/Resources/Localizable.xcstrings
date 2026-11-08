@@ -91,9 +91,6 @@
     "Couldn't load your history" : {
 
     },
-    "Couldn't reach the App Store for the price." : {
-
-    },
     "Couldn't reach the App Store. Try again." : {
 
     },
@@ -378,6 +375,9 @@
     },
     "Technique" : {
       "comment" : "A built-in skill"
+    },
+    "The price isn't available right now." : {
+
     },
     "The purchase didn't go through. Try again." : {
 

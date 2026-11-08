@@ -128,7 +128,7 @@ These need the product in App Store Connect and a Sandbox Apple Account, on a Te
 
 | # | Check | Last result |
 | --- | --- | --- |
-| S1 | **A sandbox purchase:** with a Sandbox Apple Account, open Settings › Pianism Pro. The price is App Store Connect's, $9.99 until 31 January. Tap Unlock Pro, buy, and the screen says "Pro is unlocked"; close it, and Settings says so too | Not run yet |
+| S1 | **A sandbox purchase:** with a Sandbox Apple Account, open Settings › Pianism Pro. The price is App Store Connect's, $9.99 until 31 January. Tap Unlock Pro, buy, and the screen says "Pro is unlocked"; close it, and Settings says so too. If it says "The price isn't available right now." with Wi-Fi on, check in App Store Connect that the purchase is Ready to Submit with ID `com.edkarabinus.Pianism.pro`, and that the Sandbox account is signed in (Settings › Developer) | Not run yet |
 | S2 | **Reinstalling keeps Pro:** after buying, delete the app and install it again. Settings says "Pro is unlocked" with no Restore, or at most after tapping Restore Purchases | Not run yet |
 | S3 | **Offline:** after buying, force-quit, turn on airplane mode and open the app. Settings still says "Pro is unlocked" | Not run yet |
 | S4 | **Ask to Buy:** run from Xcode with `AppUITests/Pianism.storekit` as the scheme's StoreKit Configuration (Edit Scheme › Run › Options), as Xcode's Transaction Manager works only with one. Turn on Ask to Buy there, then tap Unlock Pro. The Pro screen says it's waiting for approval. Approve it in the Transaction Manager with the screen still open: it says "Pro is unlocked" with no restart | Not run yet |
