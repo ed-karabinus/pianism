@@ -1,7 +1,7 @@
 # App Store Connect
 
-What's set up in App Store Connect, and when. The owner makes every change there: App Store Connect, uploads and
-submission are his (`docs/decisions.md`, 2026-10-15). Update this file when something changes. No email addresses or
+What's set up in App Store Connect, and when. Only the owner makes changes there, as only the owner uploads and
+submits (`docs/decisions.md`, 2026-10-15). Update this file when something changes. No email addresses or
 account details go here.
 
 ## Agreements
