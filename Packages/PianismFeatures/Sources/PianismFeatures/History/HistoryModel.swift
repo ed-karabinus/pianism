@@ -27,6 +27,8 @@ public final class HistoryModel {
     private(set) var unshowableCount = 0
     /// The tags sessions show, each merged tag as the tag it was merged into (ADR 0004).
     private(set) var tagIndex = TagIndex([])
+    /// Time per piece over the days listed, waiting sessions included, so it matches History (HIS-4).
+    var pieceStats: [PieceStats] { PieceStats.of(days, in: tagIndex, today: now, calendar: calendar) }
     /// Whether the last refresh found no practice at all, counting practice it can't show, or nil if it couldn't read
     /// the history to know (ONB-1).
     var isEmpty: Bool? { loadFailed ? nil : sessions.isEmpty && unshowableCount == 0 }

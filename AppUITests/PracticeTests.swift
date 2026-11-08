@@ -1334,6 +1334,38 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.navigationBars["Settings"].exists)
     }
 
+    /// HIS-4, D7: without Pro, History's Time per piece opens the Pro screen, with no numbers. Once Pro is bought, it
+    /// lists a piece another device practiced, with its 30 minutes in all and in the last 30 days.
+    @MainActor
+    func testTimePerPieceOpensOnlyWithPro() throws {
+        executionTimeAllowance = 5 * 60  // a stalled audit then costs 5 min, not the default 15
+        let app = launch(at: start, reset: true, syncArrivesSeconds: 1)
+        openHistory(app)
+        let synced = app.descendants(matching: .any).matching(identifier: "history.session")
+            .matching(NSPredicate(format: "label ENDSWITH 'Synced piece'")).firstMatch
+        XCTAssertTrue(synced.waitForExistence(timeout: 30), "The session from another device didn't arrive")
+
+        tap(app, "history.piece-stats")
+        let buy = app.buttons["paywall.buy"]
+        XCTAssertTrue(buy.waitForExistence(timeout: 5), "The locked row didn't open the Pro screen")
+        XCTAssertFalse(app.staticTexts["Last 30 days"].exists, "Stats showed without Pro")
+        buy.tap()
+        XCTAssertTrue(app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 10), "Buying didn't unlock Pro")
+        app.buttons["paywall.close"].tap()
+
+        tap(app, "history.piece-stats")
+        let piece = element(app, "piece-stats.piece")
+        XCTAssertTrue(piece.waitForExistence(timeout: 5), "No piece is listed")
+        XCTAssertEqual(piece.label, "Synced piece")
+        let times = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label IN {'Total', 'Last 30 days'} AND value == '30 minutes'"))
+        XCTAssertEqual(times.count, 2, "The piece's times are wrong")
+        XCTAssertFalse(app.descendants(matching: .any)["Playing"].exists, "A timed session showed a piano's split")
+        // Contrast only noted, as for History: the system's grey header nearly passes it (#165).
+        try audit(app, "Time per piece", contrast: false)
+        attachScreenshot(of: app, named: "Time per piece")
+    }
+
     /// PRO-3: buying from the Pro screen unlocks Pro at once, there and in Settings.
     @MainActor
     func testBuyingProFromTheProScreen() throws {

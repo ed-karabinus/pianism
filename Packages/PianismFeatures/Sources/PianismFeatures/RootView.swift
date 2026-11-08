@@ -38,7 +38,7 @@ public struct RootView: View {
                 .accessibilityIdentifier(AccessibilityID.root)
             }
             Tab(LocalizedStringResource("History", bundle: .module), systemImage: "calendar", value: .history) {
-                HistoryView(model: history)
+                HistoryView(model: history, pro: pro)
             }
             Tab(LocalizedStringResource("Settings", bundle: .module), systemImage: "gearshape", value: .settings) {
                 SettingsView(practice: practice, analytics: analytics, pro: pro)
@@ -118,6 +118,8 @@ enum AccessibilityID {
     static let practiceTooShort = "practice.too-short"
     static let practiceWaiting = "practice.waiting"
     static let practicePianos = "practice.pianos"
+    static let historyPieceStats = "history.piece-stats"
+    static let pieceStatsPiece = "piece-stats.piece"
     static let practiceLowBattery = "practice.low-battery"
     static let practiceStart = "practice.start"
     static let practicePause = "practice.pause"
