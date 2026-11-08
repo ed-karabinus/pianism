@@ -184,7 +184,8 @@ queries need, and makes every record opaque in the CloudKit dashboard.
   merges them. The merge screen is a separate story, proposed as TAG-4 alongside HIS-4 in M4. Until
   then, there is no per-piece view for the split to show in, and the piece picker shows the name
   twice.
-- Out of scope: PRO-2's count of free auto-logged sessions isn't derived from history, because
-  deleting sessions would reset it. It's decided with Purchases in M4.
+- Out of scope: PRO-2's count of free auto-logged sessions. It's decided with Purchases in M4.
+  Amended 2026-11-07 by [ADR 0012](0012-pro-from-storekit-and-free-count-from-records.md): it does come
+  from the session records, because counting deleted ones too means deleting can't reset it.
 - To verify with SYN-1 (#15): sync between two real devices, and the CloudKit dashboard's schema
   check before the first production deploy. Neither can run in CI.
