@@ -1,8 +1,8 @@
 import PianismCore
 import SwiftUI
 
-/// Tags a session with pieces and skills, and adds, renames and archives them, and gives pieces details
-/// (TAG-1, TAG-2, TAG-3).
+/// Tags a session with pieces and skills, and adds, renames, archives and merges them, and gives pieces details
+/// (TAG-1, TAG-2, TAG-3, TAG-4).
 struct TagPickerView: View {
     @Bindable var model: TagPickerModel
 
@@ -11,6 +11,7 @@ struct TagPickerView: View {
     @State private var isRenaming = false
     @State private var newName = ""
     @State private var detailing: Tag?
+    @State private var merging: Tag?
     @State private var isSearching = false
 
     var body: some View {
@@ -18,6 +19,7 @@ struct TagPickerView: View {
             List {
                 section(.piece, title: Text("Pieces", bundle: .module))
                 section(.skill, title: Text("Skills", bundle: .module))
+                mergedSection
             }
             .searchable(
                 text: $model.query, isPresented: $isSearching, placement: .tagSearch,
@@ -49,6 +51,9 @@ struct TagPickerView: View {
         .sheet(item: $detailing) { tag in
             PieceDetailsView(tag: tag, model: model)
         }
+        .sheet(item: $merging) { tag in
+            MergeTagView(tag: tag, model: model)
+        }
         .storageAlert(Text("Couldn't change your tags", bundle: .module), isPresented: $model.isShowingError)
     }
 
@@ -78,28 +83,38 @@ struct TagPickerView: View {
         }
     }
 
+    /// Tags merged away, each with a way to undo it, at any time (TAG-4).
+    @ViewBuilder private var mergedSection: some View {
+        let merged = model.merged
+        if !merged.isEmpty {
+            Section {
+                ForEach(merged, id: \.tag.id) { tag, kept in
+                    LabeledContent {
+                        if !tag.isReadOnly {
+                            Button(LocalizedStringResource("Undo", bundle: .module)) { model.undoMerge(tag) }
+                                // Otherwise a tap anywhere on the row counts.
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel(Text("Undo merging \(tag.name)", bundle: .module))
+                                .accessibilityIdentifier(AccessibilityID.tagsUndoMerge)
+                        }
+                    } label: {
+                        Text(tag.name)
+                        Text("Merged into \(kept.name)", bundle: .module)
+                    }
+                }
+            } header: {
+                Text("Merged", bundle: .module)
+            }
+        }
+    }
+
     private func row(_ tag: Tag) -> some View {
         let isSelected = model.selected.contains { $0.id == tag.id }
         return Button {
             model.toggle(tag)
         } label: {
             HStack {
-                // `Color.primary` and `Color.secondary`, as `.primary` and `.secondary` in a button are its tint.
-                VStack(alignment: .leading) {
-                    HStack {
-                        Text(tag.name)
-                            .foregroundStyle(Color.primary)
-                        if tag.isArchived {
-                            Text("Archived", bundle: .module)
-                                .foregroundStyle(Color.secondary)
-                        }
-                    }
-                    if let details = tag.details {
-                        Text(details)
-                            .font(.subheadline)
-                            .foregroundStyle(Color.secondary)
-                    }
-                }
+                TagLabel(tag: tag)
                 Spacer()
                 if isSelected {
                     // VoiceOver hears the Selected trait instead.
@@ -121,12 +136,43 @@ struct TagPickerView: View {
                 }
                 .tint(.indigo)
             }
+            if model.canMerge(tag) {
+                Button(LocalizedStringResource("Merge", bundle: .module), systemImage: "arrow.triangle.merge") {
+                    merging = tag
+                }
+                .tint(.purple)
+                .accessibilityIdentifier(AccessibilityID.tagsMerge)
+            }
             if model.canHaveDetails(tag) {
                 Button(LocalizedStringResource("Details", bundle: .module), systemImage: "info.circle") {
                     detailing = tag
                 }
                 .tint(.teal)
                 .accessibilityIdentifier(AccessibilityID.tagsDetails)
+            }
+        }
+    }
+}
+
+/// A tag's name, marked if archived, over a piece's details.
+struct TagLabel: View {
+    let tag: Tag
+
+    var body: some View {
+        // `Color.primary` and `Color.secondary`, as `.primary` and `.secondary` in a button are its tint.
+        VStack(alignment: .leading) {
+            HStack {
+                Text(tag.name)
+                    .foregroundStyle(Color.primary)
+                if tag.isArchived {
+                    Text("Archived", bundle: .module)
+                        .foregroundStyle(Color.secondary)
+                }
+            }
+            if let details = tag.details {
+                Text(details)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.secondary)
             }
         }
     }
@@ -160,6 +206,12 @@ extension Text {
     TagPickerView(model: .preview())
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("A tag merged away") {
+    let model = TagPickerModel.preview()
+    model.merge(model.shown(.piece)[1], into: model.shown(.piece)[0])
+    return TagPickerView(model: model)
 }
 
 #Preview("Adding") {
