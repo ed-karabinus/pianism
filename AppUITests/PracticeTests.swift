@@ -906,6 +906,69 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "Tag picker, archived piece found")
     }
 
+    /// TAG-4: a duplicate piece is merged into the one to keep. A session tagged with both counts once toward the
+    /// kept piece, in History too, and undoing the merge after a relaunch brings both back as they were.
+    @MainActor
+    func testMergingAPieceAndUndoingIt() throws {
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        tap(app, "practice.tags")
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        for name in ["Ballade", "Ballade No. 1"] {
+            search.tap()
+            search.typeText(name)
+            tap(app, "tags.add-piece")
+            XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        }
+        revealSwipeActions(app.buttons["Ballade"])
+        attachScreenshot(of: app, named: "Tag picker, piece swiped")
+        tap(app, "tags.merge")
+        attachScreenshot(of: app, named: "Merge, choosing the piece to keep")
+        // By ID: the picker under the sheet has a button with the same name.
+        let target = app.buttons["merge.target"]
+        XCTAssertTrue(target.waitForExistence(timeout: 5), "Merge didn't open")
+        XCTAssertEqual(target.label, "Ballade No. 1")
+        target.tap()
+        XCTAssertTrue(app.buttons["Ballade"].waitForNonExistence(timeout: 5), "The merged piece is still offered")
+        let mergedRow = app.staticTexts["Merged into Ballade No. 1"]
+        XCTAssertTrue(mergedRow.waitForExistence(timeout: 5), "The merge can't be undone")
+        attachScreenshot(of: app, named: "Tag picker, piece merged")
+        tap(app, "tags.done")
+        XCTAssertEqual(element(app, "practice.tags").value as? String, "Ballade No. 1")
+        kill(app)
+
+        app = launch(at: start + 25 * 60)
+        XCTAssertEqual(element(app, "practice.tags").value as? String, "Ballade No. 1")
+        tap(app, "practice.stop")
+        openHistory(app)
+        tap(app, "history.week-by-tag")
+        let tagRows = app.descendants(matching: .any).matching(identifier: "history.week-tag")
+        XCTAssertTrue(tagRows.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(tagRows.count, 1, "It counted toward more than the kept piece")
+        XCTAssertEqual(tagRows.firstMatch.value as? String, "25 minutes")
+        let session = element(app, "history.session")
+        XCTAssertTrue(session.label.hasSuffix(", Ballade No. 1"), session.label)
+        XCTAssertFalse(session.label.contains("Ballade, "), session.label)
+        attachScreenshot(of: app, named: "History, merged")
+
+        session.tap()
+        tap(app, "editor.tags")
+        tap(app, "tags.undo-merge")
+        XCTAssertTrue(app.buttons["Ballade"].waitForExistence(timeout: 5), "Undo didn't bring it back")
+        XCTAssertTrue(app.buttons["Ballade"].isSelected, "The session lost its tag")
+        XCTAssertFalse(mergedRow.exists, "It's still listed as merged")
+        attachScreenshot(of: app, named: "Tag picker, merge undone")
+        tap(app, "tags.done")
+        tap(app, "editor.cancel")
+        XCTAssertTrue(app.buttons["editor.cancel"].waitForNonExistence(timeout: 5))
+        let bothTags = app.descendants(matching: .any).matching(identifier: "history.session")
+            .matching(NSPredicate(format: "label ENDSWITH 'Ballade, Ballade No. 1'"))
+        XCTAssertTrue(bothTags.firstMatch.waitForExistence(timeout: 5), session.label)
+        XCTAssertEqual(tagRows.count, 2, "Each tag should count the session again")
+        attachScreenshot(of: app, named: "History, merge undone")
+    }
+
     /// TAG-3: a piece is given a composer and a target tempo from the tag picker, which shows them under its
     /// name. A tempo out of range can't be saved, and the details are still there after a relaunch.
     @MainActor
