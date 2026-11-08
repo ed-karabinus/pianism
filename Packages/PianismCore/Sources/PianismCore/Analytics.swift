@@ -6,18 +6,22 @@ public enum AnalyticsSignal: Sendable, Hashable {
     case firstLaunch
     case sessionSaved(PracticeSession.Source)
     case activationReached
+    /// The Pro screen opened (PRO-3). Buying and restoring send nothing, which keeps Purchase History off the App
+    /// Store's privacy label (ADR 0011).
+    case paywallShown
 
     public var name: String {
         switch self {
         case .firstLaunch: "Install.firstLaunch"
         case .sessionSaved: "Practice.sessionSaved"
         case .activationReached: "Activation.reached"
+        case .paywallShown: "Paywall.shown"
         }
     }
 
     public var parameters: [String: String] {
         switch self {
-        case .firstLaunch, .activationReached: [:]
+        case .firstLaunch, .activationReached, .paywallShown: [:]
         case .sessionSaved(let source): ["source": source.rawValue]
         }
     }

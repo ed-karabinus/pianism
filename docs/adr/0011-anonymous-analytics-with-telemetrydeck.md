@@ -39,7 +39,11 @@ Decided by the owner on 2026-11-06.
 | `Install.firstLaunch` | Once, on first launch, if analytics is on then | None |
 | `Practice.sessionSaved` | Each time a session is saved | `source`: `timer`, `midi` or `manual` |
 | `Activation.reached` | Once, on the 3rd session within 7 days of first launch | None |
-| `Paywall.shown`, `Paywall.purchased`, `Paywall.restored` | From PRO-1, when the paywall exists | None |
+| `Paywall.shown` | Each time the Pro screen opens (PRO-3) | None |
+
+(Amended 2026-11-07: `Paywall.purchased` and `Paywall.restored` were dropped, as the owner decided. Sending purchases
+fits Apple's Purchase History type, which the label doesn't declare. App Store Connect still counts sales, so only the
+Pro screen's own conversion is lost.)
 
 **The SDK adds these to every signal,** and has no setting to remove them. This list comes from its source
 (`Signal.swift`), as its README leaves some out, and a test fails if a new version adds to it. (Amended 2026-11-07: the

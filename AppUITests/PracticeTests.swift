@@ -1123,6 +1123,11 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testWelcomeClosesForGood() throws {
         var app = launch(at: start, reset: true, welcome: true)
+        // PRO-2 (#53): it says auto-start is Pro, with the first 5 free, and only while Pianism is open.
+        let words = element(app, "welcome.words")
+        XCTAssertTrue(words.waitForExistence(timeout: 10))
+        XCTAssertTrue(words.label.contains("while Pianism is open"), words.label)
+        XCTAssertTrue(words.label.contains("The first 5 are free, then it's part of Pro."), words.label)
         tap(app, "welcome.close")
         XCTAssertTrue(element(app, "practice.start").waitForExistence(timeout: 5))
         XCTAssertFalse(element(app, "welcome.start").exists)
@@ -1233,6 +1238,101 @@ final class PracticeTests: UITestCase {
         proRow("settings.restore", in: app).tap()
         XCTAssertTrue(proRow("settings.restore-notice", in: app).waitForExistence(timeout: 30), "It said nothing")
         XCTAssertEqual(app.staticTexts["settings.restore-notice"].label, "No purchase found.")
+    }
+
+    /// Opens the Pro screen from Settings, its only way in until a feature is locked (PRO-3).
+    @MainActor
+    private func openPaywall(_ app: XCUIApplication) -> XCUIElement {
+        openSettings(app)
+        proRow("settings.show-pro", in: app).tap()
+        let close = app.buttons["paywall.close"]
+        XCTAssertTrue(close.waitForExistence(timeout: 5), "The Pro screen didn't open")
+        return close
+    }
+
+    /// PRO-3: the Pro screen never opens by itself, only from a tap, and shows the store's price, what's included,
+    /// Restore and Close.
+    @MainActor
+    func testThePaywallShowsOnlyWhenAProFeatureIsTapped() throws {
+        let app = launch(at: start, reset: true)
+        XCTAssertTrue(element(app, "practice.start").waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["paywall.close"].waitForExistence(timeout: 3), "It opened at launch")
+        let close = openPaywall(app)
+        let buy = app.buttons["paywall.buy"]
+        XCTAssertTrue(buy.waitForExistence(timeout: 5), "No price")
+        XCTAssertEqual(buy.label, "Unlock Pro for $14.99")
+        XCTAssertTrue(app.staticTexts["One purchase, no subscription."].exists)
+        let included = app.staticTexts["Piano sessions start, pause and save themselves while Pianism is open."]
+        XCTAssertTrue(included.exists, "Nothing's listed as included")
+        XCTAssertTrue(app.buttons["paywall.restore"].exists, "No Restore")
+        try audit(app, "Pro screen", contrast: false, stallsOnIPadIOS26: true)
+        close.tap()
+        XCTAssertTrue(close.waitForNonExistence(timeout: 5), "Close didn't close it")
+        XCTAssertTrue(app.navigationBars["Settings"].exists)
+    }
+
+    /// PRO-3: buying from the Pro screen unlocks Pro at once, there and in Settings.
+    @MainActor
+    func testBuyingProFromTheProScreen() throws {
+        let app = launch(at: start, reset: true)
+        let close = openPaywall(app)
+        let buy = app.buttons["paywall.buy"]
+        XCTAssertTrue(buy.waitForExistence(timeout: 5))
+        buy.tap()
+        XCTAssertTrue(app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 10), "Buying didn't unlock Pro")
+        XCTAssertFalse(app.buttons["paywall.restore"].exists, "Restore is still offered")
+        attachScreenshot(of: app, named: "Pro screen, unlocked")
+        close.tap()
+        XCTAssertTrue(proRow("settings.pro", in: app).waitForExistence(timeout: 5), "Settings doesn't say so")
+    }
+
+    /// PRO-3: a purchase waiting for approval, as with Ask to Buy, says so, and the approval unlocks Pro in the open
+    /// Pro screen.
+    @MainActor
+    func testAPurchaseWaitingForApprovalUnlocksProOnceApproved() throws {
+        let app = launch(at: start, reset: true, buying: "pending")
+        _ = openPaywall(app)
+        let buy = app.buttons["paywall.buy"]
+        XCTAssertTrue(buy.waitForExistence(timeout: 5))
+        buy.tap()
+        let notice = app.staticTexts["paywall.notice"]
+        XCTAssertTrue(notice.waitForExistence(timeout: 10), "It said nothing")
+        XCTAssertEqual(notice.label, "Waiting for approval. Pro unlocks once it's approved.")
+        attachScreenshot(of: app, named: "Pro screen, waiting for approval")
+        notify_post("com.edkarabinus.Pianism.pro-approved")
+        XCTAssertTrue(
+            app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 10), "The approval didn't unlock Pro")
+    }
+
+    /// PRO-3: with the App Store out of reach, the Pro screen shows no price rather than a made-up one, and Try Again,
+    /// Restore and Close still work.
+    @MainActor
+    func testTheProScreenWithoutTheAppStore() throws {
+        let app = launch(at: start, reset: true, noOffer: true)
+        let close = openPaywall(app)
+        XCTAssertTrue(app.buttons["paywall.retry"].waitForExistence(timeout: 5), "No way to try again")
+        XCTAssertTrue(app.staticTexts["Couldn't reach the App Store for the price."].exists)
+        XCTAssertFalse(app.buttons["paywall.buy"].exists, "A price showed with no store")
+        attachScreenshot(of: app, named: "Pro screen, no App Store")
+        app.buttons["paywall.retry"].tap()
+        XCTAssertTrue(app.buttons["paywall.retry"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["paywall.restore"].isEnabled)
+        close.tap()
+        XCTAssertTrue(close.waitForNonExistence(timeout: 5))
+    }
+
+    /// PRO-3, through real StoreKit: the store's price, and a purchase from the Pro screen.
+    @MainActor
+    func testRealStoreKitBuysProFromTheProScreen() throws {
+        _ = try realStore()
+        let app = launch(at: start, reset: true, realStore: true)
+        _ = openPaywall(app)
+        let buy = app.buttons["paywall.buy"]
+        XCTAssertTrue(buy.waitForExistence(timeout: 30), "The store's price didn't load")
+        XCTAssertEqual(buy.label, "Unlock Pro for $14.99")
+        buy.tap()
+        XCTAssertTrue(
+            app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 30), "The purchase didn't unlock Pro")
     }
 
     /// ADR 0011: sharing anonymous usage is on until it's turned off in Settings, and stays as it was left. Debug builds
@@ -1916,7 +2016,8 @@ final class PracticeTests: UITestCase {
         undoSeconds: Int? = nil, nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false,
         textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
         midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil, intent: String? = nil,
-        reminderMinute: Int? = nil, welcome: Bool = false, realStore: Bool = false, restoreFinds: Bool = false
+        reminderMinute: Int? = nil, welcome: Bool = false, realStore: Bool = false, restoreFinds: Bool = false,
+        buying: String? = nil, noOffer: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -1959,6 +2060,12 @@ final class PracticeTests: UITestCase {
         }
         if restoreFinds {
             app.launchEnvironment["PIANISM_RESTORE_FINDS"] = "1"
+        }
+        if let buying {
+            app.launchEnvironment["PIANISM_BUY"] = buying
+        }
+        if noOffer {
+            app.launchEnvironment["PIANISM_NO_OFFER"] = "1"
         }
         if !welcome {
             app.launchEnvironment["PIANISM_SKIP_WELCOME"] = "1"

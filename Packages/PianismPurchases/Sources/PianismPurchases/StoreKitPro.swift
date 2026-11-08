@@ -40,6 +40,57 @@ public final class StoreKitPro: ProStore {
             return .failed
         }
     }
+
+    public func offer() async -> ProOffer? {
+        guard let product = await product() else { return nil }
+        return ProOffer(displayPrice: product.displayPrice)
+    }
+
+    public func purchase() async -> PurchaseOutcome {
+        guard let product = await product() else { return .failed }
+        do {
+            switch try await product.purchase() {
+            case .success(let result):
+                if case .verified(let transaction) = result { await transaction.finish() }
+                return PurchaseEnding.success(isVerified: result.isVerified).outcome
+            case .pending:
+                return PurchaseEnding.pending.outcome
+            case .userCancelled:
+                return PurchaseEnding.cancelled.outcome
+            @unknown default:
+                return .failed
+            }
+        } catch {
+            return .failed
+        }
+    }
+
+    private func product() async -> Product? {
+        try? await Product.products(for: [ProProduct.id]).first
+    }
+}
+
+/// How StoreKit says a purchase ended, apart from StoreKit, whose results a test can't make.
+enum PurchaseEnding: Equatable {
+    case success(isVerified: Bool)
+    case pending
+    case cancelled
+
+    /// A purchase StoreKit can't verify doesn't unlock Pro, like any other unverified transaction.
+    var outcome: PurchaseOutcome {
+        switch self {
+        case .success(let isVerified): isVerified ? .purchased : .failed
+        case .pending: .pending
+        case .cancelled: .cancelled
+        }
+    }
+}
+
+extension VerificationResult {
+    fileprivate var isVerified: Bool {
+        if case .verified = self { return true }
+        return false
+    }
 }
 
 /// What ``ProStatus`` depends on in a transaction, apart from StoreKit, whose results a test can't make.
