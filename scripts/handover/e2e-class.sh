@@ -2,7 +2,7 @@
 # Runs only the given UI tests on the iPhone simulator, as make test-app does.
 # WT picks the checkout to test; the default is the one this script lives in.
 cd "${WT:-$(cd "$(dirname "$0")/../.." && pwd)}" || exit 1
-dest="$(scripts/simulator-destination.sh ${DEVICE:-iPhone})" || exit 1
+dest="$(scripts/simulator-destination.sh ${DEVICE:-iPhone} ${IOS:-})" || exit 1
 udid="${dest##*id=}"
 scripts/fail-on-warnings.sh xcodebuild build-for-testing -project Pianism.xcodeproj -scheme Pianism -destination "$dest" SWIFT_SUPPRESS_WARNINGS=NO -quiet || exit 1
 app="$(xcodebuild -showBuildSettings -project Pianism.xcodeproj -scheme Pianism -destination 'generic/platform=iOS Simulator' 2>/dev/null | awk '$1 == "CODESIGNING_FOLDER_PATH" {print $3}')"
