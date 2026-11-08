@@ -65,6 +65,13 @@ class UITestCase: XCTestCase {
         // A background app may already be suspended, and a suspended app can't hear the notification.
         if state != .runningForeground { app.activate() }
         notify_post("com.edkarabinus.Pianism.kill")
+        if app.wait(for: .notRunning, timeout: 30) { return true }
+        // A slow exit: `activate()` would start the app again.
+        guard app.state != .notRunning else { return true }
+        // A simulator can say the app is in front while it's suspended, and so can't hear this (`goHome()` in
+        // `PracticeTests`).
+        app.activate()
+        notify_post("com.edkarabinus.Pianism.kill")
         return app.wait(for: .notRunning, timeout: 180)
     }
 

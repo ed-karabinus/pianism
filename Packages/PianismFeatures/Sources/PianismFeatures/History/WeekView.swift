@@ -115,7 +115,10 @@ struct WeekView: View {
         return VStack(alignment: .leading, spacing: 4) {
             Group {
                 if goal.minimum > 0 {
-                    Text("\(ElapsedTime.spoken(goal.minimum)) or more on \(days) of 7 days", bundle: .module)
+                    // Non-breaking, as this wraps on most iPhones, and "1 of / 7 days" reads badly.
+                    Text(
+                        "Practiced \(ElapsedTime.spoken(goal.minimum)) or more on \(days)\u{00A0}of\u{00A0}7\u{00A0}days",
+                        bundle: .module)
                 } else {
                     Text("Practiced \(days) of 7 days", bundle: .module)
                 }
