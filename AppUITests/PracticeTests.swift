@@ -1461,32 +1461,30 @@ final class PracticeTests: UITestCase {
         var app = launch(at: nil, reset: true)
         tap(app, "practice.start")
         goHome()
-        XCTAssertTrue(liveActivities.firstMatch.waitForExistence(timeout: 10), "No activity on the Home Screen")
+        XCTAssertTrue(activityShows(), "No activity on the Home Screen")
         XCTAssertEqual(liveActivities.count, 1)
         attachScreenshot(of: springboard, named: "The Live Activity in the island")
         kill(app)
-        XCTAssertTrue(liveActivities.firstMatch.waitForExistence(timeout: 10), "The activity went with the app")
+        XCTAssertTrue(activityShows(), "The activity went with the app")
 
         app = launch(at: nil)
         goHome()
-        XCTAssertTrue(liveActivities.firstMatch.waitForExistence(timeout: 10), "The activity went at the relaunch")
+        XCTAssertTrue(activityShows(), "The activity went at the relaunch")
         XCTAssertEqual(liveActivities.count, 1, "The relaunch started another activity")
         app.activate()
         tap(app, "practice.stop")
         goHome()
-        // Not "gone within 10 s": the Home Screen may not have drawn yet, so that could pass on an empty first look.
-        XCTAssertFalse(liveActivities.firstMatch.waitForExistence(timeout: 5), "The activity stayed after Stop")
+        assertNoLiveActivity("The activity stayed after Stop")
         kill(app)
 
         app = launch(at: nil, midiNotes: "0,0,0")
         XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
         goHome()
-        XCTAssertTrue(liveActivities.firstMatch.waitForExistence(timeout: 10), "No activity for a MIDI session")
+        XCTAssertTrue(activityShows(), "No activity for a MIDI session")
         app.activate()
         tap(app, "practice.stop")
         goHome()
-        // Not "gone within 10 s": the Home Screen may not have drawn yet, so that could pass on an empty first look.
-        XCTAssertFalse(liveActivities.firstMatch.waitForExistence(timeout: 5), "The activity stayed after Stop")
+        assertNoLiveActivity("The activity stayed after Stop")
     }
 
     /// GLN-1, SES-4: with the app killed, the island's clock stops at the cap by itself, as its range ends there; the
@@ -1501,7 +1499,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.start")
         goHome()
         kill(app)
-        XCTAssertTrue(liveActivities.firstMatch.waitForExistence(timeout: 10), "No activity on the Home Screen")
+        XCTAssertTrue(activityShows(), "No activity on the Home Screen")
         // The clock is the text inside the activity: the activity's own label is set as its content changes, so it
         // reads the time of the last update. Past the cap, with a margin for a slow island, then a second read to
         // show the clock stopped.
@@ -1518,7 +1516,7 @@ final class PracticeTests: UITestCase {
             text(app, "practice.capped"),
             "Pianism stopped your session at 45 seconds of practice, in case the timer was left running.")
         goHome()
-        XCTAssertFalse(liveActivities.firstMatch.waitForExistence(timeout: 5), "The activity stayed past the cap")
+        assertNoLiveActivity("The activity stayed past the cap")
     }
 
     /// GLN-1, MIDI-1: once the app leaves the screen, a piano session's island stops its clock at the last note, as
@@ -1530,7 +1528,7 @@ final class PracticeTests: UITestCase {
         let app = launch(at: nil, reset: true, midiNotes: "0,0,0")
         XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
         goHome()
-        XCTAssertTrue(liveActivities.firstMatch.waitForExistence(timeout: 10), "No activity on the Home Screen")
+        XCTAssertTrue(activityShows(), "No activity on the Home Screen")
         let clock = liveActivities.firstMatch.staticTexts.firstMatch
         XCTAssertTrue(
             clock.wait(for: \.label, toEqual: "0:00", timeout: 10),
@@ -1716,17 +1714,39 @@ final class PracticeTests: UITestCase {
             .matching(NSPredicate(format: "label CONTAINS 'Pianism is still timing your session.'")).firstMatch
     }
 
-    /// The session's Live Activities as the Dynamic Island shows them on the Home Screen: the compact form reads
-    /// "Piano, 0:12", the piano symbol then the clock.
+    /// The session's Live Activities as the Dynamic Island shows them on the Home Screen, by their container. The
+    /// Home Screen only sometimes combines the piano symbol and the clock into one label, "Piano, 0:12", and can switch
+    /// for one activity, so a label can't find them. The clock is the only text under the container.
     @MainActor private var liveActivities: XCUIElementQuery {
-        springboard.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Piano, '"))
+        springboard.descendants(matching: .any).matching(
+            NSPredicate(
+                format:
+                    "identifier BEGINSWITH 'jindo-container-view' AND identifier CONTAINS 'WidgetRenderer-Activities'"))
+    }
+
+    /// How long an activity can take to reach the Home Screen's tree: over 10 s on CI (#398).
+    private let activityWait: TimeInterval = 20
+
+    @MainActor
+    private func activityShows() -> Bool {
+        liveActivities.firstMatch.waitForExistence(timeout: activityWait)
+    }
+
+    /// That no activity shows. An ending one takes a moment to go, and a lasting one can take `activityWait` to show,
+    /// so it looks once, after that. Real time, like the rest of these tests: nothing says when nothing has happened.
+    /// Call it after `activityShows()` has matched in the same test, which proves the query still finds an activity.
+    @MainActor
+    private func assertNoLiveActivity(_ message: String) {
+        Thread.sleep(forTimeInterval: activityWait)
+        XCTAssertFalse(liveActivities.firstMatch.exists, message)
     }
 
     /// Goes to the Home Screen and checks the app left the screen. iPhone swipes up from the bottom edge, as a person
     /// does: on the iPhone Duo simulator (iOS 27.1), XCUIDevice's Home button press takes 5 s and leaves the app in
     /// front. iPad presses Home, as a swipe there can open the app switcher instead. The swipe assumes a Face ID
     /// iPhone: on one with a Home button, it would open Control Center. A busy CI simulator can take over 5 s to
-    /// report the app in the background, or miss the gesture, so it waits 10 s and tries once more.
+    /// report the app in the background, or miss the gesture, so it waits 10 s and tries once more. A simulator can also
+    /// keep saying the app is in front with the Home Screen showing, so Safari being reachable in the Dock counts.
     @MainActor
     private func goHome() {
         let app = XCUIApplication()
@@ -1738,7 +1758,9 @@ final class PracticeTests: UITestCase {
                     forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)),
                     withVelocity: .fast, thenHoldForDuration: 0)
             }
-            if app.wait(for: .runningBackground, timeout: 10) { return }
+            if app.wait(for: .runningBackground, timeout: 10) || springboard.icons["Safari"].firstMatch.isHittable {
+                return
+            }
         }
         XCTFail("The app stayed in front after leaving it twice")
     }
@@ -1772,6 +1794,7 @@ final class PracticeTests: UITestCase {
     /// second line makes its button taller, and that both are above the tab bar.
     @MainActor
     private func assertCommandsFit(_ app: XCUIApplication, beside identifier: String, at size: String) {
+        XCTAssertTrue(element(app, identifier).waitForExistence(timeout: 5), "No \(identifier) at \(size)")
         let other = element(app, identifier).frame
         let stop = element(app, "practice.stop").frame
         if stop.minY < other.maxY {
