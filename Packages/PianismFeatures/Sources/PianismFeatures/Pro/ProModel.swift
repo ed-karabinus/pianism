@@ -56,7 +56,12 @@ public final class ProModel {
         case .finished:
             let status = await store.status()
             apply(status)
-            if status != .entitled { show(.noPurchase) }
+            if status == .entitled {
+                // The button VoiceOver was on goes, so it would otherwise say nothing.
+                PracticeModel.tellVoiceOver(String(localized: "Pro is unlocked", bundle: .module))
+            } else {
+                show(.noPurchase)
+            }
         }
     }
 

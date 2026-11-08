@@ -48,25 +48,21 @@ struct ProTransaction: Equatable {
     let isVerified: Bool
     let isRevoked: Bool
 
-    init(productID: String, isVerified: Bool, isRevoked: Bool) {
-        self.productID = productID
-        self.isVerified = isVerified
-        self.isRevoked = isRevoked
-    }
-
-    init(_ result: VerificationResult<Transaction>) {
-        let transaction = result.unsafePayloadValue
-        var isVerified = false
-        if case .verified = result { isVerified = true }
-        self.init(
-            productID: transaction.productID, isVerified: isVerified, isRevoked: transaction.revocationDate != nil)
-    }
-
     /// One good purchase is Pro, even after an earlier refund. Only a verified transaction says anything, so a forged
     /// one can neither grant Pro nor take it away.
     static func status(from transactions: [ProTransaction]) -> ProStatus {
         let verified = transactions.filter { $0.isVerified && $0.productID == ProProduct.id }
         if verified.contains(where: { !$0.isRevoked }) { return .entitled }
         return verified.isEmpty ? .unknown : .revoked
+    }
+}
+
+extension ProTransaction {
+    init(_ result: VerificationResult<Transaction>) {
+        let transaction = result.unsafePayloadValue
+        var isVerified = false
+        if case .verified = result { isVerified = true }
+        self.init(
+            productID: transaction.productID, isVerified: isVerified, isRevoked: transaction.revocationDate != nil)
     }
 }

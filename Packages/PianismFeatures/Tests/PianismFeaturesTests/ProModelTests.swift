@@ -49,16 +49,25 @@ struct ProModelTests {
         #expect(defaults.bool(forKey: "proUnlocked"))
     }
 
-    @Test("PRO-1: a change in the store reaches an open app, both ways", .timeLimit(.minutes(1)))
-    func followsTheStore() async {
+    /// Waits with a deadline, not `.timeLimit`, which only cancels: these loops would spin on past it.
+    @Test("PRO-1: a change in the store reaches an open app, both ways")
+    func followsTheStore() async throws {
         let store = InMemoryProStore()
         let model = ProModel(store: store, defaults: defaults)
         let following = Task { await model.keepUpToDate() }
         defer { following.cancel() }
         await store.set(.entitled)
-        while !model.isPro { await Task.yield() }
+        var deadline = ContinuousClock.now + .seconds(10)
+        while !model.isPro {
+            try #require(ContinuousClock.now < deadline, "A purchase didn't reach the open app")
+            await Task.yield()
+        }
         await store.set(.revoked)
-        while model.isPro { await Task.yield() }
+        deadline = ContinuousClock.now + .seconds(10)
+        while model.isPro {
+            try #require(ContinuousClock.now < deadline, "A refund didn't reach the open app")
+            await Task.yield()
+        }
     }
 
     @Test("PRO-1: a restore that finds the purchase unlocks Pro and says nothing else")

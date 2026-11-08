@@ -187,7 +187,8 @@ struct PianismApp: App {
                 let scripted = InMemoryProStore(
                     restoreFinds: ProcessInfo.processInfo.environment["PIANISM_RESTORE_FINDS"] == "1")
                 var refunding: Int32 = 0
-                notify_register_dispatch("com.edkarabinus.Pianism.pro-refunded", &refunding, .global()) { _ in
+                notify_register_dispatch("com.edkarabinus.Pianism.pro-refunded", &refunding, .global()) {
+                    @Sendable [scripted] _ in
                     Task { await scripted.set(.revoked) }
                 }
                 proStore = scripted

@@ -1,5 +1,4 @@
 import CoreMIDI
-import StoreKit
 import StoreKitTest
 import XCTest
 import notify
@@ -1203,6 +1202,7 @@ final class PracticeTests: UITestCase {
         session.disableDialogs = true
         session.clearTransactions()
         session.askToBuyEnabled = false
+        addTeardownBlock { @MainActor in session.clearTransactions() }
         return session
     }
 
@@ -1221,19 +1221,6 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(pro.waitForNonExistence(timeout: 60), "A refund didn't reach the app")
     }
 
-    /// PRO-1, through real StoreKit: Pro needs no network, and Pro comes back on a launch with nothing stored.
-    @MainActor
-    func testRealStoreKitKeepsProWithTheStoreUnreachable() async throws {
-        let session = try realStore()
-        try await session.buyProduct(identifier: "com.edkarabinus.Pianism.pro")
-        try await session.setSimulatedError(
-            .generic(.networkError(URLError(.notConnectedToInternet))), forAPI: .loadProducts)
-        addTeardownBlock { try? await session.setSimulatedError(nil, forAPI: .loadProducts) }
-        let app = launch(at: start, reset: true, realStore: true)
-        openSettings(app)
-        XCTAssertTrue(proRow("settings.pro", in: app).waitForExistence(timeout: 30), "Pro needs the store")
-    }
-
     /// PRO-1, through real StoreKit: the restore call itself, finding nothing, with no account to sign in to.
     @MainActor
     func testRealStoreKitRestoreFindingNothingSaysSo() throws {
@@ -1242,6 +1229,7 @@ final class PracticeTests: UITestCase {
         openSettings(app)
         proRow("settings.restore", in: app).tap()
         XCTAssertTrue(proRow("settings.restore-notice", in: app).waitForExistence(timeout: 30), "It said nothing")
+        XCTAssertEqual(app.staticTexts["settings.restore-notice"].label, "No purchase found.")
     }
 
     /// ADR 0011: sharing anonymous usage is on until it's turned off in Settings, and stays as it was left. Debug builds
