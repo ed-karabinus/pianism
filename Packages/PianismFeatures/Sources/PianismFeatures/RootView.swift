@@ -184,7 +184,6 @@ enum AccessibilityID {
     static let settingsSharesUsage = "settings.shares-usage"
     static let settingsPro = "settings.pro"
     static let settingsShowPro = "settings.show-pro"
-    static let paywall = "paywall"
     static let paywallBuy = "paywall.buy"
     static let paywallRetry = "paywall.retry"
     static let paywallNotice = "paywall.notice"

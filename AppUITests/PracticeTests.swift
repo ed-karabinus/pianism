@@ -1305,7 +1305,8 @@ final class PracticeTests: UITestCase {
     }
 
     /// PRO-3: with the App Store out of reach, the Pro screen shows no price rather than a made-up one, and Try Again,
-    /// Restore and Close still work.
+    /// Restore and Close are there. Try Again staying put only shows the store's still out of reach: the model tests
+    /// cover what it asks.
     @MainActor
     func testTheProScreenWithoutTheAppStore() throws {
         let app = launch(at: start, reset: true, noOffer: true)
@@ -1333,6 +1334,24 @@ final class PracticeTests: UITestCase {
         buy.tap()
         XCTAssertTrue(
             app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 30), "The purchase didn't unlock Pro")
+    }
+
+    /// PRO-3, through real StoreKit: Ask to Buy says it's waiting, and the approval unlocks Pro in the open Pro screen.
+    /// The #205 probe saw one approval take over 30 s on CI's iPad, hence the minute.
+    @MainActor
+    func testRealStoreKitAskToBuyUnlocksProOnceApproved() throws {
+        let session = try realStore()
+        session.askToBuyEnabled = true
+        let app = launch(at: start, reset: true, realStore: true)
+        _ = openPaywall(app)
+        let buy = app.buttons["paywall.buy"]
+        XCTAssertTrue(buy.waitForExistence(timeout: 30), "The store's price didn't load")
+        buy.tap()
+        XCTAssertTrue(app.staticTexts["paywall.notice"].waitForExistence(timeout: 30), "It didn't say it's waiting")
+        let pending = try XCTUnwrap(session.allTransactions().first, "No transaction waits for approval")
+        try session.approveAskToBuyTransaction(identifier: pending.identifier)
+        XCTAssertTrue(
+            app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 60), "The approval didn't unlock Pro")
     }
 
     /// ADR 0011: sharing anonymous usage is on until it's turned off in Settings, and stays as it was left. Debug builds

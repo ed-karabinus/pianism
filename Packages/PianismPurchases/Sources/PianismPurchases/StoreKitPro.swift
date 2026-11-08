@@ -51,15 +51,19 @@ public final class StoreKitPro: ProStore {
         do {
             switch try await product.purchase() {
             case .success(let result):
-                if case .verified(let transaction) = result { await transaction.finish() }
-                return PurchaseEnding.success(isVerified: result.isVerified).outcome
+                // Like any unverified transaction, one StoreKit can't verify doesn't unlock Pro (ADR 0012).
+                guard case .verified(let transaction) = result else { return .failed }
+                await transaction.finish()
+                return .purchased
             case .pending:
-                return PurchaseEnding.pending.outcome
+                return .pending
             case .userCancelled:
-                return PurchaseEnding.cancelled.outcome
+                return .cancelled
             @unknown default:
                 return .failed
             }
+        } catch StoreKitError.userCancelled {
+            return .cancelled
         } catch {
             return .failed
         }
@@ -67,29 +71,6 @@ public final class StoreKitPro: ProStore {
 
     private func product() async -> Product? {
         try? await Product.products(for: [ProProduct.id]).first
-    }
-}
-
-/// How StoreKit says a purchase ended, apart from StoreKit, whose results a test can't make.
-enum PurchaseEnding: Equatable {
-    case success(isVerified: Bool)
-    case pending
-    case cancelled
-
-    /// A purchase StoreKit can't verify doesn't unlock Pro, like any other unverified transaction.
-    var outcome: PurchaseOutcome {
-        switch self {
-        case .success(let isVerified): isVerified ? .purchased : .failed
-        case .pending: .pending
-        case .cancelled: .cancelled
-        }
-    }
-}
-
-extension VerificationResult {
-    fileprivate var isVerified: Bool {
-        if case .verified = self { return true }
-        return false
     }
 }
 

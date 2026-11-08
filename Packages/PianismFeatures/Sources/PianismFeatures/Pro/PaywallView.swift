@@ -60,7 +60,6 @@ struct PaywallView: View {
             }
             .task { await pro.loadOffer() }
         }
-        .accessibilityIdentifier(AccessibilityID.paywall)
     }
 
     @ViewBuilder private var buy: some View {

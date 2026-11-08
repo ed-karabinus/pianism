@@ -212,4 +212,22 @@ struct ProModelTests {
         ProModel(store: InMemoryProStore(), defaults: defaults, analytics: off).showPaywall()
         #expect(analytics.sent.filter { $0 == .paywallShown }.count == 2)
     }
+
+    @Test("PRO-3: once Pro is on, nothing said before still shows, such as an earlier restore's \"No purchase found.\"")
+    func unlockingClearsNotices() async {
+        let model = proModel(InMemoryProStore())
+        await model.restore()
+        #expect(model.restoreNotice == .noPurchase)
+        await model.buy()
+        #expect(model.restoreNotice == nil)
+    }
+
+    @Test("PRO-3: a purchase's notice goes when the Pro screen is opened again")
+    func reopeningClearsThePurchaseNotice() async {
+        let model = proModel(InMemoryProStore(buying: .failed))
+        await model.buy()
+        #expect(model.purchaseNotice == .failed)
+        model.showPaywall()
+        #expect(model.purchaseNotice == nil)
+    }
 }

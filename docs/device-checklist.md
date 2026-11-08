@@ -124,15 +124,15 @@ the real service.
 
 ## Pro (PRO-1 and PRO-3, issues #52 and #54)
 
-These need the product in App Store Connect and a Sandbox Apple Account, on a TestFlight or dev-signed build. The first purchase comes with the paywall (PRO-3).
+These need the product in App Store Connect and a Sandbox Apple Account, on a TestFlight or dev-signed build, except S4 and S5, which use the StoreKit configuration file from Xcode. The first purchase comes with the paywall (PRO-3).
 
 | # | Check | Last result |
 | --- | --- | --- |
 | S1 | **A sandbox purchase:** with a Sandbox Apple Account, open Settings › Pianism Pro. The price is App Store Connect's, $9.99 until 31 January. Tap Unlock Pro, buy, and the screen says "Pro is unlocked"; close it, and Settings says so too | Not run yet |
 | S2 | **Reinstalling keeps Pro:** after buying, delete the app and install it again. Settings says "Pro is unlocked" with no Restore, or at most after tapping Restore Purchases | Not run yet |
 | S3 | **Offline:** after buying, force-quit, turn on airplane mode and open the app. Settings still says "Pro is unlocked" | Not run yet |
-| S4 | **Ask to Buy:** in Xcode's Transaction Manager, turn on Ask to Buy, then tap Unlock Pro. The Pro screen says it's waiting for approval. Approve it in the Transaction Manager with the screen still open: it says "Pro is unlocked" with no restart | Not run yet |
-| S5 | **A refund reaches an open app:** with the app open on Settings, refund the purchase in Xcode's Transaction Manager. Pro turns off with no restart | Not run yet |
+| S4 | **Ask to Buy:** run from Xcode with `AppUITests/Pianism.storekit` as the scheme's StoreKit Configuration (Edit Scheme › Run › Options), as Xcode's Transaction Manager works only with one. Turn on Ask to Buy there, then tap Unlock Pro. The Pro screen says it's waiting for approval. Approve it in the Transaction Manager with the screen still open: it says "Pro is unlocked" with no restart | Not run yet |
+| S5 | **A refund reaches an open app:** run from Xcode with the same StoreKit Configuration as S4. With the app open on Settings, refund the purchase in Xcode's Transaction Manager. Pro turns off with no restart | Not run yet |
 | S6 | **On a Mac:** run it as "Designed for iPad" with the same account. Settings says "Pro is unlocked" | Not run yet |
 
 **Why these are manual:** the tests use a StoreKit configuration file, so only these reach App Store Connect's real product and a real airplane mode.

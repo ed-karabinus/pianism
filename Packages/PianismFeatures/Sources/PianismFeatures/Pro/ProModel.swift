@@ -7,7 +7,14 @@ import PianismCore
 @Observable
 public final class ProModel {
     public private(set) var isPro: Bool {
-        didSet { defaults.set(isPro, forKey: SettingsKey.proUnlocked) }
+        didSet {
+            defaults.set(isPro, forKey: SettingsKey.proUnlocked)
+            // However it came, nothing said before it, such as "No purchase found.", is true any more.
+            if isPro {
+                restoreNotice = nil
+                purchaseNotice = nil
+            }
+        }
     }
     /// What the last restore has to say, if it didn't unlock Pro.
     private(set) var restoreNotice: RestoreNotice?
@@ -91,6 +98,7 @@ public final class ProModel {
     /// Opens the Pro screen, from a tap on Settings' row or on something Pro.
     func showPaywall() {
         isShowingPaywall = true
+        purchaseNotice = nil
         analytics.paywallShown()
     }
 
@@ -108,7 +116,7 @@ public final class ProModel {
         purchaseNotice = nil
         switch await store.purchase() {
         case .purchased:
-            // A verified purchase of Pro, which is all a refund-free entitlement needs.
+            // A verified purchase, so Pro by ADR 0012's rule, without waiting for the store to say so again.
             isPro = true
             PracticeModel.tellVoiceOver(String(localized: "Pro is unlocked", bundle: .module))
         case .pending:

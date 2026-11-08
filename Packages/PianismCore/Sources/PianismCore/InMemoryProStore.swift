@@ -41,6 +41,7 @@ public actor InMemoryProStore: ProStore {
     }
 
     /// Changes how the next purchase ends.
+    // periphery:ignore - the model tests script it, and Periphery doesn't index package tests
     public func set(buying outcome: PurchaseOutcome) {
         buying = outcome
     }

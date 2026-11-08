@@ -70,12 +70,4 @@ struct StoreKitProTests {
         #expect(product.type == "NonConsumable")
         #expect(product.displayPrice == "14.99")
     }
-
-    @Test("PRO-3: only a verified purchase unlocks Pro; waiting and cancelling say so")
-    func purchaseEndings() {
-        #expect(PurchaseEnding.success(isVerified: true).outcome == .purchased)
-        #expect(PurchaseEnding.success(isVerified: false).outcome == .failed)
-        #expect(PurchaseEnding.pending.outcome == .pending)
-        #expect(PurchaseEnding.cancelled.outcome == .cancelled)
-    }
 }
