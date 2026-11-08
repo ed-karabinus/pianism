@@ -21,4 +21,12 @@ public protocol TagLibrary: Sendable {
     /// Sets a piece's composer and target tempo (TAG-3). Throws ``RecordFromNewerVersion`` for a tag a newer
     /// version wrote.
     func setDetails(composer: String, targetTempo: Int?, id: Tag.ID) throws
+
+    /// Makes a tag stand for `kept`, and archives it. Its sessions aren't touched, and now count toward `kept`
+    /// (TAG-4, ADR 0004). Throws ``RecordFromNewerVersion`` for a tag a newer version wrote.
+    func merge(id: Tag.ID, into kept: Tag.ID) throws
+
+    /// Undoes ``merge(id:into:)``, which also unarchives the tag (ADR 0006). Throws ``RecordFromNewerVersion`` for
+    /// a tag a newer version wrote.
+    func unmerge(id: Tag.ID) throws
 }

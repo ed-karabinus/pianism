@@ -175,6 +175,21 @@
     "Low battery. The screen stays on while your piano is connected, so plug in." : {
 
     },
+    "Merge" : {
+
+    },
+    "Merge into" : {
+
+    },
+    "Merge “%@”" : {
+
+    },
+    "Merged" : {
+
+    },
+    "Merged into %@" : {
+
+    },
     "Minutes" : {
 
     },
@@ -301,6 +316,9 @@
     "Session deleted" : {
 
     },
+    "Sessions tagged “%@” will count toward the one you choose. You can undo this at any time, under Merged at the end of your tags." : {
+
+    },
     "Sessions you finish appear here." : {
 
     },
@@ -380,6 +398,9 @@
 
     },
     "Undo" : {
+
+    },
+    "Undo merging %@" : {
 
     },
     "Untagged" : {

@@ -13,9 +13,8 @@ public struct Tag: Sendable, Hashable, Identifiable {
     public internal(set) var name: String
     /// Archived tags aren't offered for tagging, but sessions keep them. Tags are never deleted.
     public internal(set) var isArchived: Bool
-    /// The tag this one was merged into, which its sessions count toward (ADR 0004). Merging arrives
-    /// with TAG-4, but a newer version on another device may already have merged.
-    public let mergedInto: Tag.ID?
+    /// The tag this one was merged into, which its sessions count toward (TAG-4, ADR 0004).
+    public internal(set) var mergedInto: Tag.ID?
     /// Decides which tag survives when two devices merged a pair in opposite directions (ADR 0004).
     public let createdAt: Date
     /// Built-in skills, and tags a newer version wrote (ADR 0006), can't be renamed, archived or given
@@ -73,7 +72,8 @@ public struct TagIndex: Sendable {
 
     /// Follows each tag's merges to the end. Two devices merging a pair in opposite directions make a
     /// cycle; every tag in it then stands for the one created first, ties broken by ID, so all devices
-    /// agree. A tag merged into one that hasn't synced yet stands for itself until it arrives.
+    /// agree, and that tag is no longer merged or archived. A tag merged into one that hasn't synced yet
+    /// stands for itself until it arrives.
     public init(_ tags: [Tag]) {
         let byID = Dictionary(tags.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         resolved = byID.mapValues { tag in
@@ -81,9 +81,12 @@ public struct TagIndex: Sendable {
             var current = tag
             while let next = current.mergedInto.flatMap({ byID[$0] }) {
                 if let loop = chain.firstIndex(where: { $0.id == next.id }) {
-                    return chain[loop...].reduce(next) {
+                    var kept = chain[loop...].reduce(next) {
                         ($1.createdAt, $1.id) < ($0.createdAt, $0.id) ? $1 : $0  // mutate:ignore - IDs never tie
                     }
+                    kept.mergedInto = nil
+                    kept.isArchived = false
+                    return kept
                 }
                 chain.append(next)
                 current = next

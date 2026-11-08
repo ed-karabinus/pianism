@@ -10,8 +10,8 @@ protocol TagTarget: AnyObject {
     func setTags(_ ids: [Tag.ID])
 }
 
-/// State and commands for the tag picker, which tags a session and adds, renames and archives tags
-/// (TAG-1, TAG-2).
+/// State and commands for the tag picker, which tags a session and adds, renames, archives and merges tags
+/// (TAG-1, TAG-2, TAG-4).
 @MainActor
 @Observable
 public final class TagPickerModel {
@@ -94,10 +94,12 @@ public final class TagPickerModel {
         }
     }
 
-    /// Whether `tag` can be renamed to `name`: it isn't empty, or another tag's name of its kind.
+    /// Whether `tag` can be renamed to `name`: it isn't empty, or another tag's name of its kind. A tag merged away
+    /// doesn't count, so the tag it was merged into can take its name.
     func canRename(_ tag: Tag, to name: String) -> Bool {
         let name = Self.trimmed(name)
-        return !name.isEmpty && Tag.existing(named: name, kind: tag.kind, in: tags.filter { $0.id != tag.id }) == nil
+        let others = tags.filter { $0.id != tag.id && $0.mergedInto == nil }
+        return !name.isEmpty && Tag.existing(named: name, kind: tag.kind, in: others) == nil
     }
 
     func rename(_ tag: Tag, to name: String) {
@@ -139,6 +141,37 @@ public final class TagPickerModel {
         perform { try library.setArchived(true, id: tag.id) }
     }
 
+    /// The tags `tag` can be merged into: the others of its kind that are on offer, built-in skills too (TAG-4).
+    func mergeTargets(for tag: Tag) -> [Tag] {
+        tags.filter { $0.kind == tag.kind && $0.id != tag.id && !$0.isArchived }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    /// Whether `tag` can be merged into another. Built-in skills have no record to change. Archived tags can't, so
+    /// that undoing, which unarchives (ADR 0006), restores a merged tag exactly.
+    func canMerge(_ tag: Tag) -> Bool {
+        !tag.isReadOnly && !tag.isArchived && !mergeTargets(for: tag).isEmpty
+    }
+
+    func merge(_ tag: Tag, into kept: Tag) {
+        perform { try library.merge(id: tag.id, into: kept.id) }
+    }
+
+    /// The tags merged away, by name, each with the tag it stands for, so a merge can be undone at any time. None
+    /// while searching, which finds tags to use.
+    var merged: [(tag: Tag, kept: Tag)] {
+        guard Self.trimmed(query).isEmpty else { return [] }
+        return tags.compactMap { tag in
+            guard let kept = index[tag.id], kept.id != tag.id else { return nil }
+            return (tag, kept)
+        }
+        .sorted { $0.tag.name.localizedStandardCompare($1.tag.name) == .orderedAscending }
+    }
+
+    func undoMerge(_ tag: Tag) {
+        perform { try library.unmerge(id: tag.id) }
+    }
+
     /// Loads the tags again. Call when the picker opens, and when iCloud brings changes (SYN-1).
     public func refresh() {
         perform {}
@@ -154,8 +187,13 @@ public final class TagPickerModel {
             isShowingError = true
         }
         do {
-            tags = try library.allTags()
-            index = TagIndex(tags)
+            let all = try library.allTags()
+            index = TagIndex(all)
+            // As the index has them, so the tag that opposite merges settled on is offered (TAG-4).
+            tags = all.map { tag in
+                guard let kept = index[tag.id], kept.id == tag.id else { return tag }
+                return kept
+            }
         } catch {
             logger.error("Couldn't load the tags: \(error, privacy: .public)")
             isShowingError = true
