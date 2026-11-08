@@ -67,7 +67,7 @@ public protocol ProStore: Sendable {
 - **`ProModel` (`@MainActor @Observable`, features):** holds `isPro`, `offer`, `isShowingPaywall` and `canAutoStart`, and is passed by init like `analytics`.
 - **The last known state (the owner's decision):** `ProModel` stores `isPro` in `UserDefaults`. A verified entitlement sets it. An empty answer leaves it. Only a verified transaction with a `revocationDate` clears it, from `updates` or `Transaction.all`. With nothing stored yet and no answer, gates allow, so no one sees a lock flash at launch.
 - **`PracticeModel`:** takes an `autoStart` closure defaulting to true, so existing test call sites don't change.
-- **The gate:** only a new start, before `PracticeModel.swift:223` when `session == nil`. Resume, running sessions and tapped Start are untouched. `keepsScreenAwake` (:435) stops holding the screen on for a locked user.
+- **The gate:** only a new start, before `PracticeModel.swift:223` when `session == nil`. Resume, running sessions and tapped Start are untouched. The screen rule stays as it was: with a piano connected, Practice keeps the screen on 15 minutes even once the free ones are used, as turning that off stalled XCTest's wait for the app to idle on the iPhone simulator (PRO-2's PR).
 - **The hook (Debug only):** `PIANISM_STORE=free|pro`, env for scripting buy, offer and restore, Darwin notifications for granted or revoked while open, and `PIANISM_AUTO_LOGGED=n`. `launch()`, `warmUp` and `LaunchTests` set it, so ordinary tests never reach StoreKit. The real tests leave it unset.
 
 | Case | Behaviour |

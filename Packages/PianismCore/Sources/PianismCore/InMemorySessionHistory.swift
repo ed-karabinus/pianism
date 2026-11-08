@@ -6,6 +6,8 @@ public final class InMemorySessionHistory: SessionHistory {
     private let saved = Mutex<[PracticeSession]>([])
     private let deletedIDs = Mutex<Set<UUID>>([])
     private let readOnlyIDs = Mutex<Set<UUID>>([])
+    /// Every piano session saved, kept through a delete, as the store keeps a deleted record.
+    private let autoLogged = Mutex<Set<UUID>>([])
     private let unshowable: Int
 
     /// An empty history, which says it holds `unshowable` sessions it can't show.
@@ -21,10 +23,15 @@ public final class InMemorySessionHistory: SessionHistory {
         unshowable
     }
 
+    public func autoLoggedIDs() -> Set<UUID> {
+        autoLogged.withLock { $0 }
+    }
+
     public func save(_ session: PracticeSession) {
         saved.withLock { sessions in
             if !sessions.contains(where: { $0.id == session.id }), !deletedIDs.withLock({ $0.contains(session.id) }) {
                 sessions.append(session)
+                if session.source == .midi { autoLogged.withLock { _ = $0.insert(session.id) } }
             }
         }
     }
