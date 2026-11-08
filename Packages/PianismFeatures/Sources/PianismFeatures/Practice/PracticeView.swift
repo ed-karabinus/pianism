@@ -5,6 +5,8 @@ import SwiftUI
 struct PracticeView: View {
     @Bindable var model: PracticeModel
     let tags: TagPickerModel
+    /// Opens the Pro screen, from the line saying the free piano sessions are used (PRO-2).
+    var showPro: () -> Void = {}
     /// Opens the editor of the session with this ID, from the banner of one that ended itself at the cap (SES-4).
     let edit: (UUID) -> Void
 
@@ -112,6 +114,28 @@ struct PracticeView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier(AccessibilityID.practicePianos)
+            }
+            // The free piano sessions, without Pro: how many are left, then where Pro is, never a pop-up (PRO-2, D6).
+            if let left = model.freePianoSessionsLeft {
+                // The link right under its line, in the tint so it reads as one.
+                VStack(spacing: 0) {
+                    if left > 0 {
+                        Text("^[\(left) free piano session](inflect: true) left", bundle: .module)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier(AccessibilityID.practiceFreeLeft)
+                    } else {
+                        Text("Sessions that start themselves are part of Pro.", bundle: .module)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier(AccessibilityID.practiceFreeUsed)
+                        // Footnote-sized, so it's given a target big enough to hit.
+                        Button(action: showPro) {
+                            Text(verbatim: "Pianism Pro").frame(minWidth: 44, minHeight: 44).contentShape(.rect)
+                        }
+                        .accessibilityIdentifier(AccessibilityID.practiceShowPro)
+                    }
+                }
+                .font(.footnote)
+                .multilineTextAlignment(.center)
             }
             if model.showsLowBattery {
                 Label {
@@ -397,6 +421,18 @@ private struct PracticeTimelineSchedule: TimelineSchedule {
 #Preview("Ready") {
     let model = PracticeModel.preview(.ready)
     PracticeView(model: model, tags: .preview(for: model)) { _ in }
+}
+
+#Preview("Free piano sessions left") {
+    let model = PracticeModel.preview(freeUsed: 4)
+    PracticeView(model: model, tags: .preview(for: model)) { _ in }
+}
+
+#Preview("Free ones used, dark, AX5") {
+    let model = PracticeModel.preview(freeUsed: 5)
+    PracticeView(model: model, tags: .preview(for: model)) { _ in }
+        .preferredColorScheme(.dark)
+        .dynamicTypeSize(.accessibility5)
 }
 
 #Preview("Practicing, tagged") {

@@ -99,6 +99,20 @@ public final class PracticeModel: TagTarget {
     /// which keeps the screen on anyway, so it moves on at the session's end.
     private(set) var readyUntil: Date?
     private static let readyAwake: TimeInterval = 15 * 60
+    /// How many free piano sessions are used, as of the last refresh, or `nil` with Pro or while history can't say
+    /// (PRO-2).
+    private var freePianoSessionsUsed: Int?
+    /// What Practice says under Start with a piano connected and no Pro: how many free piano sessions are left, 0
+    /// once they're used, or `nil` to say nothing, as during a session or while history can't say (PRO-2, D6).
+    var freePianoSessionsLeft: Int? {
+        guard !isPro(), !connectedPianos.isEmpty, session == nil, let used = freePianoSessionsUsed else { return nil }
+        return FreeTaste.left(afterUsing: used)
+    }
+    /// Whether a piano's notes can start a session, as far as the last refresh knows: with Pro, while free ones are
+    /// left, or while history can't say, so a store failure never takes it away (PRO-2).
+    private var pianoCanStart: Bool {
+        isPro() || freePianoSessionsUsed.map { FreeTaste.left(afterUsing: $0) > 0 } ?? true
+    }
     /// Turns the piano's notes into MIDI sessions, following the stored session at each refresh (MIDI-1).
     @ObservationIgnored private var detector: MIDIDetector
 
@@ -149,6 +163,8 @@ public final class PracticeModel: TagTarget {
     private let nudges: any PracticeNudges
     private let glance: any PracticeGlance
     private let analytics: AnalyticsModel?
+    /// Whether Pro is unlocked, asked each time, as a purchase or a refund can change it while the app is open.
+    private let isPro: @MainActor () -> Bool
     private let defaults: UserDefaults
     private let calendar = Calendar.autoupdatingCurrent
     /// Says a line to VoiceOver, whose user can't see the time drop back. A seam, so the model's tests hear it.
@@ -161,6 +177,7 @@ public final class PracticeModel: TagTarget {
         store: any RunningSessionStore, history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock,
         nudges: any PracticeNudges, glance: any PracticeGlance, defaults: UserDefaults, nudge: TimeInterval,
         cap: TimeInterval, midi: MIDISettings = .init(), analytics: AnalyticsModel? = nil,
+        isPro: @escaping @MainActor () -> Bool = { true },
         announce: @escaping @MainActor (String) -> Void = PracticeModel.tellVoiceOver
     ) {
         self.recorder = SessionRecorder(store: store, clock: clock, midi: midi)
@@ -171,6 +188,7 @@ public final class PracticeModel: TagTarget {
         self.nudges = nudges
         self.glance = glance
         self.analytics = analytics
+        self.isPro = isPro
         self.defaults = defaults
         self.announce = announce
         self.nudge = nudge
@@ -220,6 +238,8 @@ public final class PracticeModel: TagTarget {
             answerIfPastNudge()
             return
         }
+        // Only a new session is held back once the free ones are used: one already started plays on (PRO-2).
+        guard session != nil || mayAutoStart() else { return }
         let effects = detector.handle(.noteOn(date))
         apply(effects)
         if case .start = effects.first {
@@ -437,6 +457,16 @@ public final class PracticeModel: TagTarget {
             || showingPractice && !connectedPianos.isEmpty && readyUntil != nil
     }
 
+    /// Whether a piano's notes can start a new session now (PRO-2). Read from history at each start, as another
+    /// device's sessions may have synced in, unless the last refresh found them used, which they stay.
+    private func mayAutoStart() -> Bool {
+        guard pianoCanStart else { return false }
+        if !isPro(), let used = try? FreeTaste.used(history: history, outbox: outbox) {
+            freePianoSessionsUsed = used
+        }
+        return pianoCanStart
+    }
+
     /// The battery, read only while the screen is kept on.
     var battery: BatteryReading?
 
@@ -561,6 +591,8 @@ public final class PracticeModel: TagTarget {
             logger.error("Couldn't move the session out of the running-session file: \(error, privacy: .public)")
             isShowingStorageError = true
         }
+        // For Practice's line and the screen, so after a save they show the session it used. Pro needs neither.
+        freePianoSessionsUsed = isPro() ? nil : try? FreeTaste.used(history: history, outbox: outbox)
         do {
             session = try recorder.current()
             if session != nil { isShowingWelcome = false }

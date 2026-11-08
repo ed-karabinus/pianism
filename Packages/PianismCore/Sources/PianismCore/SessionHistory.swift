@@ -21,6 +21,10 @@ public protocol SessionHistory: Sendable {
     /// newer version wrote (ADR 0006). A deleted session isn't counted.
     func unshowableCount() throws -> Int
 
+    /// The IDs of every session a piano started that was saved, deleted ones included, which the free piano sessions
+    /// count (PRO-2, ADR 0012).
+    func autoLoggedIDs() throws -> Set<UUID>
+
     /// Saves `session` unless a session with its ID is already saved, or was deleted. Saving twice is
     /// harmless, and a stale copy can't replace a later edit.
     func save(_ session: PracticeSession) throws
