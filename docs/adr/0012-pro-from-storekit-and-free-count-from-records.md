@@ -51,11 +51,6 @@ it's saved, so a run too short to keep and a timer session use none. The count i
 is about to start, not cached, so a stale value can't allow a 6th or refuse a 5th. The owner chose this, and
 that the 5 are per Apple Account, on 2026-11-07.
 
-*Amended 2026-11-08 (PRO-2, the owner's call):* while any are left, the count is read at each start. Once it
-finds all 5 used, later notes don't read it again until the next refresh, such as the app coming to the front or a
-session saving, so a locked piano doesn't read history at every key press. Pro is asked first, and live, so buying
-unlocks at once. The count only goes down if the local data is wiped, and the next refresh reads it then.
-
 **Testing:** real StoreKit on every PR on iOS 27, a scripted fake store on all four simulators, and sandbox
 checks on a device. The owner authorized this change to the spec's testing table on 2026-11-07.
 

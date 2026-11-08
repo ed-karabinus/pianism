@@ -122,11 +122,9 @@ the real service.
 | A1 | **Signals arrive:** on a TestFlight build, delete Pianism and install it again, save a session, then wait about a minute. TelemetryDeck's dashboard shows `Install.firstLaunch`, `TelemetryDeck.Session.started` and `Practice.sessionSaved` with `source`, marked as TestFlight. | Not yet run |
 | A2 | **Off stops them:** in Settings, turn off "Share anonymous usage", save another session, leave the app and come back, then wait a few minutes. The dashboard shows nothing new from this install. Turn it back on, save a session, and it shows again. | Not yet run |
 
-## Pro (PRO-1, PRO-2 and PRO-3, issues #52, #53 and #54)
+## Pro (PRO-1 and PRO-3, issues #52 and #54)
 
 These need the product in App Store Connect and a Sandbox Apple Account, on a TestFlight or dev-signed build, except S4 and S5, which use the StoreKit configuration file from Xcode. The first purchase comes with the paywall (PRO-3).
-
-On a build with PRO-2, a piano starts sessions on the owner's iPhone only with Pro, as the owner's iCloud account already has more than 5 piano sessions: run S8 first, as it needs Pro off, then buy Pro with the Sandbox account (S1) before any other piano check on such a build. Pro then stays on that phone, and after a reinstall comes back once the App Store answers, or with Restore Purchases (S2).
 
 | # | Check | Last result |
 | --- | --- | --- |
@@ -136,8 +134,6 @@ On a build with PRO-2, a piano starts sessions on the owner's iPhone only with P
 | S4 | **Ask to Buy:** run from Xcode with `AppUITests/Pianism.storekit` as the scheme's StoreKit Configuration (Edit Scheme › Run › Options), as Xcode's Transaction Manager works only with one. Turn on Ask to Buy there, then tap Unlock Pro. The Pro screen says it's waiting for approval. Approve it in the Transaction Manager with the screen still open: it says "Pro is unlocked" with no restart | Not run yet |
 | S5 | **A refund reaches an open app:** run from Xcode with the same StoreKit Configuration as S4. With the app open on Settings, refund the purchase in Xcode's Transaction Manager. Pro turns off with no restart | Not run yet |
 | S6 | **On a Mac:** run it as "Designed for iPad" with the same account. Settings says "Pro is unlocked" | Not run yet |
-| S7 | **A second device:** with the Mac running Pianism as "Designed for iPad" on the same Apple Account and showing Settings, buy Pro on the iPhone (S1). The Mac says "Pro is unlocked" without Restore, at once or at its next launch | Not run yet |
-| S8 | **The free 5 (PRO-2):** on a build without Pro, on an iCloud account that already has 5 sessions a piano started (the owner's does), with the piano connected: Practice says "Sessions that start themselves are part of Pro." with Pianism Pro, which opens the Pro screen. Three notes start nothing; Start does. Delete Pianism, install it again and wait for iCloud to bring History back: still the same. `testTheFifthPianoSessionStartsAndTheSixthOffersPro` covers the countdown and the 5th starting | Not run yet |
 
 **Why these are manual:** the tests use a StoreKit configuration file, so only these reach App Store Connect's real product and a real airplane mode.
 

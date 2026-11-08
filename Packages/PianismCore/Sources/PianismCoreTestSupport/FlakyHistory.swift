@@ -28,11 +28,6 @@ public final class FlakyHistory: SessionHistory {
         return saved.unshowableCount()
     }
 
-    public func autoLoggedIDs() throws -> Set<UUID> {
-        try failIfUnreachable()
-        return saved.autoLoggedIDs()
-    }
-
     public func save(_ session: PracticeSession) throws {
         try failIfUnreachable()
         saved.save(session)

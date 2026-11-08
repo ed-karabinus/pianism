@@ -1334,54 +1334,6 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.navigationBars["Settings"].exists)
     }
 
-    /// PRO-2, D6: with 4 piano sessions used and no Pro, Practice says 1 is left, and the piano starts the 5th, which
-    /// saves itself. Then Practice says starting by itself is part of Pro, with a way to the Pro screen; the piano's
-    /// next notes start nothing, and Start and History work as before.
-    @MainActor
-    func testTheFifthPianoSessionStartsAndTheSixthOffersPro() throws {
-        executionTimeAllowance = 5 * 60  // a stalled audit then costs 5 min, not the default 15
-        var app = launch(at: nil, reset: true, midiPiano: "MIDI KEYBOARD", autoLogged: 4)
-        let left = app.staticTexts["practice.free-left"]
-        XCTAssertTrue(left.waitForExistence(timeout: 10), "Practice doesn't say how many are left")
-        XCTAssertEqual(left.label, "1 free piano session left")
-
-        // The 5th plays about 1.5 s, pauses after 2 s of silence and saves after 4. The 6th's notes come at 14 s.
-        app = launch(
-            at: nil, midiNotes: "1,1.3,1.6,2.5,14,14.3,14.6", midiPauseSeconds: 2, midiSaveSeconds: 4,
-            midiMinimumSeconds: 1, midiPiano: "MIDI KEYBOARD")
-        let launched = Date.now
-        // The 5th is over by about 7 s, often before the launch ends, so its saving shows it started.
-        let used = app.staticTexts["practice.free-used"]
-        XCTAssertTrue(used.waitForExistence(timeout: 15), "The 5th didn't start and save, or Practice didn't say so")
-        XCTAssertTrue(app.staticTexts["practice.last-session"].exists, "No last session")
-        XCTAssertEqual(used.label, "Sessions that start themselves are part of Pro.")
-        attachScreenshot(of: app, named: "Free piano sessions used")
-
-        // Inverted, as a wait for an element that never comes collects minutes of debug information on an iPhone. It
-        // lasts until a 6th would have ended, at about 19 s.
-        let sixth = expectation(for: NSPredicate(format: "exists == true"), evaluatedWith: app.buttons["practice.stop"])
-        sixth.isInverted = true
-        sixth.expectationDescription = "The 6th piano session started"
-        wait(for: [sixth], timeout: max(21 - Date.now.timeIntervalSince(launched), 1))
-        // However late that wait began: the 6th's notes are too short to save, so had it started, Practice would say so
-        // in place of the 5th.
-        XCTAssertFalse(app.staticTexts["practice.too-short"].exists, "The 6th started")
-        XCTAssertTrue(app.staticTexts["practice.last-session"].exists, "The 5th isn't the last session")
-        // Without contrast: Practice's grey footnote lines, the last session and the piano's name among them, nearly
-        // pass, and they're older than this line.
-        try audit(app, "Practice, free piano sessions used", contrast: false)
-
-        tap(app, "practice.show-pro")
-        let close = app.buttons["paywall.close"]
-        XCTAssertTrue(close.waitForExistence(timeout: 5), "The link didn't open the Pro screen")
-        close.tap()
-        XCTAssertTrue(close.waitForNonExistence(timeout: 5))
-        tap(app, "practice.start")
-        XCTAssertEqual(text(app, "practice.status"), "Practicing", "Start didn't start a session")
-        openHistory(app)
-        XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5), "History lost its sessions")
-    }
-
     /// PRO-3: buying from the Pro screen unlocks Pro at once, there and in Settings.
     @MainActor
     func testBuyingProFromTheProScreen() throws {
@@ -2151,7 +2103,7 @@ final class PracticeTests: UITestCase {
         textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
         midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil, intent: String? = nil,
         reminderMinute: Int? = nil, welcome: Bool = false, realStore: Bool = false, restoreFinds: Bool = false,
-        buying: String? = nil, noOffer: Bool = false, autoLogged: Int? = nil
+        buying: String? = nil, noOffer: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -2218,9 +2170,6 @@ final class PracticeTests: UITestCase {
         }
         if let midiPiano {
             app.launchEnvironment["PIANISM_MIDI_PIANO"] = midiPiano
-        }
-        if let autoLogged {
-            app.launchEnvironment["PIANISM_AUTO_LOGGED"] = String(autoLogged)
         }
         if let midiPauseSeconds {
             app.launchEnvironment["PIANISM_MIDI_PAUSE_SECONDS"] = String(midiPauseSeconds)

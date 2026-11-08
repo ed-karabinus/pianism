@@ -542,8 +542,6 @@ struct RefusingHistory: SessionHistory {
 
     func unshowableCount() -> Int { 0 }
 
-    func autoLoggedIDs() -> Set<UUID> { saved.autoLoggedIDs() }
-
     func save(_ session: PracticeSession) throws {
         if session.id == refusing {
             if asOutage { throw FlakyHistory.Failure() } else { throw SessionRefused() }

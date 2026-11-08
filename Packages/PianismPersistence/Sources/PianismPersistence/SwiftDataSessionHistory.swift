@@ -26,15 +26,6 @@ public final class SwiftDataSessionHistory: SessionHistory {
         try read().unshowable
     }
 
-    /// From every record, deleted ones included, as a delete keeps the record and its source (ADR 0006), and each ID
-    /// once, as a synced session can have copies.
-    public func autoLoggedIDs() throws -> Set<UUID> {
-        let midi = PracticeSession.Source.midi.rawValue
-        let records = try ModelContext(store.container()).fetch(
-            FetchDescriptor<SessionRecord>(predicate: #Predicate { $0.source == midi }))
-        return Set(records.map(\.id))
-    }
-
     /// Each ID once, as its latest change, leaving out an ID with any deleted record (ADR 0004,
     /// 0006). A record that can't be rebuilt is left out too, so it can't hide the rest, and counted.
     private func read() throws -> (sessions: [PracticeSession], unshowable: Int) {

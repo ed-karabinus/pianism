@@ -155,15 +155,6 @@ struct PianismApp: App {
         let sessions = SwiftDataSessionHistory(store: historyStore, clock: clock)
         let library = SwiftDataTagLibrary(store: historyStore, clock: clock)
         let outbox = FileSessionOutbox(directory: outboxURL)
-        #if DEBUG
-            // End-to-end tests start with that many saved sessions a piano started, two minutes each, a day apart,
-            // with PIANISM_AUTO_LOGGED (a count), to reach the end of the free ones (PRO-2). Release builds ignore it.
-            for day in 0..<(environment["PIANISM_AUTO_LOGGED"].flatMap(Int.init) ?? 0) {
-                var session = PracticeSession(startedAt: clock.now - Double(day + 1) * 86_400, source: .midi)
-                try? session.stop(at: session.startedAt + 120)
-                try? sessions.save(session)
-            }
-        #endif
         // The notification's answers reach the model once it exists; an answer can launch the app, so the
         // notification is set up here, before launch ends (SES-3).
         let answering = Answering()
@@ -219,8 +210,7 @@ struct PianismApp: App {
         #else
             let proStore = StoreKitPro()
         #endif
-        let pro = ProModel(store: proStore, defaults: .standard, analytics: analytics)
-        self.pro = pro
+        pro = ProModel(store: proStore, defaults: .standard, analytics: analytics)
         var midiSettings = PracticeModel.storedMIDI(in: .standard)
         midiSettings.pauseAfter = midiPause ?? midiSettings.pauseAfter
         midiSettings.saveAfter = midiSave ?? midiSettings.saveAfter
@@ -229,7 +219,7 @@ struct PianismApp: App {
             store: store, history: sessions, outbox: outbox, clock: clock, nudges: nudges, glance: glance,
             defaults: .standard, nudge: nudge ?? PracticeModel.storedNudge(in: .standard),
             cap: cap ?? PracticeModel.storedCap(in: .standard), midi: midiSettings,
-            analytics: analytics, isPro: { pro.isPro })
+            analytics: analytics)
         answering.practice = practice
         self.practice = practice
         // The widget's and the Live Activity's buttons run in this process as intents, which find the model through

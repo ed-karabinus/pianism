@@ -441,28 +441,11 @@ final class SwiftDataSessionHistoryTests {
         #expect(try ModelContext(history.store.container()).fetchCount(FetchDescriptor<SessionRecord>()) == 1)
     }
 
-    @Test("PRO-2, ADR 0012: the piano's sessions come from every record, deleted ones and copies too, once each")
-    func autoLoggedIDsKeepDeletedAndCopies() throws {
-        let history = SwiftDataSessionHistory(store: HistoryStore(url: storeURL), clock: clock)
-        func ended(_ source: PracticeSession.Source) throws -> PracticeSession {
-            var session = PracticeSession(startedAt: clock.now, source: source)
-            try session.stop(at: clock.now + 600)
-            return session
-        }
-        let kept = try ended(.midi)
-        let deleted = try ended(.midi)
-        for session in [kept, deleted, try ended(.timer), try ended(.manual)] { try history.save(session) }
-        try history.delete(id: deleted.id)
-        try insertRecord(in: history, id: kept.id, endingAfter: 600, modifiedAfter: 1, source: "midi")
-
-        #expect(try history.autoLoggedIDs() == [kept.id, deleted.id])
-    }
-
     /// Inserts a record as sync would deliver it, bypassing `save`.
     private func insertRecord(
         in history: SwiftDataSessionHistory, id: UUID, endingAfter seconds: TimeInterval,
         modifiedAfter modified: TimeInterval, isDeleted: Bool = false, pauses: Data = Data(), tagIDs: Data = Data(),
-        version: Int = 1, source: String = "timer"
+        version: Int = 1
     ) throws {
         let context = ModelContext(try history.store.container())
         let record = SessionRecord()
@@ -474,7 +457,6 @@ final class SwiftDataSessionHistoryTests {
         record.modifiedAt = clock.now + modified
         record.deletedAt = isDeleted ? clock.now + modified : nil
         record.version = version
-        record.source = source
         context.insert(record)
         try context.save()
     }
