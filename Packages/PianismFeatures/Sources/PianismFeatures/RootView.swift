@@ -45,6 +45,7 @@ public struct RootView: View {
             }
         }
         .sheet(isPresented: Bindable(practice).isShowingWelcome) { WelcomeView(practice: practice) }
+        .sheet(isPresented: Bindable(pro).isShowingPaywall) { PaywallView(pro: pro) }
         // Asks "Still practicing?", ends a timer session at the cap, and pauses or ends a silent MIDI session, while
         // the app is on screen on any tab, as on an iPad on a music stand (SES-3, SES-4, MIDI-1). Only while the app
         // is in front: away, the notification asks, and a refresh at the nudge would cancel it as it arrives. The
@@ -185,6 +186,13 @@ enum AccessibilityID {
     static let settingsOverlapWarning = "settings.overlap-warning"
     static let settingsSharesUsage = "settings.shares-usage"
     static let settingsPro = "settings.pro"
+    static let settingsShowPro = "settings.show-pro"
+    static let paywallBuy = "paywall.buy"
+    static let paywallRetry = "paywall.retry"
+    static let paywallNotice = "paywall.notice"
+    static let paywallUnlocked = "paywall.unlocked"
+    static let paywallRestore = "paywall.restore"
+    static let paywallClose = "paywall.close"
     static let settingsRestore = "settings.restore"
     static let settingsRestoreNotice = "settings.restore-notice"
     static let settingsNudge = "settings.nudge"

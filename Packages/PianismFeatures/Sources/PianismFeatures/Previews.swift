@@ -192,10 +192,11 @@ private final class PreviewStore: RunningSessionStore {
 }
 
 extension ProModel {
-    /// Not unlocked, with a store that finds nothing and its state kept nowhere that lasts.
-    static func preview() -> ProModel {
-        ProModel(
-            store: InMemoryProStore(), defaults: UserDefaults(suiteName: "ProModel preview") ?? .standard)
+    /// Not unlocked unless asked, with a store that finds nothing and its state kept nowhere that lasts.
+    static func preview(unlocked: Bool = false, offer: ProOffer? = ProOffer(displayPrice: "$14.99")) -> ProModel {
+        let defaults = UserDefaults(suiteName: "ProModel preview") ?? .standard
+        defaults.set(unlocked, forKey: SettingsKey.proUnlocked)
+        return ProModel(store: InMemoryProStore(offer: offer), defaults: defaults, analytics: .preview())
     }
 }
 

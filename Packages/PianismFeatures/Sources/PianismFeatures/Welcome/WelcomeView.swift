@@ -46,7 +46,7 @@ struct WelcomeView: View {
                 "Time your practice with one tap, tag what you worked on, and see your week build up.",
                 bundle: .module)
             Text(
-                "Connect a digital piano and sessions can start themselves while Pianism is open.",
+                "Connect a digital piano and sessions can start themselves while Pianism is open. The first 5 are free, then it's part of Pro.",
                 bundle: .module
             )
             .accessibilityIdentifier(AccessibilityID.welcomeWords)
