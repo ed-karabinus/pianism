@@ -65,6 +65,17 @@ public final class HistoryModel {
         self.now = clock.now
     }
 
+    /// Every session for EXP-1's file, read as it's shared: saved and waiting ones, each once, as History lists them,
+    /// so not one deleted and waiting for Undo to end.
+    func practiceLog() throws -> Data {
+        let saved = try history.sessions()
+        let savedIDs = Set(saved.map(\.id))
+        // As in History, an outbox that can't be read is left out, and Practice reports it.
+        let waiting = ((try? outbox.sessions()) ?? []).filter { !savedIDs.contains($0.id) }
+        let sessions = (saved + waiting).filter { $0.id != pendingDeletion?.id }
+        return PracticeLogCSV.file(sessions, tags: TagIndex(try tags.allTags()))
+    }
+
     /// Loads the history again, and moves "today" along. Call when the screen appears and when the
     /// app returns to the foreground, and when iCloud brings changes (SYN-1): sessions finish elsewhere, and
     /// midnight may have passed.
