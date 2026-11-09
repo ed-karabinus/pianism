@@ -22,10 +22,10 @@ final class ScreenshotTests: UITestCase {
         app.launch()
 
         XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 30), "The piano session isn't running")
-        attachScreenshot(of: app, named: "1 Practice")
+        attachScreenshot(of: app, named: "2 Practice")
         app.buttons["practice.tags"].tap()
         XCTAssertTrue(app.buttons["tags.done"].waitForExistence(timeout: 5), "The tags didn't open")
-        attachScreenshot(of: app, named: "4 Tags")
+        attachScreenshot(of: app, named: "5 Tags")
         app.buttons["tags.done"].tap()
 
         // A second tap if needed, as on iOS 26 a tap while the tab bar is still moving doesn't switch tabs.
@@ -33,7 +33,7 @@ final class ScreenshotTests: UITestCase {
             app.buttons["History"].firstMatch.tap()
         }
         XCTAssertTrue(app.descendants(matching: .any)["history.weeks-met"].waitForExistence(timeout: 5))
-        attachScreenshot(of: app, named: "5 Week")
+        attachScreenshot(of: app, named: "1 Week")
         // Today's header dragged to just under the bar: first far enough to shrink the title, then the rest, measured
         // from the bar as it is then.
         let list = app.collectionViews.firstMatch
@@ -44,11 +44,11 @@ final class ScreenshotTests: UITestCase {
         let top = today.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0))
         drag(top, up: today.frame.minY - bar.frame.maxY - 12)
         XCTAssertLessThan(abs(today.frame.minY - bar.frame.maxY - 12), 20, "Today's header didn't stop under the bar")
-        attachScreenshot(of: app, named: "2 History")
+        attachScreenshot(of: app, named: "3 History")
         app.buttons["History"].firstMatch.tap()
         app.buttons["history.piece-stats"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["piece-stats.piece"].waitForExistence(timeout: 5))
-        attachScreenshot(of: app, named: "3 Pieces")
+        attachScreenshot(of: app, named: "4 Pieces")
     }
 
     /// Scrolls by `points` with no fling: slowly, and held before lifting, so the list stops where the finger does.

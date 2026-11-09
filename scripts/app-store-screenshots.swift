@@ -5,13 +5,14 @@
 import AppKit
 
 /// Each headline, and a quieter line under those showing Pro, as App Review asks a listing to say what needs a
-/// purchase (guideline 2.3.2; picked 2026-11-08).
+/// purchase (guideline 2.3.2; picked 2026-11-08). The week leads, as it works with any piano, like the subtitle's
+/// "Time it with a tap or a piano" (picked 2026-11-09).
 let headlines: [String: (headline: String, pro: String?)] = [
-    "1": ("Your piano starts the timer", "First 5 free, then with Pianism Pro"),
-    "2": ("Every session, day by day", nil),
-    "3": ("See where your time goes", "With Pianism Pro"),
-    "4": ("Tag pieces and skills", nil),
-    "5": ("A weekly goal that fits you", nil),
+    "1": ("A weekly goal that fits you", nil),
+    "2": ("Your piano starts the timer", "First 5 free, then with Pianism Pro"),
+    "3": ("Every session, day by day", nil),
+    "4": ("See where your time goes", "With Pianism Pro"),
+    "5": ("Tag pieces and skills", nil),
 ]
 /// The app's AccentColor in light mode.
 let blue = CGColor(srgbRed: 0, green: 0.33, blue: 0.78, alpha: 1)
