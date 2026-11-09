@@ -787,6 +787,41 @@ struct HistoryModelTests {
         #expect(HistoryModel.preview(empty: true).week.total == 0)
     }
 
+    @Test("EXP-1: the log has saved and waiting sessions once each, tags by name, and not one waiting for Undo")
+    func practiceLogFollowsHistory() throws {
+        let library = InMemoryTagLibrary([Tag(id: "ballade", kind: .piece, name: "Ballade No. 1", isArchived: false)])
+        var tagged = PracticeSession(startedAt: clock.now)
+        try tagged.setTags(["ballade"])
+        try tagged.stop(at: clock.now + 600)
+        let waiting = try endedSession(startingAfter: 3_600)
+        let deleted = try endedSession(startingAfter: 7_200)
+        let history = InMemorySessionHistory()
+        history.save(tagged)
+        history.save(deleted)
+        outbox.add(tagged)
+        outbox.add(waiting)
+        let model = HistoryModel(
+            history: history, tags: library, outbox: outbox, running: running, clock: clock, glance: glance)
+        model.refresh()
+        model.delete(deleted)
+
+        let rows = String(decoding: try model.practiceLog(), as: UTF8.self).components(separatedBy: "\r\n")
+
+        #expect(rows.count == 4)  // the header, two sessions and the empty end after the last line break
+        #expect(rows[1].hasSuffix(",600,0,timer,Ballade No. 1,"))
+        #expect(rows[2].hasSuffix(",600,0,timer,,"))
+        #expect(rows[2].hasPrefix(waiting.startedAt.formatted(.iso8601) + ","))
+    }
+
+    @Test("EXP-1: when history can't be read, the log fails rather than share an empty file")
+    func practiceLogFailsWithHistory() {
+        let model = HistoryModel(
+            history: FlakyHistory(), tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock,
+            glance: glance)
+
+        #expect(throws: FlakyHistory.Failure.self) { try model.practiceLog() }
+    }
+
     private func endedSession(startingAfter seconds: TimeInterval) throws -> PracticeSession {
         var session = PracticeSession(startedAt: clock.now + seconds)
         try session.stop(at: clock.now + seconds + 600)

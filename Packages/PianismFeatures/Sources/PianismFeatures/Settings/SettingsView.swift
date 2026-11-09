@@ -8,6 +8,8 @@ struct SettingsView: View {
     @Bindable var practice: PracticeModel
     @Bindable var analytics: AnalyticsModel
     let pro: ProModel
+    /// The file Export shares, part of Pro (EXP-1).
+    let log: PracticeLogFile
 
     @AppStorage(SettingsKey.showsOverlapWarning) private var showsOverlapWarning = true
     @AppStorage(SettingsKey.weeklyGoalDays) private var goalDays = WeeklyGoal.defaultDays
@@ -137,6 +139,7 @@ struct SettingsView: View {
                         Text("Overlap warning", bundle: .module)
                     }
                     .accessibilityIdentifier(AccessibilityID.settingsOverlapWarning)
+                    exportRow
                 } header: {
                     Text("History", bundle: .module)
                 } footer: {
@@ -188,35 +191,64 @@ struct SettingsView: View {
         }
     }
 
+    /// Every session as a CSV file through the share sheet, part of Pro: without it, the row says so and opens the Pro
+    /// screen, as time per piece does (EXP-1, D9).
+    @ViewBuilder private var exportRow: some View {
+        if pro.isPro {
+            ShareLink(item: log, preview: SharePreview(Text("Pianism sessions", bundle: .module))) {
+                Label(LocalizedStringResource("Export sessions", bundle: .module), systemImage: "square.and.arrow.up")
+            }
+            .accessibilityIdentifier(AccessibilityID.settingsExport)
+        } else {
+            Button {
+                pro.showPaywall()
+            } label: {
+                Label(LocalizedStringResource("Export sessions", bundle: .module), systemImage: "lock.fill")
+            }
+            .accessibilityLabel(lockedExportLabel)
+            .accessibilityIdentifier(AccessibilityID.settingsExport)
+        }
+    }
+
+    /// The locked row, read as its name first, then that it's part of Pro.
+    private var lockedExportLabel: Text {
+        let name = Text("Export sessions", bundle: .module)
+        let locked = Text("Part of Pro", bundle: .module)
+        return Text("\(name), \(locked)", bundle: .module)
+    }
+
     private func times(_ choices: [TimeInterval]) -> some View {
         ForEach(choices, id: \.self) { Text(ElapsedTime.spoken($0)).tag($0) }
     }
 }
 
 #Preview("No piano") {
-    SettingsView(practice: .preview(.ready), analytics: .preview(), pro: .preview())
+    SettingsView(practice: .preview(.ready), analytics: .preview(), pro: .preview(), log: .preview)
 }
 
 #Preview("Daily reminder on") {
     let practice = PracticeModel.preview(.ready, notifications: .allowed)
     practice.remindsDaily = true
-    return SettingsView(practice: practice, analytics: .preview(), pro: .preview())
+    return SettingsView(practice: practice, analytics: .preview(), pro: .preview(), log: .preview)
 }
 
 #Preview("Notifications off in the Settings app") {
-    SettingsView(practice: .preview(.ready, notifications: .denied), analytics: .preview(), pro: .preview())
+    SettingsView(
+        practice: .preview(.ready, notifications: .denied), analytics: .preview(), pro: .preview(), log: .preview)
 }
 
 #Preview("Notifications off in the Settings app, dark, AX5") {
-    SettingsView(practice: .preview(.running, notifications: .denied), analytics: .preview(), pro: .preview())
-        .preferredColorScheme(.dark)
-        .dynamicTypeSize(.accessibility5)
+    SettingsView(
+        practice: .preview(.running, notifications: .denied), analytics: .preview(), pro: .preview(), log: .preview
+    )
+    .preferredColorScheme(.dark)
+    .dynamicTypeSize(.accessibility5)
 }
 
 #Preview("A session running, a piano, dark, AX5") {
     let practice = PracticeModel.preview(.running)
     practice.connectedPianos = ["MIDI KEYBOARD"]
-    return SettingsView(practice: practice, analytics: .preview(), pro: .preview())
+    return SettingsView(practice: practice, analytics: .preview(), pro: .preview(), log: .preview)
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }

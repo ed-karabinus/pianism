@@ -142,6 +142,9 @@
     "End" : {
 
     },
+    "Export sessions" : {
+
+    },
     "Find or add a piece or skill" : {
 
     },
@@ -272,6 +275,9 @@
 
     },
     "Pianism hears your piano while it's open on screen." : {
+
+    },
+    "Pianism sessions" : {
 
     },
     "Pianism stopped your session at %@ of practice, in case the timer was left running." : {
