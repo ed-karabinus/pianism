@@ -6,8 +6,8 @@ nothing here is frozen. **Settled** means the owner decided it as a rule; **For 
 it's open to a better idea. Per-requirement product decisions live in the spec and its issues; architecture lives in
 `docs/adr/`.
 
-Decisions merged before 2026-11-09 are in the table in [`../decisions.md`](../decisions.md). Each one since is a
-file here.
+Decisions recorded before this folder started (2026-11-09) are in the table in [`../decisions.md`](../decisions.md).
+Each one since is a file here.
 
 ## Adding one
 
@@ -26,5 +26,5 @@ tests and the end-to-end tests.
 **Why:** nothing built or tested reads those files, and a docs change was holding the macOS runners for hours.
 ```
 
-Use "For now" in place of "Settled" where it applies. To change a decision, edit its file and say so in it, with the
-date: the history stays in git.
+Where it's "For now", the line reads "For now since 2026-11-08, the owner's pick." To change a decision, edit its
+file, or its row in the table, and say so there with the date: the history stays in git.

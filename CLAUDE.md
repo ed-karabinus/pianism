@@ -9,7 +9,8 @@ engineering principles `E1`–`E8`, and the definition of done. Never edit the s
 to the owner.
 
 **Before proposing a process or scope change,** read what's settled, and why: the files in `docs/decisions/` and
-the older table in `docs/decisions.md`. A decision the owner settles in a PR gets its own file there (see its README).
+the older table in `docs/decisions.md`. A decision the owner settles in a PR gets its own file in `docs/decisions/`
+(see `docs/decisions/README.md`).
 **Before branching,** check the pinned work queue (issue #179) for what's next.
 
 ## Commands
