@@ -1,6 +1,10 @@
 # Settled decisions
 
-Decisions the owner has made that last beyond one PR, written down so agents stop proposing them again by accident. Read this before proposing a process, tooling or scope change. To change one, say what's new and ask the owner; nothing here is frozen. **Settled** means the owner decided it as a rule; **For now** means it's how things are, and it's open to a better idea. When the owner settles something lasting, add a line in the same PR. Per-requirement product decisions live in the spec and its issues; architecture lives in `docs/adr/`.
+**This table holds the decisions merged before 2026-11-09, which still stand.** Each one since is its own file in
+[`decisions/`](decisions/README.md), so pull requests no longer conflict over this one file: add new ones there, not
+here.
+
+Decisions the owner has made that last beyond one PR, written down so agents stop proposing them again by accident. Read this before proposing a process, tooling or scope change. To change one, say what's new and ask the owner; nothing here is frozen. **Settled** means the owner decided it as a rule; **For now** means it's how things are, and it's open to a better idea. Per-requirement product decisions live in the spec and its issues; architecture lives in `docs/adr/`.
 
 | Date | Status | Decision | Why |
 | --- | --- | --- | --- |

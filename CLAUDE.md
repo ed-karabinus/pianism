@@ -8,7 +8,8 @@ It defines requirement IDs (`SES-1`, `MIDI-R3`, `NFR-4`…), product principles 
 engineering principles `E1`–`E8`, and the definition of done. Never edit the spec; propose changes
 to the owner.
 
-**Before proposing a process or scope change,** read `docs/decisions.md`: what's settled, and why.
+**Before proposing a process or scope change,** read what's settled, and why: the files in `docs/decisions/` and
+the older table in `docs/decisions.md`. A decision the owner settles in a PR gets its own file there (see its README).
 **Before branching,** check the pinned work queue (issue #179) for what's next.
 
 ## Commands
@@ -96,8 +97,8 @@ Agents write code quickly, so the main risk is code that works but shouldn't exi
 4. Estimate the production lines before you start, and report the estimate and the actual in the
    PR. More than 1.5 times the estimate needs a sentence explaining why.
 5. Every PR is reviewed by agents that didn't write it (#180). A review stays on the PR: it isn't a
-   re-audit, and it doesn't propose again anything settled in `docs/decisions.md` without something
-   new. The author applies each finding or says why not in the PR's Review section, which ends with
+   re-audit, and it doesn't propose again anything settled in `docs/decisions/` or `docs/decisions.md`
+   without something new. The author applies each finding or says why not in the PR's Review section, which ends with
    a count: findings, applied, not applied. A disagreement goes to the owner, not back and forth.
    - **The reviewing agent** (Muse, which reviews and doesn't build: owner, 2026-11-05): once the
      draft's code is final, ask with a note in the local mailbox (`~/Developer/pianism-mail/`, see
