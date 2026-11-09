@@ -828,13 +828,15 @@ final class PracticeTests: UITestCase {
                 .matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch
         }
         /// The tapped day's date rises from below and what's above the row before it scrolls away. Then the date
-        /// stays clear of the bar, where the scroll used to carry it on under.
+        /// stays clear of the bar, where the scroll used to carry it on under. After the first check, these go by
+        /// the frame: on CI's iOS 26, asking again whether the date was hittable failed the test, "Activation point
+        /// invalid", rather than answering (#215).
         func showsUnderTheBar(_ tapped: XCUIElement, scrolledAway: XCUIElement) {
             XCTAssertTrue(tapped.wait(for: \.isHittable, toEqual: true, timeout: 5), "The tap didn't show the day")
-            let gone = scrolledAway.wait(for: \.isHittable, toEqual: false, timeout: 5)
+            let bar = app.navigationBars.firstMatch.frame.maxY
+            let gone = scrolledAway.wait(for: \.[above: bar], toEqual: true, timeout: 5)
             XCTAssertTrue(gone, "It didn't scroll far enough")
-            XCTAssertFalse(tapped.wait(for: \.isHittable, toEqual: false, timeout: 2), "The date went under the bar")
-            XCTAssertGreaterThanOrEqual(tapped.frame.minY, app.navigationBars.firstMatch.frame.maxY - 1)
+            XCTAssertFalse(tapped.wait(for: \.[below: bar], toEqual: false, timeout: 2), "The date went under the bar")
         }
 
         // When Yesterday's bar is tapped
@@ -2438,4 +2440,13 @@ private final class VirtualPiano {
         _ = MIDIEventListAdd(&list, MemoryLayout<MIDIEventList>.size, packet, 0, words.count, words)
         MIDIReceivedEventList(endpoint, &list)
     }
+}
+
+extension XCUIElement {
+    /// Whether it's wholly above a height on screen, such as the bottom of the navigation bar, to the point. One that
+    /// doesn't exist has an empty frame at the top, so it counts as above.
+    fileprivate subscript(above y: CGFloat) -> Bool { frame.maxY <= y + 1 }
+
+    /// Whether it's wholly below a height on screen, to the point.
+    fileprivate subscript(below y: CGFloat) -> Bool { frame.minY >= y - 1 }
 }
