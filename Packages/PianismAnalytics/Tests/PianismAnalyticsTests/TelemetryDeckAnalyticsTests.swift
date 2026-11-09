@@ -47,8 +47,10 @@ private final class FakeNetwork: URLProtocol, @unchecked Sendable {
     }
 }
 
-/// One at a time, as the SDK is a single shared manager and the fake network is shared too. Every test ends with
-/// analytics off, so a manager left behind by one can't post during the next.
+/// One at a time, as the SDK is a single shared manager and the fake network is shared too. A test can still reach into
+/// the next: the SDK starts a session 0.5 s after each `initialize`, on whichever manager is current then, and a post
+/// made just before a test turns off can land after the next one's reset. So a test that expects nothing at all resets
+/// again after `settle()`.
 @Suite(.serialized)
 @MainActor
 struct TelemetryDeckAnalyticsTests {
@@ -144,6 +146,7 @@ struct TelemetryDeckAnalyticsTests {
     /// With the SDK not started at all, as when analytics is off at launch. Sending would trap here, in a Debug build.
     @Test func neverTurnedOnNothingGoesOut() async throws {
         try await settle()
+        FakeNetwork.reset()
         TelemetryDeck.terminate()
         analytics.send(.firstLaunch)
         try await settle()
