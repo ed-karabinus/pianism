@@ -1219,7 +1219,28 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.navigationBars["Connect a piano"].waitForExistence(timeout: 5))
     }
 
-    /// Scrolls to Pro's section of Settings, the last one, which a Form may not have built yet (PRO-1).
+    /// EXP-1: without Pro, Export opens the Pro screen; after buying, it opens the share sheet with the file.
+    @MainActor
+    func testExportOpensOnlyWithPro() throws {
+        let app = launch(at: start, reset: true, syncArrivesSeconds: 1)
+        openSettings(app)
+        proRow("settings.export", in: app).tap()
+        let buy = app.buttons["paywall.buy"]
+        XCTAssertTrue(buy.waitForExistence(timeout: 5), "The locked row didn't open the Pro screen")
+        buy.tap()
+        XCTAssertTrue(app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 10), "Buying didn't unlock Pro")
+        app.buttons["paywall.close"].tap()
+
+        proRow("settings.export", in: app).tap()
+        // The sheet's header shows the file's title, which also says the file was handed over; the system's own name
+        // for the sheet only as a fallback, as it's private and could change.
+        let title = app.staticTexts["Pianism sessions"]
+        let sheet = app.otherElements["ActivityListView"]
+        XCTAssertTrue(title.waitForExistence(timeout: 10) || sheet.exists, "The share sheet didn't open")
+        attachScreenshot(of: app, named: "Export, share sheet")
+    }
+
+    /// Scrolls to a row of Settings, such as Pro's in the last section, which a Form may not have built yet (PRO-1).
     @MainActor
     private func proRow(_ id: String, in app: XCUIApplication) -> XCUIElement {
         let row = app.descendants(matching: .any)[id].firstMatch
@@ -1867,8 +1888,9 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         openHistory(app)
         XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5), "No session in History")
-        try audit(app, "History", contrast: false)
+        try audit(app, "History")
         openSettings(app)
+        // Contrast only noted: the system draws these forms' grey headers, footers and values (#165).
         try audit(app, "Settings", contrast: false, stallsOnIPadIOS26: true)
         tap(app, "settings.pianos")
         XCTAssertTrue(app.buttons["pianos.pair"].waitForExistence(timeout: 5), "Connect a piano didn't open")
