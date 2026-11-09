@@ -63,6 +63,8 @@ Run `make lint unused build test` before every push. CI runs the same commands.
 - Tests use Swift Testing (`import Testing`) except UI tests, which use XCTest and subclass
   `UITestCase`, so a failure keeps its screen and UI tree. Name each test after the behaviour it
   proves and tag it with its requirement ID.
+- New tests read in `// Given`, `// When` and `// Then` sections (the owner, 2026-11-08). Existing tests
+  stay as they are: don't port them.
 
 ## Keeping the code small
 
