@@ -17,6 +17,54 @@ account details go here.
 | Price | Free, base country United States | 2026-11-07 |
 | Availability | 144 of 175 storefronts: all but the EU's 27, Iceland, Norway, Switzerland and the UK, as `docs/decisions.md` decides (2026-11-07). Liechtenstein has no storefront of its own | 2026-11-07 |
 
+## The listing (English, U.S.), to enter (#56)
+
+Settled with the owner on 2026-11-08, not entered yet. Fill in each "Set" date once it's in App Store Connect. Words
+in the name and subtitle count as search keywords, so the keywords don't repeat them. Every line must be true in the
+build that's submitted, and the auto-start always says "while Pianism is open" (CLAUDE.md).
+
+| Item | Value | Set |
+| --- | --- | --- |
+| Name (30) | Pianism: Practice Tracker | |
+| Subtitle (30) | Time it with a tap or a piano | |
+| Keywords (100) | `log,timer,midi,keyboard,lessons,music,student,teacher,scales,sight reading,repertoire,habit,goal` | |
+| Promotional text (170; changes need no review) | Below | |
+| Description (4,000) | Below | |
+
+Promotional text:
+
+> Set a weekly goal, time each session with a tap and watch your week fill in. Got a digital piano? Connect it and
+> sessions start themselves while Pianism is open.
+
+Description:
+
+```text
+Pianism keeps track of your piano practice, so you can see your week build up.
+
+TIME IT WITH ONE TAP
+Start a session, pause when the phone rings, stop when you're done. Pianism counts the time you practiced, not the breaks.
+
+YOUR PIANO STARTS THE TIMER
+Connect a digital piano over Bluetooth or USB, and sessions start, pause and save themselves while Pianism is open. The first 5 piano sessions are free, then it's part of Pianism Pro.
+
+TAG PIECES AND SKILLS
+Note what you worked on: a Chopin nocturne, scales, sight-reading. Add a composer and a target tempo to each piece.
+
+A WEEKLY GOAL THAT FITS YOU
+Set how many days a week you want to practice, watch the week fill in, and get a reminder on days you haven't practiced yet.
+
+EVERY SESSION, DAY BY DAY
+History lists every session, with a widget for your home screen and your sessions synced through iCloud to your other devices.
+
+PIANISM PRO
+One purchase, no subscription:
+• Piano sessions start, pause and save themselves while Pianism is open, after the first 5
+• Time per piece: total, last 30 days, and time playing and paused
+• Export every session as a CSV file, for Numbers or Excel
+
+No account, no ads. Your practice stays in your iCloud.
+```
+
 ## Pianism Pro, the in-app purchase (#52, ADR 0012)
 
 | Item | Value | Set |
@@ -49,6 +97,9 @@ the product: check the status above, the product ID, and the Sandbox account (S1
 | What | When |
 | --- | --- |
 | A Sandbox test account | Before S1 |
+| Enter the listing above | Before submission |
+| A Pianism-only support email (the owner makes it), then the support and privacy-policy pages on the website and their URLs here | Before submission (#56) |
+| Age rating and the App Privacy answers (anonymous usage data, not linked, for analytics) | Before submission (#56) |
 | A new review screenshot showing stats and export too | Before submission, once HIS-4 and EXP-1 ship |
 | Change the description if CSV export (EXP-1) is cut | Before submission |
 | Attach Pianism Pro to v1.0 on the version page, and the app's own App Review notes (no piano needed to reach Pro) | At submission (#59) |
