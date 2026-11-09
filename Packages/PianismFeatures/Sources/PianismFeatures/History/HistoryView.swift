@@ -133,7 +133,7 @@ struct HistoryView: View {
                         systemImage: "exclamationmark.triangle"
                     )
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.secondaryText)
                     .accessibilityIdentifier(AccessibilityID.historyUnavailable)
                 }
                 if model.unshowableCount > 0 {
@@ -145,7 +145,7 @@ struct HistoryView: View {
                         systemImage: "exclamationmark.triangle"
                     )
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.secondaryText)
                     // One element, "Warning, 2 sessions…": iOS 26 otherwise reads the icon alone.
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier(AccessibilityID.historyUnshowable)
@@ -197,6 +197,7 @@ struct HistoryView: View {
                         }
                     } header: {
                         TimedRow(title: title(for: day), duration: day.total)
+                            .foregroundStyle(.secondaryText)
                             .accessibilityAddTraits(.isHeader)
                             .accessibilityIdentifier(AccessibilityID.historyDay)
                     }
@@ -214,7 +215,7 @@ struct HistoryView: View {
             systemImage: "icloud.slash"
         )
         .font(.footnote)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.secondaryText)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(AccessibilityID.historyNotSyncing)
     }
@@ -269,10 +270,10 @@ struct TimedRow: View {
 
     var body: some View {
         LabeledContent {
-            Text(ElapsedTime.display(duration)).monospacedDigit()
+            Text(ElapsedTime.display(duration)).monospacedDigit().foregroundStyle(.secondaryText)
         } label: {
             title
-            detail
+            detail.foregroundStyle(.secondaryText)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(detail.map { Text("\(title), \($0)", bundle: .module) } ?? title)

@@ -58,7 +58,7 @@ struct PracticeView: View {
                 VStack(spacing: 24) {
                     Text(status(at: now), bundle: .module)
                         .font(.title3.weight(.medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.secondaryText)
                         .accessibilityIdentifier(AccessibilityID.practiceStatus)
                     Text(ElapsedTime.display(elapsed))
                         .contentTransition(.numericText(value: elapsed))
@@ -86,7 +86,7 @@ struct PracticeView: View {
             if model.session == nil, model.lastRunWasTooShort {
                 Text("Too short to save", bundle: .module)
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.secondaryText)
                     .accessibilityIdentifier(AccessibilityID.practiceTooShort)
             } else if model.session == nil, let last = model.lastSession {
                 if model.lastSessionReachedCap {
@@ -95,14 +95,14 @@ struct PracticeView: View {
                     let duration = ElapsedTime.display(last.elapsed(at: model.clock.now))
                     Text("Last session: \(duration)", bundle: .module)
                         .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.secondaryText)
                         .accessibilityIdentifier(AccessibilityID.practiceLastSession)
                 }
             }
             if model.waitingCount > 0 {
                 Text("^[\(model.waitingCount) session](inflect: true) waiting to be saved", bundle: .module)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.secondaryText)
                     .accessibilityIdentifier(AccessibilityID.practiceWaiting)
             }
             // The piano Pianism hears, if any (MIDI-2). Nothing without one: connecting one is in Settings, an option
@@ -110,7 +110,7 @@ struct PracticeView: View {
             if !model.connectedPianos.isEmpty {
                 Text("\(model.connectedPianos.formatted(.list(type: .and))) connected", bundle: .module)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.secondaryText)
                     .accessibilityIdentifier(AccessibilityID.practicePianos)
             }
             if model.showsLowBattery {
@@ -121,7 +121,7 @@ struct PracticeView: View {
                     Image(systemName: "battery.25percent").foregroundStyle(.red)
                 }
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.secondaryText)
                 .accessibilityIdentifier(AccessibilityID.practiceLowBattery)
             }
             Spacer()

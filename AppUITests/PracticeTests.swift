@@ -1970,8 +1970,9 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         openHistory(app)
         XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5), "No session in History")
-        try audit(app, "History", contrast: false)
+        try audit(app, "History")
         openSettings(app)
+        // Contrast only noted: the system draws these forms' grey headers, footers and values (#165).
         try audit(app, "Settings", contrast: false, stallsOnIPadIOS26: true)
         tap(app, "settings.pianos")
         XCTAssertTrue(app.buttons["pianos.pair"].waitForExistence(timeout: 5), "Connect a piano didn't open")
