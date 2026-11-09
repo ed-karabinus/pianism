@@ -54,33 +54,44 @@ jobs:
   # `if:` counts as passing, and takes a couple of minutes, not an hour. So does any later run on that commit: to
   # re-test it, push a new commit. An API error means a full run; if this job itself fails, the Mac jobs are skipped
   # and the summary fails, so re-run the failed jobs.
+  # A pull request that changes only Markdown files at the top level, in docs/ or in .claude/ skips the Mac jobs too,
+  # as nothing built or tested reads those. Markdown anywhere else (say in App/, which Xcode copies into the app) runs
+  # in full. The files come from the tested merge commit itself, with both names of a renamed file.
   passed:
-    name: Look for an earlier pass on this commit
+    name: Look for an earlier pass or a docs-only change
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       actions: read
+      contents: read
     outputs:
-      already: ${{ steps.find.outputs.already }}
+      skip: ${{ steps.find.outputs.skip }}
     steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
       - id: find
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           n=0
+          other=1
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
             n=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?event=pull_request&status=success&head_sha=$SHA" \
               --jq "[.workflow_runs[] | select(.id != $GITHUB_RUN_ID)] | length") || n=0
+            # An error, or an empty list, counts as a file that isn't docs: a full run.
+            files=$(git diff --no-renames --name-only HEAD^1 HEAD) || files=""
+            other=$(printf '%s\n' "$files" | grep -cvE '^(docs/.*|\.claude/.*|[^/]*)\.md$') || true
+            echo "Earlier passing runs on $SHA: $n. Changed files that aren't docs: ${other:-unknown}"
           fi
-          echo "Earlier passing runs on $SHA: $n"
-          echo "already=$([ "$n" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "skip=$( { [ "$n" -gt 0 ] || [ "$other" -eq 0 ]; } && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
   # Periphery reads the compiler's index, so it needs an Xcode build (ADR 0005).
   unused:
     name: Unused code (Periphery)
     needs: [core, lint, passed]
-    if: needs.passed.outputs.already != 'true'
+    if: needs.passed.outputs.skip != 'true'
     runs-on: macos-26
     timeout-minutes: 20
     steps:
@@ -96,7 +107,7 @@ jobs:
   adapters:
     name: Adapter integration tests (macOS)
     needs: [core, lint, passed]
-    if: needs.passed.outputs.already != 'true'
+    if: needs.passed.outputs.skip != 'true'
     runs-on: macos-26
     timeout-minutes: 15
     steps:
@@ -125,7 +136,7 @@ jobs:
   e2e:
     name: End-to-end tests (${{ matrix.device }}, iOS ${{ matrix.ios }})
     needs: [core, lint, passed]
-    if: github.event_name != 'push' && needs.passed.outputs.already != 'true'
+    if: github.event_name != 'push' && needs.passed.outputs.skip != 'true'
     runs-on: ${{ matrix.ios == 26 && 'macos-26' || 'xcode-27' }}
     timeout-minutes: 90
     strategy:
@@ -171,5 +182,5 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Every device and iOS version passed, here or in an earlier run of this commit
-        run: test "${{ needs.e2e.result }}" = success || test "${{ needs.passed.outputs.already }}" = true
+      - name: Every device and iOS version passed, here or in an earlier run of this commit, or only docs changed
+        run: test "${{ needs.e2e.result }}" = success || test "${{ needs.passed.outputs.skip }}" = true
