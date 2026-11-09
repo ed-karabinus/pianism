@@ -139,6 +139,9 @@
     "End" : {
 
     },
+    "Export sessions" : {
+
+    },
     "Find or add a piece or skill" : {
 
     },
@@ -238,6 +241,9 @@
     "Pair a Bluetooth piano" : {
 
     },
+    "Part of Pro" : {
+
+    },
     "Pause" : {
 
     },
@@ -257,6 +263,9 @@
 
     },
     "Pianism hears your piano while it's open on screen." : {
+
+    },
+    "Pianism sessions" : {
 
     },
     "Pianism stopped your session at %@ of practice, in case the timer was left running." : {

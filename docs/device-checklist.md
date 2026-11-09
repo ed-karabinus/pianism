@@ -141,6 +141,14 @@ On a build with PRO-2, a piano starts sessions on the owner's iPhone only with P
 
 **Why these are manual:** the tests use a StoreKit configuration file, so only these reach App Store Connect's real product and a real airplane mode.
 
+## Export (EXP-1, issue #55)
+
+**Why it's manual:** the tests check the file's every byte, but not how a spreadsheet app reads it.
+
+| # | Check | Last result |
+| --- | --- | --- |
+| S10 | **The exported file opens in Numbers:** with Pro, add a note with a comma and an accented letter, such as "left hand, then tempo é", to a session. In Settings, tap Export sessions, then Save to Files, and open the file in Numbers, and in Excel if you have it. Every session is there, oldest first, with its times in the zone it was played in, its tags by name, and the note exactly as typed | Not run yet |
+
 ## iCloud sync (SYN-1, issue #15)
 
 | # | Check | Last result |

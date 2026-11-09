@@ -41,7 +41,9 @@ public struct RootView: View {
                 HistoryView(model: history)
             }
             Tab(LocalizedStringResource("Settings", bundle: .module), systemImage: "gearshape", value: .settings) {
-                SettingsView(practice: practice, analytics: analytics, pro: pro)
+                SettingsView(
+                    practice: practice, analytics: analytics, pro: pro,
+                    log: PracticeLogFile { [history] in try await history.practiceLog() })
             }
         }
         .sheet(isPresented: Bindable(practice).isShowingWelcome) { WelcomeView(practice: practice) }
@@ -197,6 +199,7 @@ enum AccessibilityID {
     static let paywallRestore = "paywall.restore"
     static let paywallClose = "paywall.close"
     static let settingsRestore = "settings.restore"
+    static let settingsExport = "settings.export"
     static let settingsRestoreNotice = "settings.restore-notice"
     static let settingsNudge = "settings.nudge"
     static let settingsCap = "settings.cap"

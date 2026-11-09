@@ -227,3 +227,8 @@ extension AnalyticsModel {
             clock: SystemClock())
     }
 }
+
+extension PracticeLogFile {
+    /// An empty file, for previews.
+    static let preview = PracticeLogFile { Data() }
+}
