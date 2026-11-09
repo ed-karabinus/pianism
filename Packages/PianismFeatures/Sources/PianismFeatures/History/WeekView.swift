@@ -34,7 +34,7 @@ struct WeekView: View {
                 // So it shows why a day with a bar didn't count. VoiceOver reads the count below instead.
                 if goal.minimum > 0 {
                     RuleMark(y: .value(Text("Minutes", bundle: .module), goal.minimum / 60))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.secondaryText)
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4]))
                         .accessibilityHidden(true)
                 }
@@ -86,6 +86,7 @@ struct WeekView: View {
                 .disabled(!model.canShowEarlierWeek)
                 .accessibilityIdentifier(AccessibilityID.historyWeekEarlier)
                 TimedRow(title: title, duration: week.total)
+                    .foregroundStyle(.secondaryText)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier(AccessibilityID.historyWeek)
                 Button(LocalizedStringResource("Later week", bundle: .module), systemImage: "chevron.forward") {
@@ -127,7 +128,7 @@ struct WeekView: View {
             if weeks > 0 {
                 Text("^[\(weeks) week](inflect: true) met your goal in the past year", bundle: .module)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.secondaryText)
                     .accessibilityIdentifier(AccessibilityID.historyWeeksMet)
             }
         }
@@ -145,7 +146,7 @@ struct WeekView: View {
             }
         return HStack {
             Image(systemName: kind?.icon ?? "music.note")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.secondaryText)
                 .opacity(kind == nil ? 0 : 1)
                 .frame(width: iconWidth)
             TimedRow(title: title, duration: tagTime.time)

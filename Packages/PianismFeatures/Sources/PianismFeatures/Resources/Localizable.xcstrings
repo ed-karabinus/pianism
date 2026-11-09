@@ -25,6 +25,9 @@
     "A session counts toward each of its tags." : {
 
     },
+    "A session with several pieces counts fully toward each." : {
+
+    },
     "A target tempo is a whole number from %lld to %lld." : {
 
     },
@@ -145,6 +148,9 @@
     "Find or add a piece or skill" : {
 
     },
+    "From sessions your piano started in the last 30 days." : {
+
+    },
     "History" : {
 
     },
@@ -170,6 +176,9 @@
 
     },
     "It's listed on two days. Both go." : {
+
+    },
+    "Last 30 days" : {
 
     },
     "Last session: %@" : {
@@ -206,6 +215,9 @@
 
     },
     "No piano connected" : {
+
+    },
+    "No pieces yet" : {
 
     },
     "No practice yet" : {
@@ -281,6 +293,9 @@
 
     },
     "Pieces" : {
+
+    },
+    "Playing" : {
 
     },
     "Practice" : {
@@ -397,6 +412,9 @@
     "Stopped at" : {
 
     },
+    "Tag a session with a piece to see its time here." : {
+
+    },
     "Tags" : {
 
     },
@@ -427,6 +445,9 @@
     "Time" : {
 
     },
+    "Time per piece" : {
+
+    },
     "Time your practice with one tap, tag what you worked on, and see your week build up." : {
 
     },
@@ -434,6 +455,9 @@
 
     },
     "Too short to save" : {
+
+    },
+    "Total" : {
 
     },
     "Try Again" : {

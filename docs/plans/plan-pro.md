@@ -88,7 +88,7 @@ public protocol ProStore: Sendable {
 - **When it counts:** on save, so short runs (`SessionRecorder.swift:156`) and timer sessions use nothing. It's fetched at the gate, not cached. A store failure allows the start.
 - **Per Apple Account:** through sync, 3 on an iPhone and 2 on an iPad use all 5. ADR 0012 lists the generous gaps.
 
-**HIS-4:**
+**HIS-4:** (the screen says "Playing" and "Paused" for played and bench, decided 2026-11-08 in `docs/decisions.md`)
 
 - Total and 30 days sum `day.part(of:).practiced` (`PracticeDay.swift:28-33`), so they match History, over today plus the previous 29 days. Waiting sessions in the outbox count, as they do in History.
 - It covers pieces only, archived included, with merges resolved through `TagIndex`.

@@ -84,6 +84,31 @@ struct HistoryModelTests {
         #expect(model.editing?.tags.selected.map(\.name) == ["Ballade No. 2"])
     }
 
+    @Test("HIS-4: time per piece adds History's sessions, waiting ones included, with their tags as they are now")
+    func pieceStatsFollowHistory() throws {
+        let library = InMemoryTagLibrary([Tag(id: "ballade", kind: .piece, name: "Ballade No. 1", isArchived: false)])
+        var saved = PracticeSession(startedAt: clock.now - 3_600)
+        try saved.setTags(["ballade"])
+        try saved.stop(at: clock.now - 3_000)
+        var waiting = PracticeSession(startedAt: clock.now - 1_200)
+        try waiting.setTags(["ballade"])
+        try waiting.stop(at: clock.now - 900)
+        let history = InMemorySessionHistory()
+        history.save(saved)
+        let waitingBox = InMemorySessionHistory()
+        waitingBox.add(waiting)
+        let model = HistoryModel(
+            history: history, tags: library, outbox: waitingBox, running: running, clock: clock, glance: glance)
+        model.refresh()
+
+        #expect(model.pieceStats.map(\.total) == [900])
+
+        try library.rename(id: "ballade", to: "Ballade No. 2")
+        model.refresh()
+
+        #expect(model.pieceStats.map(\.piece.name) == ["Ballade No. 2"])
+    }
+
     @Test("ADR 0007: while history can't load, waiting sessions still show, and the failure clears once it loads")
     func waitingShowDuringFailure() throws {
         let history = FlakyHistory()
