@@ -162,6 +162,12 @@ struct SettingsView: View {
                             .accessibilityIdentifier(AccessibilityID.settingsPro)
                     } else {
                         Button {
+                            pro.showPaywall()
+                        } label: {
+                            Text(verbatim: "Pianism Pro")
+                        }
+                        .accessibilityIdentifier(AccessibilityID.settingsShowPro)
+                        Button {
                             Task { await pro.restore() }
                         } label: {
                             Text("Restore Purchases", bundle: .module)

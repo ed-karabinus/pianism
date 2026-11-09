@@ -180,16 +180,28 @@ struct PianismApp: App {
         // Started here, as a refund or a purchase elsewhere can arrive as soon as the app launches (ADR 0012).
         #if DEBUG
             // End-to-end tests script the store with PIANISM_STORE=free, and all but the ones about real StoreKit do.
-            // PIANISM_RESTORE_FINDS=1 has a restore find the purchase, and a test posts the notification below for a
-            // refund while the app is open. Release builds ignore them.
+            // PIANISM_RESTORE_FINDS=1 has a restore find the purchase, PIANISM_BUY says how a purchase ends
+            // (purchased, pending, cancelled or failed), and PIANISM_NO_OFFER=1 leaves the price out of reach. A test
+            // posts the notifications below for a refund, or an approval, while the app is open. Release builds ignore
+            // them.
             let proStore: any ProStore
-            if ProcessInfo.processInfo.environment["PIANISM_STORE"] == "free" {
+            if environment["PIANISM_STORE"] == "free" {
+                let buying: [String: PurchaseOutcome] = [
+                    "pending": .pending, "cancelled": .cancelled, "failed": .failed,
+                ]
                 let scripted = InMemoryProStore(
-                    restoreFinds: ProcessInfo.processInfo.environment["PIANISM_RESTORE_FINDS"] == "1")
+                    restoreFinds: environment["PIANISM_RESTORE_FINDS"] == "1",
+                    offer: environment["PIANISM_NO_OFFER"] == "1" ? nil : ProOffer(displayPrice: "$14.99"),
+                    buying: environment["PIANISM_BUY"].flatMap { buying[$0] } ?? .purchased)
                 var refunding: Int32 = 0
                 notify_register_dispatch("com.edkarabinus.Pianism.pro-refunded", &refunding, .global()) {
                     @Sendable [scripted] _ in
                     Task { await scripted.set(.revoked) }
+                }
+                var approving: Int32 = 0
+                notify_register_dispatch("com.edkarabinus.Pianism.pro-approved", &approving, .global()) {
+                    @Sendable [scripted] _ in
+                    Task { await scripted.set(.entitled) }
                 }
                 proStore = scripted
             } else {
@@ -198,7 +210,7 @@ struct PianismApp: App {
         #else
             let proStore = StoreKitPro()
         #endif
-        pro = ProModel(store: proStore, defaults: .standard)
+        pro = ProModel(store: proStore, defaults: .standard, analytics: analytics)
         var midiSettings = PracticeModel.storedMIDI(in: .standard)
         midiSettings.pauseAfter = midiPause ?? midiSettings.pauseAfter
         midiSettings.saveAfter = midiSave ?? midiSettings.saveAfter

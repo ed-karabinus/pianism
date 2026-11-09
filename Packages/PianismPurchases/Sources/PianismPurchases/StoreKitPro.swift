@@ -40,6 +40,38 @@ public final class StoreKitPro: ProStore {
             return .failed
         }
     }
+
+    public func offer() async -> ProOffer? {
+        guard let product = await product() else { return nil }
+        return ProOffer(displayPrice: product.displayPrice)
+    }
+
+    public func purchase() async -> PurchaseOutcome {
+        guard let product = await product() else { return .failed }
+        do {
+            switch try await product.purchase() {
+            case .success(let result):
+                // Like any unverified transaction, one StoreKit can't verify doesn't unlock Pro (ADR 0012).
+                guard case .verified(let transaction) = result else { return .failed }
+                await transaction.finish()
+                return .purchased
+            case .pending:
+                return .pending
+            case .userCancelled:
+                return .cancelled
+            @unknown default:
+                return .failed
+            }
+        } catch StoreKitError.userCancelled {
+            return .cancelled
+        } catch {
+            return .failed
+        }
+    }
+
+    private func product() async -> Product? {
+        try? await Product.products(for: [ProProduct.id]).first
+    }
 }
 
 /// What ``ProStatus`` depends on in a transaction, apart from StoreKit, whose results a test can't make.

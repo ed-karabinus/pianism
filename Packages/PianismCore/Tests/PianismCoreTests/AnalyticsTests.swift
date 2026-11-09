@@ -16,6 +16,8 @@ struct AnalyticsTests {
         #expect(AnalyticsSignal.sessionSaved(.timer).parameters == ["source": "timer"])
         #expect(AnalyticsSignal.sessionSaved(.midi).parameters == ["source": "midi"])
         #expect(AnalyticsSignal.sessionSaved(.manual).parameters == ["source": "manual"])
+        #expect(AnalyticsSignal.paywallShown.name == "Paywall.shown")
+        #expect(AnalyticsSignal.paywallShown.parameters.isEmpty)
     }
 
     /// Saves one new session at each of these times, and returns which of them reached activation.

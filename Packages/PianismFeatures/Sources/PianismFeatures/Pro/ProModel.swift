@@ -7,11 +7,27 @@ import PianismCore
 @Observable
 public final class ProModel {
     public private(set) var isPro: Bool {
-        didSet { defaults.set(isPro, forKey: SettingsKey.proUnlocked) }
+        didSet {
+            defaults.set(isPro, forKey: SettingsKey.proUnlocked)
+            // However it came, nothing said before it, such as "No purchase found.", is true any more.
+            if isPro {
+                restoreNotice = nil
+                purchaseNotice = nil
+            }
+        }
     }
     /// What the last restore has to say, if it didn't unlock Pro.
     private(set) var restoreNotice: RestoreNotice?
     private(set) var isRestoring = false
+    /// Whether the Pro screen is open. Only a tap opens it, never the app by itself (PRO-3).
+    var isShowingPaywall = false
+    /// What Pro costs, once the store has said.
+    private(set) var offer: ProOffer?
+    /// Whether the store couldn't be reached for the price, which is never made up.
+    private(set) var isOfferUnavailable = false
+    private(set) var isBuying = false
+    /// What the last purchase has to say, if it didn't unlock Pro.
+    private(set) var purchaseNotice: PurchaseNotice?
 
     enum RestoreNotice {
         case noPurchase, unreachable
@@ -24,12 +40,26 @@ public final class ProModel {
         }
     }
 
+    enum PurchaseNotice {
+        case waiting, failed
+
+        var message: LocalizedStringResource {
+            switch self {
+            case .waiting:
+                LocalizedStringResource("Waiting for approval. Pro unlocks once it's approved.", bundle: .module)
+            case .failed: LocalizedStringResource("The purchase didn't go through. Try again.", bundle: .module)
+            }
+        }
+    }
+
     @ObservationIgnored private let store: any ProStore
     @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private let analytics: AnalyticsModel
 
-    public init(store: any ProStore, defaults: UserDefaults) {
+    public init(store: any ProStore, defaults: UserDefaults, analytics: AnalyticsModel) {
         self.store = store
         self.defaults = defaults
+        self.analytics = analytics
         isPro = defaults.bool(forKey: SettingsKey.proUnlocked)
     }
 
@@ -65,6 +95,39 @@ public final class ProModel {
         }
     }
 
+    /// Opens the Pro screen, from a tap on Settings' row or on something Pro.
+    func showPaywall() {
+        isShowingPaywall = true
+        purchaseNotice = nil
+        analytics.paywallShown()
+    }
+
+    /// Asks the store what Pro costs, when the Pro screen opens and when it's asked to try again.
+    func loadOffer() async {
+        isOfferUnavailable = false
+        offer = await store.offer()
+        isOfferUnavailable = offer == nil
+    }
+
+    /// Buys Pro. Cancelling, as at the App Store's sheet, says nothing.
+    func buy() async {
+        isBuying = true
+        defer { isBuying = false }
+        purchaseNotice = nil
+        switch await store.purchase() {
+        case .purchased:
+            // A verified purchase, so Pro by ADR 0012's rule, without waiting for the store to say so again.
+            isPro = true
+            PracticeModel.tellVoiceOver(String(localized: "Pro is unlocked", bundle: .module))
+        case .pending:
+            show(.waiting)
+        case .cancelled:
+            break
+        case .failed:
+            show(.failed)
+        }
+    }
+
     private func apply(_ status: ProStatus) {
         switch status {
         case .entitled: isPro = true
@@ -75,6 +138,11 @@ public final class ProModel {
 
     private func show(_ notice: RestoreNotice) {
         restoreNotice = notice
+        PracticeModel.tellVoiceOver(String(localized: notice.message))
+    }
+
+    private func show(_ notice: PurchaseNotice) {
+        purchaseNotice = notice
         PracticeModel.tellVoiceOver(String(localized: notice.message))
     }
 }
