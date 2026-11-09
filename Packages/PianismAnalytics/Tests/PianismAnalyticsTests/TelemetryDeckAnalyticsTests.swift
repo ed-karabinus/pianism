@@ -143,11 +143,13 @@ struct TelemetryDeckAnalyticsTests {
         #expect(Set(signals.flatMap(\.payload.keys)).subtracting(Self.listed).isEmpty)
     }
 
-    /// With the SDK not started at all, as when analytics is off at launch. Sending would trap here, in a Debug build.
+    /// With the SDK not started at all, as when analytics is off at launch, which sets the switch off first. Sending
+    /// would trap here, in a Debug build.
     @Test func neverTurnedOnNothingGoesOut() async throws {
         try await settle()
         FakeNetwork.reset()
         TelemetryDeck.terminate()
+        analytics.setEnabled(false)
         analytics.send(.firstLaunch)
         try await settle()
         #expect(FakeNetwork.posted.isEmpty)
