@@ -47,8 +47,10 @@ private final class FakeNetwork: URLProtocol, @unchecked Sendable {
     }
 }
 
-/// One at a time, as the SDK is a single shared manager and the fake network is shared too. Every test ends with
-/// analytics off, so a manager left behind by one can't post during the next.
+/// One at a time, as the SDK is a single shared manager and the fake network is shared too. A test can still reach into
+/// the next: the SDK starts a session 0.5 s after each `initialize`, on whichever manager is current then, and a post
+/// made just before a test turns off can land after the next one's reset. So a test that expects nothing at all resets
+/// again after `settle()`.
 @Suite(.serialized)
 @MainActor
 struct TelemetryDeckAnalyticsTests {
@@ -141,10 +143,13 @@ struct TelemetryDeckAnalyticsTests {
         #expect(Set(signals.flatMap(\.payload.keys)).subtracting(Self.listed).isEmpty)
     }
 
-    /// With the SDK not started at all, as when analytics is off at launch. Sending would trap here, in a Debug build.
+    /// With the SDK not started at all, as when analytics is off at launch, which sets the switch off first. Sending
+    /// would trap here, in a Debug build.
     @Test func neverTurnedOnNothingGoesOut() async throws {
         try await settle()
+        FakeNetwork.reset()
         TelemetryDeck.terminate()
+        analytics.setEnabled(false)
         analytics.send(.firstLaunch)
         try await settle()
         #expect(FakeNetwork.posted.isEmpty)
@@ -157,7 +162,8 @@ struct TelemetryDeckAnalyticsTests {
         #expect((response as? HTTPURLResponse)?.statusCode == 200)
     }
 
-    /// The switch's promise: a signal still queued when analytics is turned off doesn't go, and it's gone for good.
+    /// The switch's promise: a signal still queued when analytics is turned off doesn't go, and once the SDK's next send
+    /// has passed, it's gone for good. Back on before then, it would still go (ADR 0011, amended 2026-11-09).
     @Test func turningOffDiscardsWhatWasQueued() async throws {
         analytics.setEnabled(true)
         try await settle()

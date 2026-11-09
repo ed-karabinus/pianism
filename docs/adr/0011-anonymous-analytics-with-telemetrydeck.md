@@ -110,8 +110,11 @@ as nothing turns it off.
   turning it off sets `analyticsDisabled` and swaps in a network that discards everything, which empties the queue
   without anything leaving. Adapter tests prove this against a fake network, since it's the promise the switch makes.
   (Amended 2026-11-06, while building: this first said to use `terminate()`, which a test showed to be unsafe.)
-- **Turning it back on** can send only what the SDK saved to disk just before the app last left the screen, if it had
-  no chance to discard it. What was queued while the app stayed open is gone.
+- **Turning it back on** can send what the SDK saved to disk just before the app last left the screen, if it had no
+  chance to discard it. It can also send what was queued before the off, if analytics is back on before the SDK's next
+  send, within 10 s: the queue empties into the discarding network only when the SDK sends. Either way, only once
+  analytics is on again, and nothing goes while it's off. (Amended 2026-11-09, the owner's pick: this first said what
+  was queued while the app stayed open is gone, which a review of #221 showed isn't so for a quick off and on.)
 
 ### Which builds send
 
