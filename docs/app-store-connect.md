@@ -99,7 +99,7 @@ the product: check the status above, the product ID, and the Sandbox account (S1
 | A Sandbox test account | Before S1 |
 | Enter the listing above | Before submission |
 | A Pianism-only support email (the owner makes it), then the support and privacy-policy pages on the website and their URLs here | Before submission (#56) |
-| Age rating and the App Privacy answers (anonymous usage data, not linked, for analytics) | Before submission (#56) |
+| Age rating, and the App Privacy answers: **Device ID** and **Product Interaction**, both for analytics, not linked to the person and not used for tracking, as ADR 0011 says and `App/PrivacyInfo.xcprivacy` declares | Before submission (#56) |
 | A new review screenshot showing stats and export too | Before submission, once HIS-4 and EXP-1 ship |
 | Change the description if CSV export (EXP-1) is cut | Before submission |
 | Attach Pianism Pro to v1.0 on the version page, and the app's own App Review notes (no piano needed to reach Pro) | At submission (#59) |
