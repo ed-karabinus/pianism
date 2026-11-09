@@ -47,6 +47,12 @@ public final class AnalyticsModel {
         if reached { analytics.send(.activationReached) }
     }
 
+    /// Call when the Pro screen opens (PRO-3).
+    func paywallShown() {
+        guard isOn else { return }
+        analytics.send(.paywallShown)
+    }
+
     private func store() {
         defaults.set(try? JSONEncoder().encode(progress), forKey: SettingsKey.activationProgress)
     }

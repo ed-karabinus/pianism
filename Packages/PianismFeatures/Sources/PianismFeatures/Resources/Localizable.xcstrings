@@ -67,7 +67,7 @@
     "Composer" : {
 
     },
-    "Connect a digital piano and sessions can start themselves while Pianism is open." : {
+    "Connect a digital piano and sessions can start themselves while Pianism is open. The first 5 are free, then it's part of Pro." : {
 
     },
     "Connect a piano" : {
@@ -160,6 +160,9 @@
     "Improvisation" : {
       "comment" : "A built-in skill"
     },
+    "Included" : {
+
+    },
     "It's listed on more than one day. All its rows go." : {
 
     },
@@ -223,6 +226,9 @@
     "Notify me when I'm away" : {
 
     },
+    "One purchase, no subscription." : {
+
+    },
     "Open the Settings app" : {
 
     },
@@ -257,6 +263,9 @@
 
     },
     "Piano" : {
+
+    },
+    "Piano sessions start, pause and save themselves while Pianism is open." : {
 
     },
     "Piece" : {
@@ -385,6 +394,12 @@
     "Technique" : {
       "comment" : "A built-in skill"
     },
+    "The price isn't available right now." : {
+
+    },
+    "The purchase didn't go through. Try again." : {
+
+    },
     "This session runs past midnight, so History lists it on each day it touches. Changes here change every row." : {
 
     },
@@ -409,6 +424,9 @@
     "Too short to save" : {
 
     },
+    "Try Again" : {
+
+    },
     "USB" : {
 
     },
@@ -418,7 +436,13 @@
     "Undo merging %@" : {
 
     },
+    "Unlock Pro for %@" : {
+
+    },
     "Untagged" : {
+
+    },
+    "Waiting for approval. Pro unlocks once it's approved." : {
 
     },
     "Warns when a session you add or edit shares practice time with another. The day's total counts that time twice." : {
