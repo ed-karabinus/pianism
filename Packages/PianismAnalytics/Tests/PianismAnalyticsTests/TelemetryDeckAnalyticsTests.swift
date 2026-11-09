@@ -162,7 +162,8 @@ struct TelemetryDeckAnalyticsTests {
         #expect((response as? HTTPURLResponse)?.statusCode == 200)
     }
 
-    /// The switch's promise: a signal still queued when analytics is turned off doesn't go, and it's gone for good.
+    /// The switch's promise: a signal still queued when analytics is turned off doesn't go, and once the SDK's next send
+    /// has passed, it's gone for good. Back on before then, it would still go (ADR 0011, amended 2026-11-09).
     @Test func turningOffDiscardsWhatWasQueued() async throws {
         analytics.setEnabled(true)
         try await settle()
