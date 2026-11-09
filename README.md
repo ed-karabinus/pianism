@@ -48,6 +48,7 @@ make test-app DEVICES=iPhone   # just one, when iterating
 make lint        # formatting check
 make unused      # fail on unused code in the app and the package code it builds (Periphery, pinned)
 make mutate      # mutation testing of the core and adapters; minutes, run before milestone checks
+make screenshots # the App Store screenshots with headlines, in build/app-store-screenshots
 ```
 
 Open `Pianism.xcodeproj` in Xcode to run the app. To run on a device, create

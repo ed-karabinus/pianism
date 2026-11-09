@@ -4,6 +4,8 @@ import SwiftUI
 /// The History screen: finished sessions grouped by day, newest first, with each day's total (HIS-1).
 struct HistoryView: View {
     @Bindable var model: HistoryModel
+    /// Whether time per piece opens, or the Pro screen instead (HIS-4).
+    let pro: ProModel
     /// The session a swipe asked to delete, until the deletion is confirmed or cancelled (SES-5).
     @State private var confirmingDeletion: PracticeSession?
     /// Moves VoiceOver to Undo when it appears, since it lasts only 5 seconds.
@@ -54,6 +56,37 @@ struct HistoryView: View {
         .storageAlert(Text("Couldn't delete that session", bundle: .module), isPresented: $model.isShowingDeleteError)
     }
 
+    /// Time per piece, part of Pro: without it, the row says so and opens the Pro screen, with no preview (HIS-4, D7).
+    @ViewBuilder private var pieceStatsRow: some View {
+        if pro.isPro {
+            NavigationLink {
+                PieceStatsView { model.pieceStats }
+            } label: {
+                Label(LocalizedStringResource("Time per piece", bundle: .module), systemImage: "chart.bar")
+            }
+            .accessibilityIdentifier(AccessibilityID.historyPieceStats)
+        } else {
+            Button {
+                pro.showPaywall()
+            } label: {
+                Label {
+                    Text("Time per piece", bundle: .module)
+                } icon: {
+                    Image(systemName: "lock.fill")
+                }
+            }
+            .accessibilityLabel(lockedLabel)
+            .accessibilityIdentifier(AccessibilityID.historyPieceStats)
+        }
+    }
+
+    /// The locked row, read as its name first, then that it's part of Pro.
+    private var lockedLabel: Text {
+        let name = Text("Time per piece", bundle: .module)
+        let locked = Text("Part of Pro", bundle: .module)
+        return Text("\(name), \(locked)", bundle: .module)
+    }
+
     /// Says a session was deleted, with Undo while it can be (SES-5).
     private var undoBar: some View {
         HStack {
@@ -100,7 +133,7 @@ struct HistoryView: View {
                         systemImage: "exclamationmark.triangle"
                     )
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.secondaryText)
                     .accessibilityIdentifier(AccessibilityID.historyUnavailable)
                 }
                 if model.unshowableCount > 0 {
@@ -112,7 +145,7 @@ struct HistoryView: View {
                         systemImage: "exclamationmark.triangle"
                     )
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.secondaryText)
                     // One element, "Warning, 2 sessions…": iOS 26 otherwise reads the icon alone.
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier(AccessibilityID.historyUnshowable)
@@ -120,6 +153,7 @@ struct HistoryView: View {
                 if model.isNotSyncing { notSyncingNotice }
                 // A tapped day scrolls to its sessions, as the week can push them down.
                 WeekView(model: model) { day in withAnimation { list.scrollTo(day, anchor: .top) } }
+                pieceStatsRow
                 ForEach(model.days) { day in
                     Section {
                         ForEach(day.sessions) { session in
@@ -158,6 +192,7 @@ struct HistoryView: View {
                         }
                     } header: {
                         TimedRow(title: title(for: day), duration: day.total)
+                            .foregroundStyle(.secondaryText)
                             .accessibilityAddTraits(.isHeader)
                             .accessibilityIdentifier(AccessibilityID.historyDay)
                     }
@@ -175,7 +210,7 @@ struct HistoryView: View {
             systemImage: "icloud.slash"
         )
         .font(.footnote)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.secondaryText)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(AccessibilityID.historyNotSyncing)
     }
@@ -230,10 +265,10 @@ struct TimedRow: View {
 
     var body: some View {
         LabeledContent {
-            Text(ElapsedTime.display(duration)).monospacedDigit()
+            Text(ElapsedTime.display(duration)).monospacedDigit().foregroundStyle(.secondaryText)
         } label: {
             title
-            detail
+            detail.foregroundStyle(.secondaryText)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(detail.map { Text("\(title), \($0)", bundle: .module) } ?? title)
@@ -242,45 +277,45 @@ struct TimedRow: View {
 }
 
 #Preview("Some practice, dark, AX5") {
-    HistoryView(model: .preview())
+    HistoryView(model: .preview(), pro: .preview(unlocked: true))
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }
 
 #Preview("Undo after deleting") {
-    HistoryView(model: .preview(deleting: true))
+    HistoryView(model: .preview(deleting: true), pro: .preview())
 }
 
 #Preview("Undo after deleting, dark, AX5") {
-    HistoryView(model: .preview(deleting: true))
+    HistoryView(model: .preview(deleting: true), pro: .preview())
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }
 
 #Preview("Empty") {
-    HistoryView(model: .preview(empty: true))
+    HistoryView(model: .preview(empty: true), pro: .preview())
 }
 
 #Preview("Sessions that can't be shown") {
-    HistoryView(model: .preview(unshowable: 2))
+    HistoryView(model: .preview(unshowable: 2), pro: .preview())
 }
 
 #Preview("Only sessions that can't be shown, dark, AX5") {
-    HistoryView(model: .preview(empty: true, unshowable: 1))
+    HistoryView(model: .preview(empty: true, unshowable: 1), pro: .preview())
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }
 
 #Preview("Not syncing, with the other notices") {
-    HistoryView(model: .preview(unshowable: 2, notSyncing: true))
+    HistoryView(model: .preview(unshowable: 2, notSyncing: true), pro: .preview())
 }
 
 #Preview("Not syncing, empty, dark, AX5") {
-    HistoryView(model: .preview(empty: true, notSyncing: true))
+    HistoryView(model: .preview(empty: true, notSyncing: true), pro: .preview())
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }
 
 #Preview("History couldn't load, sessions waiting") {
-    HistoryView(model: .preview(waiting: true))
+    HistoryView(model: .preview(waiting: true), pro: .preview())
 }

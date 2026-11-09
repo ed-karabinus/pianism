@@ -27,6 +27,8 @@ public final class HistoryModel {
     private(set) var unshowableCount = 0
     /// The tags sessions show, each merged tag as the tag it was merged into (ADR 0004).
     private(set) var tagIndex = TagIndex([])
+    /// Time per piece over the days listed, waiting sessions included, so it matches History (HIS-4).
+    var pieceStats: [PieceStats] { PieceStats.of(days, in: tagIndex, today: now, calendar: calendar) }
     /// Whether the last refresh found no practice at all, counting practice it can't show, or nil if it couldn't read
     /// the history to know (ONB-1).
     var isEmpty: Bool? { loadFailed ? nil : sessions.isEmpty && unshowableCount == 0 }
@@ -63,6 +65,17 @@ public final class HistoryModel {
         self.clock = clock
         self.glance = glance
         self.now = clock.now
+    }
+
+    /// Every session for EXP-1's file, read as it's shared: saved and waiting ones, each once, as History lists them,
+    /// so not one deleted and waiting for Undo to end.
+    func practiceLog() throws -> Data {
+        let saved = try history.sessions()
+        let savedIDs = Set(saved.map(\.id))
+        // As in History, an outbox that can't be read is left out, and Practice reports it.
+        let waiting = ((try? outbox.sessions()) ?? []).filter { !savedIDs.contains($0.id) }
+        let sessions = (saved + waiting).filter { $0.id != pendingDeletion?.id }
+        return PracticeLogCSV.file(sessions, tags: TagIndex(try tags.allTags()))
     }
 
     /// Loads the history again, and moves "today" along. Call when the screen appears and when the

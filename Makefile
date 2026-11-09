@@ -18,7 +18,7 @@ DEVICES     ?= iPhone iPad
 # The iOS version to test on, such as 26 or 27.0; empty means the newest installed.
 IOS         ?=
 
-.PHONY: help test test-core test-features test-adapters test-app build evidence lint unused mutate format clean
+.PHONY: help test test-core test-features test-adapters test-app build evidence screenshots lint unused mutate format clean
 
 help: ## List the available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -95,6 +95,9 @@ evidence: ## Export the screenshots the last test-app run captured, one folder p
 		fi; \
 	done
 	@find build/evidence -name '*.png'
+
+screenshots: ## Make the App Store screenshots, with headlines, in build/app-store-screenshots (one simulator run)
+	scripts/app-store-screenshots.sh
 
 lint: ## Check formatting without changing files
 	swift format lint --strict --recursive --parallel $(SWIFT_DIRS)

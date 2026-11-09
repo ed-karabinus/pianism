@@ -47,10 +47,40 @@ jobs:
       - name: swift-format
         run: swift format lint --strict --recursive --parallel App AppUITests Widgets Packages
 
+  # A pull request's run cancelled by a duplicate on the same commit (two `synchronize` events, #208) leaves its
+  # required checks cancelled, and they block until that run is re-run (`gh run rerun <id>`: no push, so an approval
+  # stays), once the other run has finished, as a re-run joins the concurrency group and would cancel it. If another
+  # pull request run already passed on the same head commit, the re-run skips the Mac jobs, as a job skipped by its
+  # `if:` counts as passing, and takes a couple of minutes, not an hour. So does any later run on that commit: to
+  # re-test it, push a new commit. An API error means a full run; if this job itself fails, the Mac jobs are skipped
+  # and the summary fails, so re-run the failed jobs.
+  passed:
+    name: Look for an earlier pass on this commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      already: ${{ steps.find.outputs.already }}
+    steps:
+      - id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          n=0
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            n=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?event=pull_request&status=success&head_sha=$SHA" \
+              --jq "[.workflow_runs[] | select(.id != $GITHUB_RUN_ID)] | length") || n=0
+          fi
+          echo "Earlier passing runs on $SHA: $n"
+          echo "already=$([ "$n" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
   # Periphery reads the compiler's index, so it needs an Xcode build (ADR 0005).
   unused:
     name: Unused code (Periphery)
-    needs: [core, lint]
+    needs: [core, lint, passed]
+    if: needs.passed.outputs.already != 'true'
     runs-on: macos-26
     timeout-minutes: 20
     steps:
@@ -65,7 +95,8 @@ jobs:
   # this runs in a few minutes, alongside the end-to-end tests.
   adapters:
     name: Adapter integration tests (macOS)
-    needs: [core, lint]
+    needs: [core, lint, passed]
+    if: needs.passed.outputs.already != 'true'
     runs-on: macos-26
     timeout-minutes: 15
     steps:
@@ -93,8 +124,8 @@ jobs:
   # up to 71 minutes in November 2026, plus one hung test's 15-minute allowance and its spindump (#136).
   e2e:
     name: End-to-end tests (${{ matrix.device }}, iOS ${{ matrix.ios }})
-    needs: [core, lint]
-    if: github.event_name != 'push'
+    needs: [core, lint, passed]
+    if: github.event_name != 'push' && needs.passed.outputs.already != 'true'
     runs-on: ${{ matrix.ios == 26 && 'macos-26' || 'xcode-27' }}
     timeout-minutes: 90
     strategy:
@@ -135,10 +166,10 @@ jobs:
   # Keeps the name of the required check, so the ruleset doesn't change.
   app:
     name: Build and end-to-end tests (iOS Simulator)
-    needs: [e2e]
+    needs: [passed, e2e]
     if: always() && github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Every device and iOS version passed
-        run: test "${{ needs.e2e.result }}" = success
+      - name: Every device and iOS version passed, here or in an earlier run of this commit
+        run: test "${{ needs.e2e.result }}" = success || test "${{ needs.passed.outputs.already }}" = true

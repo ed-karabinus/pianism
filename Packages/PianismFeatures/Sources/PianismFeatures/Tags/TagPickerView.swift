@@ -159,20 +159,20 @@ struct TagLabel: View {
     let tag: Tag
 
     var body: some View {
-        // `Color.primary` and `Color.secondary`, as `.primary` and `.secondary` in a button are its tint.
+        // `Color.primary` and `.secondaryText`, as `.primary` and `.secondary` in a button are its tint.
         VStack(alignment: .leading) {
             HStack {
                 Text(tag.name)
                     .foregroundStyle(Color.primary)
                 if tag.isArchived {
                     Text("Archived", bundle: .module)
-                        .foregroundStyle(Color.secondary)
+                        .foregroundStyle(.secondaryText)
                 }
             }
             if let details = tag.details {
                 Text(details)
                     .font(.subheadline)
-                    .foregroundStyle(Color.secondary)
+                    .foregroundStyle(.secondaryText)
             }
         }
     }
