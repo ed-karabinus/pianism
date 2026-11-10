@@ -806,6 +806,56 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "History, a tapped day")
     }
 
+    /// HIS-2: a tapped day scrolls up to its date, one row below the bar, with the row above it on top: the last session
+    /// of the day above, or Time per piece's row for the newest day. Not to its first session, with the date hidden
+    /// under the bar. At the largest text, where the week fills the screen. The sample practice is `Showcase`'s.
+    @MainActor
+    func testATappedDayShowsItsDate() throws {
+        // Given the App Store screenshots' four weeks of sample practice, seen on a Friday afternoon wherever the test
+        // runs (California, or UTC on CI), at the largest text
+        let now = start + 20 * 60 * 60
+        let app = launch(at: now, reset: true, showcase: true, textSize: "AccessibilityXXXL")
+        openHistory(app)
+        let chart = element(app, "history.week-chart")
+        /// Below the fold on an iPhone at this size: the tap scrolls the bar into view first.
+        func tapBar(_ date: TimeInterval) {
+            XCTAssertTrue(chart.waitForExistence(timeout: 5))
+            let weekday = Date(timeIntervalSince1970: date).formatted(.dateTime.weekday(.wide))
+            chart.descendants(matching: .any)[weekday].tap()
+        }
+        func date(_ title: String) -> XCUIElement {
+            app.descendants(matching: .any).matching(identifier: "history.day")
+                .matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch
+        }
+        /// The tapped day's date rises from below and what's above the row before it scrolls away. Then the date
+        /// stays clear of the bar, where the scroll used to carry it on under. After the first check, these go by
+        /// the frame: on CI's iOS 26, asking again whether the date was hittable failed the test, "Activation point
+        /// invalid", rather than answering (#215).
+        func showsUnderTheBar(_ tapped: XCUIElement, scrolledAway: XCUIElement) {
+            XCTAssertTrue(tapped.wait(for: \.isHittable, toEqual: true, timeout: 5), "The tap didn't show the day")
+            let bar = app.navigationBars.firstMatch.frame.maxY
+            let gone = scrolledAway.wait(for: \.[above: bar], toEqual: true, timeout: 5)
+            XCTAssertTrue(gone, "It didn't scroll far enough")
+            XCTAssertFalse(tapped.wait(for: \.[below: bar], toEqual: false, timeout: 2), "The date went under the bar")
+        }
+
+        // When Yesterday's bar is tapped
+        tapBar(now - 24 * 60 * 60)
+
+        // Then Yesterday's date shows, under Today's session, with Today's date scrolled away
+        showsUnderTheBar(date("Yesterday"), scrolledAway: date("Today"))
+        attachScreenshot(of: app, named: "History, Yesterday tapped, at the largest text")
+
+        // When Today's bar is tapped, from the top
+        app.buttons["History"].firstMatch.tap()
+        tapBar(now)
+
+        // Then Today's date shows, under Time per piece's row, with the week scrolled away
+        showsUnderTheBar(date("Today"), scrolledAway: chart)
+        XCTAssertTrue(app.buttons["history.piece-stats"].isHittable, "Time per piece's row isn't on top")
+        attachScreenshot(of: app, named: "History, Today tapped, at the largest text")
+    }
+
     /// TAG-1, TAG-2, HIS-2: a running session is tagged from Practice with a new piece and a built-in skill,
     /// and History shows them on the session and in the week's time by tag; a session left untagged shows
     /// "Untagged". The tags are stored, so they're still there after the app is killed and relaunched.
@@ -2200,7 +2250,8 @@ final class PracticeTests: UITestCase {
     /// Launches the app with its clock fixed at `now`, or on the real clock if `nil`.
     @MainActor
     private func launch(
-        at now: TimeInterval?, reset: Bool = false, breakHistory: Bool = false, unshowableSessions: Int? = nil,
+        at now: TimeInterval?, reset: Bool = false, showcase: Bool = false, breakHistory: Bool = false,
+        unshowableSessions: Int? = nil,
         undoSeconds: Int? = nil, nudgeSeconds: Int? = nil, capSeconds: Int? = nil, offerNudges: Bool = false,
         textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
         midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil, intent: String? = nil,
@@ -2264,6 +2315,7 @@ final class PracticeTests: UITestCase {
         if let syncArrivesSeconds {
             app.launchEnvironment["PIANISM_SYNC_ARRIVES_SECONDS"] = String(syncArrivesSeconds)
         }
+        if showcase { app.launchEnvironment["PIANISM_SHOWCASE"] = "1" }
         if let unshowableSessions {
             app.launchEnvironment["PIANISM_UNSHOWABLE_SESSIONS"] = String(unshowableSessions)
         }
@@ -2461,4 +2513,13 @@ private final class VirtualPiano {
         _ = MIDIEventListAdd(&list, MemoryLayout<MIDIEventList>.size, packet, 0, words.count, words)
         MIDIReceivedEventList(endpoint, &list)
     }
+}
+
+extension XCUIElement {
+    /// Whether it's wholly above a height on screen, such as the bottom of the navigation bar, to the point. One that
+    /// doesn't exist has an empty frame at the top, so it counts as above.
+    fileprivate subscript(above y: CGFloat) -> Bool { frame.maxY <= y + 1 }
+
+    /// Whether it's wholly below a height on screen, to the point.
+    fileprivate subscript(below y: CGFloat) -> Bool { frame.minY >= y - 1 }
 }

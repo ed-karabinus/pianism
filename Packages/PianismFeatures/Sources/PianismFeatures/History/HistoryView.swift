@@ -152,8 +152,12 @@ struct HistoryView: View {
                 }
                 if model.isNotSyncing { notSyncingNotice }
                 // A tapped day scrolls to its sessions, as the week can push them down.
-                WeekView(model: model) { day in withAnimation { list.scrollTo(day, anchor: .top) } }
-                pieceStatsRow
+                // Lining up the day's first session with the top would leave its date under the bar, as a list
+                // can't scroll to a section's header, so the row above it goes to the top.
+                WeekView(model: model) { day in
+                    if let row = model.row(above: day) { withAnimation { list.scrollTo(row, anchor: .top) } }
+                }
+                pieceStatsRow.id(HistoryRow.pieceStats)
                 ForEach(model.days) { day in
                     Section {
                         ForEach(day.sessions) { session in
@@ -179,6 +183,7 @@ struct HistoryView: View {
                                 }
                             }
                             .accessibilityIdentifier(AccessibilityID.historySession)
+                            .id(HistoryRow.session(day: day.id, id: session.id))
                             .swipeActions {
                                 if model.canDelete(session) {
                                     // Not the destructive role, which would remove the row before it's confirmed.
