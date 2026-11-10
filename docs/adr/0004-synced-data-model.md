@@ -2,7 +2,8 @@
 
 - Status: accepted; schema v1 and some rules amended by [ADR 0006](0006-schema-v1-before-deploy.md); sync
   environments and the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md); the
-  widget's summary file by [ADR 0010](0010-widget-extension-and-app-group-boundary.md)
+  widget's summary file by [ADR 0010](0010-widget-extension-and-app-group-boundary.md); the tag a tag sits
+  inside by [ADR 0013](0013-nested-tags.md)
 - Date: 2026-10-13
 - Issue: #25
 

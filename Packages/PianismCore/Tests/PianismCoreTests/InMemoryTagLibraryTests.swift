@@ -48,4 +48,39 @@ struct InMemoryTagLibraryTests {
         try library.rename(id: "unknown", to: "Etude")
         #expect(library.tags() == [newer])
     }
+
+    @Test("TAG-5: a tag added inside another is one new tag with that parent")
+    func addInside() {
+        // Given
+        let library = InMemoryTagLibrary()
+        let ballade = library.add(name: "Ballade", kind: .piece)
+
+        // When
+        let dMinor = library.add(name: "D minor", kind: .skill, inside: BuiltInSkill.scales.rawValue)
+
+        // Then
+        #expect(library.tags() == [ballade, dMinor])
+        #expect(dMinor.parentID == BuiltInSkill.scales.rawValue && ballade.parentID == nil)
+        #expect(dMinor.name == "D minor" && dMinor.kind == .skill && !dMinor.isArchived && dMinor.id != ballade.id)
+    }
+
+    @Test("TAG-5: a tag can be moved inside another and back to the top level, unless a newer version wrote it")
+    func setParent() throws {
+        // Given
+        let newer = PianismCore.Tag(
+            id: "newer", kind: .skill, name: "Arpeggios in thirds", isArchived: false,
+            isReadOnly: true)
+        let library = InMemoryTagLibrary([newer])
+        let dMinor = library.add(name: "D minor", kind: .skill)
+
+        // When
+        try library.setParent(id: dMinor.id, to: BuiltInSkill.scales.rawValue)
+        let inside = library.tags().map(\.parentID)
+        try library.setParent(id: dMinor.id, to: nil)
+
+        // Then
+        #expect(inside == [nil, BuiltInSkill.scales.rawValue])
+        #expect(library.tags() == [newer, dMinor])
+        #expect(throws: RecordFromNewerVersion.self) { try library.setParent(id: "newer", to: dMinor.id) }
+    }
 }

@@ -1,8 +1,8 @@
 # 13. A tag can sit inside one other tag, through one plain field read one level deep
 
-- Status: proposed (draft for the owner, 2026-11-09, revised the same day after an independent
-  review); amends [ADR 0004](0004-synced-data-model.md), [ADR 0006](0006-schema-v1-before-deploy.md)
-  and [ADR 0008](0008-icloud-sync-environments-and-deploy.md)
+- Status: accepted, by the owner on 2026-11-10, merging the plan (#224); amends
+  [ADR 0004](0004-synced-data-model.md), [ADR 0006](0006-schema-v1-before-deploy.md) and
+  [ADR 0008](0008-icloud-sync-environments-and-deploy.md)
 - Date: 2026-11-09
 - Plan: [plan-nested-tags.md](../plans/plan-nested-tags.md)
 
@@ -133,14 +133,17 @@ records are the sync shapes above.
 this record and after the reviews, and before the merge, so main is never ahead of Production: a
 Release build whose model has a field Production lacks can't export the tags it writes, so no
 Release build of the branch goes on any device before the deploy. Development is reset first
-(`cktool reset-schema`), which wipes the owner's Debug data, and the Debug app or its data is deleted
-on both devices before the schema is created again. Step 5 is required: a nested tag from the
-Showcase seed syncs to the second device with the field set; a device on main's build (schema v1)
-renames that tag and the parent survives, and adds a tag that the new build imports without the
-key; and two offline edits to one tag's different fields show how CloudKit merges saves. The
-Console's deploy diff must list exactly `CD_TagRecord.CD_parentID` and its `_ckAsset`, and
-Production's export must equal Development's. This amends ADR 0008's step 1 for any later deploy:
-"green on the branch that deploys, before it merges".
+(`cktool reset-schema`), which wipes the owner's Debug data, and Debug's data is cleared on both
+devices before the schema is created again: by a Debug launch with `PIANISM_CLEAR_DEBUG_DATA=1`,
+which keeps the settings and the running session the two builds share, never by deleting the app, which on a device that also runs Release would take the real history with it.
+Step 5 is required: a nested tag from the Showcase seed syncs to the second device with the field
+set; a device on main's build (schema v1), cleared of the branch's store first and again after, as it can't
+open one, renames that tag and the parent survives, and adds a tag
+that the new build imports without the key; and two offline edits to one tag's different fields
+show how CloudKit merges saves. The Console's deploy diff must list exactly
+`CD_TagRecord.CD_parentID` and its `_ckAsset`, and Production's export must equal Development's.
+This amends ADR 0008's step 1 for any later deploy: "green on the branch that deploys, before it
+merges".
 
 **`version` stays 1.** The record field is raised when an older app would lose a value by saving
 (ADR 0006). A 1.0 app that carries the field without using it doesn't lose it, which is why ADR 0004
@@ -169,12 +172,21 @@ read-only on older builds for a change to tags.
   one or two steps.
 - Bad: until step 5 runs, nobody knows whether a rename on one device can undo a move on another.
   If it can, the cost is one repeated Move, and this record says so.
-- Bad: `HistorySchemaV2` copies `SessionRecord` unchanged (about 70 lines) unless SwiftData accepts
-  v1's class in v2's model list, which PR 1 tries first; either way the nested class keeps its name.
+- Neutral: `HistorySchemaV2` lists v1's `SessionRecord` class rather than a copy; SwiftData accepted it
+  in PR 1, and the v1 store migrates with its sessions intact.
 - Bad: an older build, should one exist when the field lands, makes a child top-level by saving it,
   which is what the `version` rule guards against; hence the deadline on PR 1.
-- To verify on devices (device checklist, with the PRs): the deploy's step 5 (N1), repeated with
-  Move and Rename once PR 5 exists; two devices nesting opposite ways agree (N2); a parent archived
+- To verify on devices (device checklist, with the PRs): the deploy's step 5 (row 6), repeated with
+  Move and Rename once PR 5 exists; two devices nesting opposite ways agree (row 7); a parent archived
   on one device while the other adds a child inside comes back on both, and goes again when the
-  child is archived (N3); after the first update that follows a public build, a parent set on
-  another device shows (N4).
+  child is archived (row 8); after the first update that follows a public build, a parent set on
+  another device shows (row 9).
+
+Amended 2026-11-10 by the deploy's step 5: **CloudKit merged two saves by field.** With the
+iPhone offline, it changed a piece's composer while the Mac renamed the same piece; when the iPhone
+came back, both devices showed the Mac's name and the iPhone's composer. So a rename on one device
+doesn't undo a move on another, and the "Bad" point above about a repeated Move doesn't arise.
+Step 5's other checks passed too: the Showcase's nested skill reached the Mac with `CD_parentID` set;
+main's build (schema v1) renamed it and the parent stayed in CloudKit Console; and a tag added there
+reached the new build at the top level. The schema was deployed the same day, and Production's
+export, equal to Development's, is kept as `docs/cloudkit/schema-v2.ckdb`.

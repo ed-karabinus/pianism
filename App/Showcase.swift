@@ -5,8 +5,9 @@
 
     /// The App Store screenshots' sample practice (#56), with PIANISM_SHOWCASE=1 on a reset install: four weeks of
     /// evenings on four well-known pieces and two skills, mostly started by a piano, a session this morning, and a
-    /// piano session 12 minutes 41 seconds in. Release builds leave it out. `testATappedDayShowsItsDate` scrolls it too,
-    /// relying on sessions yesterday and today, and on enough below them to scroll at the largest text.
+    /// piano session 12 minutes 41 seconds in, plus a skill inside Scales that nothing is tagged with. Release builds
+    /// leave it out. `testATappedDayShowsItsDate` scrolls it too, relying on sessions yesterday and today, and on
+    /// enough below them to scroll at the largest text.
     enum Showcase {
         static func seed(into store: HistoryStore, running: any RunningSessionStore, clock: any WallClock) {
             let library = SwiftDataTagLibrary(store: store, clock: clock)
@@ -22,6 +23,9 @@
                 return piece.id
             }
             guard pieces.count == 4 else { return }
+            // A skill inside a built-in one, so the deploy's two-device check has a tag with a parent to sync (TAG-5,
+            // ADR 0013).
+            _ = try? library.add(name: "D minor", kind: .skill, inside: BuiltInSkill.scales.rawValue)
             let skills = [BuiltInSkill.scales.rawValue, BuiltInSkill.sightReading.rawValue]
             let calendar = Calendar.current
             let today = calendar.startOfDay(for: clock.now)

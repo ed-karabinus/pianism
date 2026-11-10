@@ -124,6 +124,7 @@ final class SwiftDataTagLibraryTests {
         }
         #expect(throws: RecordFromNewerVersion.self) { try self.library.merge(id: "a", into: "b") }
         #expect(throws: RecordFromNewerVersion.self) { try self.library.unmerge(id: "a") }
+        #expect(throws: RecordFromNewerVersion.self) { try self.library.setParent(id: "a", to: "b") }
         #expect(try library.tags().map(\.name) == ["Étude"])
     }
 
@@ -208,6 +209,46 @@ final class SwiftDataTagLibraryTests {
         let index = TagIndex(try library.tags())
         #expect(index[first.id]?.id == first.id)
         #expect(index[second.id]?.id == first.id)
+    }
+
+    @Test("TAG-5, ADR 0013: a tag added inside another is one record with its parent, still there when reopened")
+    func addInsideIsStored() throws {
+        // Given
+        let library = self.library
+        let added = clock.now
+
+        // When
+        let dMinor = try library.add(name: "D minor", kind: .skill, inside: BuiltInSkill.scales.rawValue)
+
+        // Then
+        let expected = Tag(
+            id: dMinor.id, kind: .skill, name: "D minor", isArchived: false, parentID: BuiltInSkill.scales.rawValue,
+            createdAt: added)
+        #expect(dMinor == expected)
+        #expect(try self.library.tags() == [expected])
+        #expect(try records().map(\.parentID) == [BuiltInSkill.scales.rawValue])
+    }
+
+    @Test("TAG-5, ADR 0013: moving a tag inside another and back is stored as a change, the top level as empty")
+    func setParentIsStored() throws {
+        // Given
+        let ballade = try library.add(name: "Ballade No. 1", kind: .piece)
+        let set = try library.add(name: "Ballades", kind: .piece)
+        clock.advance(by: 60)
+
+        // When
+        try library.setParent(id: ballade.id, to: set.id)
+        let inside = try records().first { $0.id == ballade.id }.map { ($0.parentID, $0.modifiedAt) }
+        let readInside = try self.library.tags().first { $0.id == ballade.id }?.parentID
+        clock.advance(by: 60)
+        try library.setParent(id: ballade.id, to: nil)
+
+        // Then
+        #expect(inside?.0 == set.id && readInside == set.id)
+        // Sync's "latest copy wins" needs a move to count as a change, as a merge does.
+        #expect(inside?.1 == clock.now - 60)
+        #expect(try records().first { $0.id == ballade.id }?.parentID == "")
+        #expect(Set(try self.library.tags()) == [ballade, set])
     }
 
     /// Inserts a record as sync would deliver it, bypassing the library.

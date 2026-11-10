@@ -55,9 +55,15 @@ final class HistoryStoreFormatTests {
         let tags = try context.fetch(FetchDescriptor<TagRecord>(sortBy: [SortDescriptor(\.createdAt)]))
         #expect(
             tags.map(\.fields) == [
-                [ballade, "piece", "Ballade No. 1", false, "Chopin", 72, "", start - 172_800, start - 7_200, 1, nil],
-                [pedalling, "skill", "Pedalling", true, "", nil, "", start - 172_740, start - 7_140, 1, nil],
-                [gMinor, "piece", "Chopin G minor", true, "", nil, ballade, start - 172_680, start - 7_080, 2, nil],
+                [
+                    ballade, "piece", "Ballade No. 1", false, "Chopin", 72, "", "", start - 172_800, start - 7_200, 1,
+                    nil,
+                ],
+                [pedalling, "skill", "Pedalling", true, "", nil, "", "", start - 172_740, start - 7_140, 1, nil],
+                [
+                    gMinor, "piece", "Chopin G minor", true, "", nil, ballade, "", start - 172_680, start - 7_080, 2,
+                    nil,
+                ],
             ])
 
         var session = PracticeSession(id: live, startedAt: start, timeZone: vienna, source: .midi)
@@ -81,6 +87,65 @@ final class HistoryStoreFormatTests {
             ])
     }
 
+    @Test("TAG-5, ADR 0013: a store with every field of schema v2 set reads back exactly, the parent too")
+    func v2StoreReads() throws {
+        // Given
+        let store = try open("history-v2")
+        let ballade = "5e0c7a4d-2b1f-4c8e-9a3d-7f6b1e2c4d80"
+        let pedalling = "b3f1d2e4-6a5c-4b7d-8e9f-0a1b2c3d4e5f"
+        let gMinor = "c7d8e9f0-1a2b-4c3d-8e4f-5a6b7c8d9e0f"
+        let technique = BuiltInSkill.technique.rawValue
+
+        // When
+        let context = ModelContext(try store.container())
+        let tags = try context.fetch(FetchDescriptor<TagRecord>(sortBy: [SortDescriptor(\.createdAt)]))
+        let sessions = try context.fetch(FetchDescriptor<SessionRecord>(sortBy: [SortDescriptor(\.startedAt)]))
+        let v1Sessions = try ModelContext(try open("history-v1").container()).fetch(
+            FetchDescriptor<SessionRecord>(sortBy: [SortDescriptor(\.startedAt)]))
+
+        // Then
+        #expect(
+            tags.map(\.fields) == [
+                [
+                    ballade, "piece", "Ballade No. 1", false, "Chopin", 72, "", "", start - 172_800, start - 7_200, 1,
+                    nil,
+                ],
+                [
+                    pedalling, "skill", "Pedalling", true, "", nil, "", technique, start - 172_740, start - 7_140, 1,
+                    nil,
+                ],
+                [
+                    gMinor, "piece", "Chopin G minor", true, "", nil, ballade, "", start - 172_680, start - 7_080, 2,
+                    nil,
+                ],
+            ])
+        // Sessions are stored as in v1, whose test lists their fields.
+        #expect(sessions.map(\.fields) == v1Sessions.map(\.fields))
+        #expect(
+            try SwiftDataTagLibrary(store: store, clock: clock).tags().first { $0.id == pedalling }
+                == Tag(
+                    id: pedalling, kind: .skill, name: "Pedalling", isArchived: true, parentID: technique,
+                    createdAt: start - 172_740))
+    }
+
+    @Test("TAG-5, ADR 0013: a v1 store, opened by this version, has every tag at the top level and keeps a parent set")
+    func v1StoreTakesAParent() throws {
+        // Given
+        let library = SwiftDataTagLibrary(store: try open("history-v1"), clock: clock)
+        let pedalling = "b3f1d2e4-6a5c-4b7d-8e9f-0a1b2c3d4e5f"
+        let wasTopLevel = try library.tags().allSatisfy { $0.parentID == nil }
+
+        // When
+        try library.setParent(id: pedalling, to: BuiltInSkill.technique.rawValue)
+
+        // Then
+        let reopened = SwiftDataTagLibrary(
+            store: HistoryStore(url: directory.appending(path: "history-v1/History.store")), clock: clock)
+        #expect(wasTopLevel)
+        #expect(try reopened.tags().first { $0.id == pedalling }?.parentID == BuiltInSkill.technique.rawValue)
+        #expect(try reopened.tags().count == 3)
+    }
+
     @Test("SYN-1, ADR 0006: a store with a deleted tag, the field added before sync, reads it and leaves it out")
     func deletedTagStoreReads() throws {
         let store = try open("history-v1-deleted-tag")
@@ -90,7 +155,7 @@ final class HistoryStoreFormatTests {
         #expect(
             tags.first { $0.id == pedalling }?.fields
                 == [
-                    pedalling, "skill", "Pedalling", true, "", nil, "", start - 172_740, start - 7_140, 1,
+                    pedalling, "skill", "Pedalling", true, "", nil, "", "", start - 172_740, start - 7_140, 1,
                     start - 7_000,
                 ])
         #expect(
@@ -100,9 +165,11 @@ final class HistoryStoreFormatTests {
         #expect(try SwiftDataSessionHistory(store: store, clock: clock).sessions().count == 1)
     }
 
-    @Test("SYN-1: schema v1 is exactly what the CloudKit deploy freezes, and the expected export lists every field")
+    @Test(
+        "SYN-1, TAG-5: schema v2 is exactly what the CloudKit deploy freezes, and the expected export lists every field"
+    )
     func schemaIsWhatTheDeployFreezes() throws {
-        let model = try #require(NSManagedObjectModel.makeManagedObjectModel(for: HistorySchemaV1.models))
+        let model = try #require(NSManagedObjectModel.makeManagedObjectModel(for: HistorySchemaV2.models))
         let properties = model.entities.flatMap { entity in entity.properties.map { (entity.name ?? "", $0) } }
 
         // Changing any line changes what syncs; after the deploy, only adding fields is possible (ADR 0008).
@@ -128,6 +195,7 @@ final class HistoryStoreFormatTests {
                 "TagRecord.mergedInto string default",
                 "TagRecord.modifiedAt date default",
                 "TagRecord.name string default encrypted",
+                "TagRecord.parentID string default",
                 "TagRecord.targetTempo integer64 optional",
                 "TagRecord.version integer64 default",
             ])
@@ -203,7 +271,7 @@ extension SessionRecord {
 extension TagRecord {
     fileprivate var fields: [AnyHashable?] {
         [
-            id, kind, name, isArchived, composer, targetTempo as Int?, mergedInto, createdAt, modifiedAt,
+            id, kind, name, isArchived, composer, targetTempo as Int?, mergedInto, parentID, createdAt, modifiedAt,
             version as Int,
             deletedAt,
         ]

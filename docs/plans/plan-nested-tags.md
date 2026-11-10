@@ -1,6 +1,6 @@
 # Nested pieces and skills (TAG-5): implementation plan
 
-Written 2026-11-09 by a Fable 5.1 plan agent (read-only), from the code on main, the open skill-stats PR (#223, branch `his-4-skill-stats`, assumed merged first) and the owner's decisions of 2026-11-09 (D1 to D7 below). Revised the same day for the owner's answers to its questions (§6) and an independent Fable review of the ADR and the deploy, whose verdict was to deploy with the changes now folded in. The owner approved the spec rows on 2026-11-09 (§7). The plan and [ADR 0013](../adr/0013-nested-tags.md) still wait for his approval.
+Written 2026-11-09 by a Fable 5.1 plan agent (read-only), from the code on main, the open skill-stats PR (#223, branch `his-4-skill-stats`, assumed merged first) and the owner's decisions of 2026-11-09 (D1 to D7 below). Revised the same day for the owner's answers to its questions (§6) and an independent Fable review of the ADR and the deploy, whose verdict was to deploy with the changes now folded in. The owner approved the spec rows on 2026-11-09 (§7). The owner approved the plan and [ADR 0013](../adr/0013-nested-tags.md) by merging #224 on 2026-11-10.
 
 **This plan has a CloudKit schema change and a second owner-run deploy.** Schema v1 went to Production on 2026-10-21 and can only grow (ADR 0006, 0008). A parent link is one new optional field on `TagRecord`. It's the only irreversible step here, and PR 1 is built around it.
 
@@ -131,13 +131,15 @@ ADR 0008's steps, with changes for a second deploy, all required:
 - Development is reset first, which wipes the owner's Debug data (accepted).
 
 1. `HistoryStoreFormatTests` is green on the branch; `schema-v1-fields.txt` has `CD_TagRecord.CD_parentID STRING` and its `_ckAsset` line.
-2. `xcrun cktool reset-schema` on Development. Then delete the Debug app, or its data, on both devices, so neither re-uploads a store made before the reset.
+2. `xcrun cktool reset-schema` on Development. Then clear Debug's data on both devices, so neither re-uploads a store made before the reset. Never delete the app on a device that also runs a Release build, as the owner's iPhone does: Debug and Release are one app there, and Release keeps the real history. Launch the branch's Debug build once with `PIANISM_CLEAR_DEBUG_DATA=1`: it deletes only Debug's folder, `Application Support/Debug` (ADR 0008), and keeps the settings and the running session, which both builds share (the owner chose this over `PIANISM_RESET=1`, which clears them, 2026-11-10).
 3. A Debug build from the branch, `PIANISM_INIT_CLOUDKIT_SCHEMA=1`, on device A, signed into iCloud.
 4. `export-schema` of Development through `scripts/cloudkit-fields.sh` equals the fields file. The one difference from the v1 export is the new field, signed off on the PR.
-5. **Two devices, all of it required** (device row N1):
-   1. Device A, the branch's Debug build, syncing, seeded with `PIANISM_SHOWCASE=1`, so its "D minor" skill has `skill.scales` as its parent. Device B, the same build, shows the tag, and CloudKit Console shows its record with `CD_parentID` set. The export is unchanged.
-   2. **Mixed builds:** device B switches to main's Debug build (schema v1, no field). B renames the tag A nested; afterwards the Console, and A, still show its parent. B adds a tag; A imports it (a record with no `CD_parentID` key, the first import of a record missing one) and shows it at the top level.
+5. **Two devices, all of it required** (iCloud sync row 6 of the device checklist):
+   1. Device A, the branch's Debug build, syncing, seeded with `PIANISM_SHOWCASE=1`, so its "D minor" skill has `skill.scales` as its parent. The seed also starts a running session, which a Release build on the same device shares, so stop it right away in this Debug build: it's then saved to Debug's history, never the real one. Device B, the same build, shows the tag, and CloudKit Console shows its record with `CD_parentID` set. The export is unchanged.
+   2. **Mixed builds:** main's build can't open the v2 store B now holds (SwiftData refuses it, or drops the column), so first launch the branch's build on B once with `PIANISM_CLEAR_DEBUG_DATA=1 PIANISM_BREAK_HISTORY=1`, which removes Debug's folder and opens no store in its place. Then device B switches to main's Debug build (schema v1, no field). B renames the tag A nested; afterwards the Console, and A, still show its parent. B adds a tag; A imports it (a record with no `CD_parentID` key, the first import of a record missing one) and shows it at the top level.
+   Before 5.3, B goes back to the branch's build launched once with `PIANISM_CLEAR_DEBUG_DATA=1`, so it fetches every record afresh; otherwise its copy of the nested tag, imported without the key, reads top-level and an edit there could export an empty parent.
    3. **How saves merge,** which nothing documents and device checklist row 5 hasn't run: both devices offline, A changes a piece's composer while B renames the same piece (the controls PR 1 has), then both sync. Record whether both changes survive (CloudKit merged by field) or only the later save (by whole record). After PR 5, repeat with Move on A and Rename on B. The answer goes in ADR 0013 and changes no schema.
+   After each step, take `PIANISM_CLEAR_DEBUG_DATA`, `PIANISM_BREAK_HISTORY`, `PIANISM_SHOWCASE` and `PIANISM_INIT_CLOUDKIT_SCHEMA` off the scheme again: left on, every later launch from Xcode clears Debug's data or seeds the sample tags and sessions into Development again.
 6. The owner deploys in CloudKit Console. The Console's deploy diff lists exactly `CD_TagRecord.CD_parentID` and its `_ckAsset`, nothing else. Production's export is compared with Development's before it's kept as `docs/cloudkit/schema-v2.ckdb`, beside v1's. Then the PR goes ready.
 
 ### PR 1 review checklist
@@ -149,7 +151,7 @@ ADR 0008's steps, with changes for a second deploy, all required:
 
 ### `version` stays 1
 
-Settled. The record field `version` (ADR 0006) is raised when an older app would lose a value by saving, and a 1.0 app that carries the field without using it doesn't lose it, which is why ADR 0004 shipped `mergedInto` ahead of any merge screen. The exact conditions under which a build **without** the field, which no public build will be if PR 1 lands in time, drops it: (a) the server copy is gone, say the person deleted their iCloud data, and that build re-uploads its local store, whose rows have no such column; (b) a delete and re-insert of the record, which this app never does (ADR 0006 never purges). A 1.0 build can't see parents, so it may archive or merge one; the read rules absorb that (last row of the sync table). Device row N4, for the first update after a public build: a parent set on another device shows after updating.
+Settled. The record field `version` (ADR 0006) is raised when an older app would lose a value by saving, and a 1.0 app that carries the field without using it doesn't lose it, which is why ADR 0004 shipped `mergedInto` ahead of any merge screen. The exact conditions under which a build **without** the field, which no public build will be if PR 1 lands in time, drops it: (a) the server copy is gone, say the person deleted their iCloud data, and that build re-uploads its local store, whose rows have no such column; (b) a delete and re-insert of the record, which this app never does (ADR 0006 never purges). A 1.0 build can't see parents, so it may archive or merge one; the read rules absorb that (last row of the sync table). Device row row 9, for the first update after a public build: a parent set on another device shows after updating.
 
 If PR 1 slips past the first TestFlight build that syncs, the tag record's version becomes 2 instead, and `HistoryStore.recordVersion` splits into one constant per record type so sessions aren't made read-only for nothing.
 
@@ -157,15 +159,15 @@ If PR 1 slips past the first TestFlight build that syncs, the tag record's versi
 
 | Rule | Automated test | Planted bugs it must catch | Device |
 |---|---|---|---|
-| The field survives, v1 data opens | Persistence: v1 fixture opens under v2; v2 fixture reads `parentID` set; round-trip through `setParent` and `add(inside:)`; the snapshot's new line under `TagRecord` | Parent not written; `""` read as a parent; V2 missing `SessionRecord`; stage left out; a V2 class renamed | N1: the exports match, the mixed-build pairing, how saves merge |
+| The field survives, v1 data opens | Persistence: v1 fixture opens under v2; v2 fixture reads `parentID` set; round-trip through `setParent` and `add(inside:)`; the snapshot's new line under `TagRecord` | Parent not written; `""` read as a parent; V2 missing `SessionRecord`; stage left out; a V2 class renamed | row 6: the exports match, the mixed-build pairing, how saves merge |
 | One level (rule 4) | Core: a grandchild reads at the top level, and returns inside when its parent moves out; the three-device ring reads as three top-level tags; P moved inside Q while Q is merged into P keeps P's children | The recursive form (hangs on the ring); `link` without rules 1 to 3 on `p`; returning the middle tag | |
-| Each names the other (rule 5) | Core: the older is the parent on both orderings; ties by ID | `>` for `<`; the newer wins | N2: nested opposite ways on two devices, both show the same |
+| Each names the other (rule 5) | Core: the older is the parent on both orderings; ties by ID | `>` for `<`; the newer wins | row 7: nested opposite ways on two devices, both show the same |
 | A built-in as a parent | Core: a skill inside `skill.scales` resolves from an index built from `allTags()` | Index built from `tags()` alone | |
 | Parent merged away (rule 1) | Core: the child follows to the kept tag; lifted if the kept tag is a child | Raw `parentID` without the index | |
 | Parent merged into its own child (rule 2) | Core: top level, no loop | Self check missing | |
 | A merged child | Core: stands for its sibling, takes its parent and label | The merged tag's own link used | |
 | Other kind (rule 3), unknown parent (rule 1) | Core | A crash or force unwrap on an unknown ID | |
-| Archived parent, live child | Core: reads unarchived while any child is live, and archived again once none is | Only the first child checked; archived children count; the parent stays unarchived after the last child is archived | N3: archive on one device, add inside on the other |
+| Archived parent, live child | Core: reads unarchived while any child is live, and archived again once none is | Only the first child checked; archived children count; the parent stays unarchived after the last child is archived | row 8: archive on one device, add inside on the other |
 | Counts once toward a parent | Core: `TagStats` and `PracticeWeek` with two children of one parent in one session, and a child and its parent both tagged | Parent counted twice; child's time missing from the parent; the child listed in the week | |
 | Labels (D5) | Features: `selectedNames`; core: the CSV column | Bare child name; a parent prefixed with itself | |
 | D1 archive block | Features: the alert's count and kind; archived children don't block. UI: the alert shows | Plural wrong at 1; the archive goes through anyway | |
@@ -176,9 +178,9 @@ If PR 1 slips past the first TestFlight build that syncs, the tag record's versi
 | Move, the latent link | Features: after a mutual nesting, moving the loser out leaves the winner at the top level | Only the mover written | |
 | D6 | Features: top-level sections, N counts practiced children, the link filters to them | Children listed at the top; N counts unpracticed children | |
 | D7 | Core: a childless top-level tag keeps its row; children aren't listed | Children listed in the week; childless tags dropped | |
-| A parent set elsewhere shows after updating | None possible before a public build | | N4, at the first update after one |
+| A parent set elsewhere shows after updating | None possible before a public build | | row 9, at the first update after one |
 
-Device rows N1 to N4 go in `docs/device-checklist.md` with their PRs. N1 is part of the deploy (§4, step 5), with its Move-and-Rename repeat after PR 5; N2 and N3 need two devices on the same account and close with PR 5; N4 waits for the first update after a public build.
+iCloud sync rows 6 to 9 go in `docs/device-checklist.md` with their PRs. Row 6 is part of the deploy (§4, step 5), with its Move-and-Rename repeat after PR 5; row 7 and row 8 need two devices on the same account and close with PR 5; row 9 waits for the first update after a public build.
 
 ## 6. Decisions
 
