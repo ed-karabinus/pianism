@@ -17,6 +17,9 @@ struct TagStatsView: View {
         .overlay {
             if stats.isEmpty { empty }
         }
+        // iOS 26's soft edge fades past the bar onto the first header, which then failed the contrast audit; a hard
+        // edge stops at the bar.
+        .scrollEdgeEffectStyle(.hard, for: .top)
         // Above the list, not in it, so the empty state can't cover it. A bar, so the list blurs under it as it scrolls.
         .safeAreaBar(edge: .top) {
             Picker(selection: $kind) {
