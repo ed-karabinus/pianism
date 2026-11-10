@@ -17,7 +17,7 @@ Path key: `Core/`, `Features/` and `Persistence/` are `Sources/` of `Packages/Pi
 - **D4, nesting:** an "Add Inside" swipe action on top-level tags (how a tag becomes a parent), and a "Move" swipe action that puts a tag inside an eligible parent or back at the top level. Its sessions follow.
 - **D5, labels:** a child reads "Parent › child" in History's rows, Practice's tag line, the session editor and the CSV export (EXP-1).
 - **D6, Pro stats** (HIS-4's "Time per piece and skill", Pieces | Skills switch): top-level tags only, a parent's numbers including its children's, each session once. The parent's section ends with an "N inside ›" row opening the same kind of list for its children.
-- **D7, the free week's "By piece and skill"** (`WeekView`): top-level tags only, a parent's children rolled into it, each session once. "Top-level tags", not "parents", or a childless tag's time would vanish from the week. The spec's HIS-2 line says "parents only with what's inside them rolled in"; that wording is being raised with the owner to tidy later, and isn't edited here.
+- **D7, the free week's "By piece and skill"** (`WeekView`): top-level tags only, a parent's children rolled into it, each session once. "Top-level tags", not "parents", or a childless tag's time would vanish from the week. The spec's HIS-2 line says so: "with nested tags rolled into their parent" (the owner's wording, 2026-11-10).
 - **Names are unique within each list** (the owner's answer to Q1): "Scales › D minor" and "Arpeggios › D minor" can both exist, and the search label tells them apart.
 - **Move refuses a name clash, in both directions, with a reason.** Moving "D minor" to the top level when a top-level "D minor" exists, or into a parent that already has a child of that name, shows something like "A skill named “D minor” is already at the top level. Rename one first." and doesn't move. Two devices un-nesting at once can still make two top-level duplicates. That's accepted: both are top-level without children, so D2 lets them merge.
 - **The deploy** runs from PR 1's branch before the merge, with Development reset first. **`version` stays 1.** (Q2, Q3.)
@@ -195,7 +195,7 @@ Device rows N1 to N4 go in `docs/device-checklist.md` with their PRs. N1 is part
 
 **Decided in this plan, for the owner to accept with it:** the read rules of §3 (one non-recursive link, the older tag wins a loop, an archived parent with a live child reads unarchived until the child is archived, Move clears a latent link), the field's name, type and plainness, and that "N inside" counts children with practice.
 
-**Still to ask:** nothing. The HIS-2 wording ("parents only" against D7's "top-level tags only") is being raised with the owner separately.
+**Still to ask:** nothing.
 
 ## 7. The spec
 
@@ -203,7 +203,7 @@ Approved by the owner and edited into the spec on 2026-11-09, by the coordinatin
 
 - A new row after TAG-4: **TAG-5, Pieces and skills inside others, Should, M4**, with this plan's draft text plus "Names are unique within each list", "A tag can be moved inside another or back to the top level, taking its sessions with it", and "A tag can't be archived while anything inside it is unarchived, and only tags in the same list can be merged".
 - HIS-4's acceptance criteria: "Total and last-30-days time per piece and per skill; a parent's time includes its children's, each session once, and its children are listed inside it; played vs. bench time where MIDI data exists".
-- HIS-2's acceptance criteria: "a breakdown by tag, parents only with what's inside them rolled in" (wording to tidy, see §1, D7).
+- HIS-2's acceptance criteria: "a breakdown by tag, with nested tags rolled into their parent" (approved 2026-11-10, replacing the first wording, which read as dropping childless tags).
 
 ## 8. What in the code changed the picture
 
