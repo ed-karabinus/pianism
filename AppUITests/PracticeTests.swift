@@ -1464,9 +1464,7 @@ final class PracticeTests: UITestCase {
         // in place of the 5th.
         XCTAssertFalse(app.staticTexts["practice.too-short"].exists, "The 6th started")
         XCTAssertTrue(app.staticTexts["practice.last-session"].exists, "The 5th isn't the last session")
-        // Without contrast: Practice's grey footnote lines, the last session and the piano's name among them, nearly
-        // pass, and they're older than this line.
-        try audit(app, "Practice, free piano sessions used", contrast: false)
+        try audit(app, "Practice, free piano sessions used")
 
         tap(app, "practice.show-pro")
         let close = app.buttons["paywall.close"]
@@ -1521,8 +1519,7 @@ final class PracticeTests: UITestCase {
             NSPredicate(format: "label IN {'Total', 'Last 30 days'} AND value == '30 minutes'"))
         XCTAssertEqual(times.count, 2, "The piece's times are wrong")
         XCTAssertFalse(app.descendants(matching: .any)["Playing"].exists, "A timed session showed a piano's split")
-        // Contrast only noted, as for History: the system's grey header nearly passes it (#165).
-        try audit(app, "Time per piece and skill", contrast: false)
+        try audit(app, "Time per piece and skill")
         attachScreenshot(of: app, named: "Time per piece and skill")
 
         // When the switch shows skills
