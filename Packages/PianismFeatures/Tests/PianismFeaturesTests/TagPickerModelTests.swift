@@ -599,10 +599,325 @@ struct TagPickerModelTests {
         #expect(!model.mergeTargets(for: cousin).contains { $0.id == "first" })
     }
 
+    @Test("TAG-5, D4: a tag moves inside top-level tags of its kind on offer, built-ins too, not a child or itself")
+    func moveTargets() {
+        // Given a skill inside Scales, a top-level skill, an archived one, a merged one left unarchived, and a piece
+        let dMinor = skill("d-minor", "D minor", inside: .scales)
+        let gMajor = skill("g-major", "G major", inside: .scales)
+        let pedalling = skill("pedalling", "Pedalling")
+        let old = skill("old", "Old", archived: true)
+        let merged = PianismCore.Tag(id: "dup", kind: .skill, name: "Dup", isArchived: false, mergedInto: "pedalling")
+        let model = TagPickerModel(
+            practice: practice, library: InMemoryTagLibrary([ballade, dMinor, gMajor, pedalling, old, merged]))
+
+        // When each is asked where it can go
+        let targets = model.moveTargets(for: dMinor).map(\.id)
+
+        // Then it's the top-level skills on offer by name, its own parent included, and never the tag itself
+        #expect(
+            targets == [
+                "skill.arpeggios", "skill.improvisation", "pedalling", "skill.repertoire", "skill.scales",
+                "skill.sight-reading", "skill.technique",
+            ])
+        #expect(!model.moveTargets(for: pedalling).contains { $0.id == "pedalling" })
+        #expect(model.moveTargets(for: ballade).isEmpty, "No other piece, and skills are another kind")
+    }
+
+    @Test("TAG-5, D4: a user's tag with nothing inside it and somewhere to go can move; not a parent or a built-in")
+    func canMove() {
+        // Given a piece whose only piece inside is archived, a top-level piece, a read-only one, and a skill
+        let gone = PianismCore.Tag(id: "gone", kind: .piece, name: "Gone", isArchived: true, parentID: "ballade")
+        let suite = PianismCore.Tag(id: "suite", kind: .piece, name: "Suite", isArchived: false)
+        let newer = PianismCore.Tag(id: "newer", kind: .piece, name: "Newer", isArchived: false, isReadOnly: true)
+        let pedalling = skill("pedalling", "Pedalling")
+        let model = TagPickerModel(
+            practice: practice, library: InMemoryTagLibrary([ballade, gone, suite, newer, pedalling]))
+        let alone = TagPickerModel(practice: practice, library: InMemoryTagLibrary([suite]))
+
+        // When each is asked whether it can move
+        // Then only a user's own tag without anything inside it, with somewhere to go, can
+        #expect(model.canMove(suite))
+        #expect(model.canMove(pedalling))
+        #expect(model.canMove(gone), "A child can go to the top level")
+        #expect(!model.canMove(ballade), "It would take what's inside to a second level, archived or not")
+        #expect(!model.canMove(BuiltInSkill.scales.tag), "Built-in skills are never children")
+        #expect(!model.canMove(newer))
+        #expect(!alone.canMove(suite), "Nowhere to go")
+    }
+
+    @Test(
+        "TAG-5, D4: a skill moved inside Scales and back reads there, unfolded, and its sessions follow without a write"
+    )
+    func movesInsideAndBack() {
+        // Given a session tagged with a top-level skill
+        let pedalling = skill("pedalling", "Pedalling")
+        let library = InMemoryTagLibrary([pedalling])
+        let model = TagPickerModel(practice: practice, library: library)
+        let scales = BuiltInSkill.scales.tag
+        practice.setTags(["pedalling"])
+
+        // When it's moved inside Scales
+        model.move(pedalling, to: scales)
+
+        // Then it's stored and read inside Scales, and the session still names it alone
+        #expect(library.tags().first?.parentID == scales.id)
+        #expect(model.parent(of: pedalling)?.id == scales.id)
+        #expect(model[isUnfolded: scales.id], "Scales stayed folded, hiding it")
+        #expect(model.selectedNames == ["Scales › Pedalling"])
+        #expect(practice.session?.tagIDs == ["pedalling"])
+
+        // When it's moved back to the top level
+        model.move(pedalling, to: nil)
+
+        // Then it's at the top level again
+        #expect(library.tags().first?.parentID == nil)
+        #expect(model.selectedNames == ["Pedalling"])
+        #expect(practice.session?.tagIDs == ["pedalling"])
+    }
+
+    @Test("TAG-5, ADR 0013: choosing where a tag reads already writes nothing, so a tag two deep keeps its own link")
+    func movingToTheCurrentPlaceDoesNothing() {
+        // Given D inside C, which another device put inside P, so D reads at the top level
+        let parent = PianismCore.Tag(id: "p", kind: .piece, name: "P", isArchived: false)
+        let middle = PianismCore.Tag(id: "c", kind: .piece, name: "C", isArchived: false, parentID: "p")
+        let grandchild = PianismCore.Tag(id: "d", kind: .piece, name: "D", isArchived: false, parentID: "c")
+        let library = InMemoryTagLibrary([parent, middle, grandchild])
+        let model = TagPickerModel(practice: practice, library: library)
+        #expect(model.parent(of: grandchild) == nil)
+
+        // When D is moved to the top level, where it reads
+        model.move(grandchild, to: nil)
+
+        // Then its link stays, so moving C out puts D back inside C (ADR 0013)
+        #expect(library.tags().last?.parentID == "c")
+        model.move(middle, to: nil)
+        #expect(model.parent(of: grandchild)?.id == "c")
+    }
+
+    @Test(
+        "TAG-5, Q1: a move into a list with a tag of its name is refused with the reason, both ways, case and accents")
+    func moveRefusesANameClash() {
+        // Given "D minor" inside Scales and a top-level "d minor", "Étude" inside Ballade and a top-level "etude"
+        let dMinor = skill("d-minor", "D minor", inside: .scales)
+        let twin = skill("twin", "d minor")
+        let etude = PianismCore.Tag(id: "etude", kind: .piece, name: "Étude", isArchived: false, parentID: "ballade")
+        let loose = PianismCore.Tag(id: "loose", kind: .piece, name: "etude", isArchived: false)
+        let model = TagPickerModel(
+            practice: practice, library: InMemoryTagLibrary([ballade, etude, loose, dMinor, twin]))
+        let scales = BuiltInSkill.scales.tag
+
+        // When each would move into the other's list
+        // Then each is refused with its reason, and another list is fine
+        #expect(
+            model.moveRefusal(dMinor, to: nil)
+                == "A skill named “D minor” is already at the top level. Rename one first.")
+        #expect(
+            model.moveRefusal(twin, to: scales)
+                == "A skill named “d minor” is already inside “Scales”. Rename one first.")
+        #expect(model.moveRefusal(twin, to: BuiltInSkill.arpeggios.tag) == nil)
+        #expect(
+            model.moveRefusal(etude, to: nil) == "A piece named “Étude” is already at the top level. Rename one first.")
+        #expect(
+            model.moveRefusal(loose, to: ballade)
+                == "A piece named “etude” is already inside “Ballade No. 1”. Rename one first.")
+
+        // When the moves are tried anyway
+        model.move(dMinor, to: nil)
+        model.move(loose, to: ballade)
+
+        // Then nothing moved
+        #expect(model.parent(of: dMinor)?.id == scales.id)
+        #expect(model.parent(of: loose) == nil)
+
+        // When one of a pair is renamed
+        model.rename(twin, to: "D minor, left hand")
+        model.move(dMinor, to: nil)
+
+        // Then the move goes through
+        #expect(model.parent(of: dMinor) == nil)
+    }
+
+    @Test("TAG-5: a move inside a tag of the same name, case and accents aside, is refused with the reason")
+    func moveRefusesTheParentsName() {
+        // Given a top-level skill named "scales" and a top-level piece "Étude", beside a piece "Etude"
+        let lowerScales = skill("lower-scales", "scales")
+        let etude = PianismCore.Tag(id: "etude", kind: .piece, name: "Étude", isArchived: false)
+        let etudes = PianismCore.Tag(id: "etudes", kind: .piece, name: "Etude", isArchived: false)
+        let library = InMemoryTagLibrary([lowerScales, etude, etudes])
+        let model = TagPickerModel(practice: practice, library: library)
+
+        // When each would move inside the tag of its name
+        // Then it's refused with its reason, and moving elsewhere is fine
+        #expect(
+            model.moveRefusal(lowerScales, to: BuiltInSkill.scales.tag)
+                == "A skill can't sit inside one with the same name. Rename one first.")
+        #expect(
+            model.moveRefusal(etude, to: etudes) == "A piece can't sit inside one with the same name. Rename one first."
+        )
+        #expect(model.moveRefusal(lowerScales, to: BuiltInSkill.arpeggios.tag) == nil)
+
+        // When the move is tried anyway
+        model.move(etude, to: etudes)
+
+        // Then nothing moved
+        #expect(library.tags().allSatisfy { $0.parentID == nil })
+    }
+
+    @Test("TAG-5, ADR 0013: moving the loser of a mutual nesting out clears the winner's link, so it stays on top")
+    func movingOutClearsTheLatentLink() {
+        // Given A and B, each put inside the other on two devices, A older, so B reads inside A
+        let older = PianismCore.Tag(
+            id: "a", kind: .piece, name: "A", isArchived: false, parentID: "b",
+            createdAt: Date(timeIntervalSince1970: 1))
+        let newer = PianismCore.Tag(
+            id: "b", kind: .piece, name: "B", isArchived: false, parentID: "a",
+            createdAt: Date(timeIntervalSince1970: 2))
+        let library = InMemoryTagLibrary([older, newer])
+        let model = TagPickerModel(practice: practice, library: library)
+        #expect(model.parent(of: newer)?.id == "a")
+
+        // When B is moved to the top level
+        model.move(newer, to: nil)
+
+        // Then both links are cleared, and both read at the top level
+        #expect(library.tags().map(\.parentID) == [nil, nil])
+        #expect(model.parent(of: older) == nil)
+        #expect(model.parent(of: newer) == nil)
+    }
+
+    @Test("TAG-5, ADR 0013: a move leaves a parent's link alone when it names another tag, and clears one it joins")
+    func movingClearsOnlyALinkToTheMovedTag() {
+        // Given C inside P, whose own link names a tag not synced yet, and Q, newer than C, which another device put
+        // inside C, so Q reads at the top level while C is inside P
+        let parent = PianismCore.Tag(id: "p", kind: .piece, name: "P", isArchived: false, parentID: "unsynced")
+        let child = PianismCore.Tag(
+            id: "c", kind: .piece, name: "C", isArchived: false, parentID: "p",
+            createdAt: Date(timeIntervalSince1970: 1))
+        let other = PianismCore.Tag(
+            id: "q", kind: .piece, name: "Q", isArchived: false, parentID: "c",
+            createdAt: Date(timeIntervalSince1970: 2))
+        let library = InMemoryTagLibrary([parent, child, other])
+        let model = TagPickerModel(practice: practice, library: library)
+
+        // When C is moved inside Q
+        model.move(child, to: other)
+
+        // Then P keeps its link, Q's link to C is cleared, and C reads inside Q though it's older
+        #expect(library.tags().map(\.parentID) == ["unsynced", "q", nil])
+        #expect(model.parent(of: child)?.id == "q")
+    }
+
+    @Test("TAG-5, ADR 0013: a top-level tag whose own link names another isn't offered, unless it names the moved one")
+    func moveTargetsLeaveOutALinkedTag() {
+        // Given X inside C inside P, A and B inside each other with A older, so A wins, a ring of R, S and T, and M
+        let child = piece("c", inside: "p")
+        let loser = piece("b", inside: "a", created: 2)
+        let ring = piece("r", inside: "s")
+        let mover = piece("m")
+        let model = TagPickerModel(
+            practice: practice,
+            library: InMemoryTagLibrary([
+                piece("p"), child, piece("x", inside: "c"), piece("a", inside: "b", created: 1), loser, ring,
+                piece("s", inside: "t"), piece("t", inside: "r"), mover,
+            ]))
+
+        // When each is asked where it can go
+        let targets = { (tag: PianismCore.Tag) in model.moveTargets(for: tag).map(\.id) }
+
+        // Then the grandchild, the winner and the ring, which read top-level, are offered only to the tag they name
+        #expect(targets(mover) == ["p"], "A tag moved inside one of them would read top-level too")
+        #expect(targets(child).contains("x"))
+        #expect(targets(loser).contains("a"), "Its own parent")
+        #expect(targets(ring).contains("t") && !targets(ring).contains("s"))
+    }
+
+    @Test("TAG-5, ADR 0013: a tag whose own parent hasn't synced isn't offered, except to a tag already inside it")
+    func moveTargetsLeaveOutATagWaitingForItsParent() {
+        // Given W, whose parent hasn't synced, with C inside it, and M
+        let waiting = piece("w", inside: "unsynced")
+        let inside = piece("c", inside: "w")
+        let mover = piece("m")
+        let model = TagPickerModel(
+            practice: practice, library: InMemoryTagLibrary([waiting, inside, mover, piece("p")]))
+
+        // When each is asked where it can go
+        let targets = { (tag: PianismCore.Tag) in model.moveTargets(for: tag).map(\.id) }
+
+        // Then W isn't offered to M, as M would read top-level once W's parent arrives, but C still sees where it is
+        #expect(!targets(mover).contains("w"))
+        #expect(targets(inside).contains("w"))
+    }
+
+    @Test("TAG-5, ADR 0013: a move inside a tag that isn't offered writes nothing")
+    func movingInsideATagNotOfferedWritesNothing() {
+        // Given X inside C inside P, so X reads top-level, and M
+        let library = InMemoryTagLibrary([piece("p"), piece("c", inside: "p"), piece("x", inside: "c"), piece("m")])
+        let model = TagPickerModel(practice: practice, library: library)
+        let before = library.tags()
+
+        // When M is moved inside X anyway
+        model.move(piece("m"), to: piece("x", inside: "c"))
+
+        // Then nothing is written
+        #expect(library.tags() == before)
+    }
+
+    @Test("TAG-5, ADR 0013: if clearing the winner's link fails, the move writes nothing more, so neither tag jumps")
+    func aFailedClearLeavesThePairAsItWas() {
+        // Given B inside A after a mutual nesting, and a library that can't change A
+        let older = piece("a", inside: "b", created: 1)
+        let newer = piece("b", inside: "a", created: 2)
+        let library = TagLibraryFailingOn("a", InMemoryTagLibrary([older, newer]))
+        let model = TagPickerModel(practice: practice, library: library)
+
+        // When B is moved to the top level
+        model.move(newer, to: nil)
+
+        // Then it says so, and B is still inside A, rather than A inside B
+        #expect(model.isShowingError)
+        #expect(model.parent(of: newer)?.id == "a")
+        #expect(model.parent(of: older) == nil)
+    }
+
+    private func piece(_ id: String, inside parent: String? = nil, created: TimeInterval = 0) -> PianismCore.Tag {
+        PianismCore.Tag(
+            id: id, kind: .piece, name: id.uppercased(), isArchived: false, parentID: parent,
+            createdAt: Date(timeIntervalSince1970: created))
+    }
+
     private func skill(
         _ id: String, _ name: String, inside parent: BuiltInSkill? = nil, archived: Bool = false
     ) -> PianismCore.Tag {
         PianismCore.Tag(id: id, kind: .skill, name: name, isArchived: archived, parentID: parent?.rawValue)
+    }
+}
+
+/// A tag library whose `setParent` fails for one tag, as when a write to it doesn't save, to see what the other write
+/// of a move leaves.
+private struct TagLibraryFailingOn: TagLibrary {
+    private let failing: PianismCore.Tag.ID
+    private let library: InMemoryTagLibrary
+
+    init(_ failing: PianismCore.Tag.ID, _ library: InMemoryTagLibrary) {
+        self.failing = failing
+        self.library = library
+    }
+
+    func tags() throws -> [PianismCore.Tag] { library.tags() }
+    func add(name: String, kind: PianismCore.Tag.Kind) throws -> PianismCore.Tag { library.add(name: name, kind: kind) }
+    func add(name: String, kind: PianismCore.Tag.Kind, inside parent: String) throws -> PianismCore.Tag {
+        library.add(name: name, kind: kind, inside: parent)
+    }
+    func rename(id: String, to name: String) throws { try library.rename(id: id, to: name) }
+    func setArchived(_ isArchived: Bool, id: String) throws { try library.setArchived(isArchived, id: id) }
+    func setDetails(composer: String, targetTempo: Int?, id: String) throws {
+        try library.setDetails(composer: composer, targetTempo: targetTempo, id: id)
+    }
+    func merge(id: String, into kept: String) throws { try library.merge(id: id, into: kept) }
+    func unmerge(id: String) throws { try library.unmerge(id: id) }
+    func setParent(id: String, to parent: String?) throws {
+        guard id != failing else { throw UnavailableTagLibrary.Failure() }
+        try library.setParent(id: id, to: parent)
     }
 }
 

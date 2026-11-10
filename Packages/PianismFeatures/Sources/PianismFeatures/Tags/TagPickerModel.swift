@@ -11,7 +11,7 @@ protocol TagTarget: AnyObject {
 }
 
 /// State and commands for the tag picker, which tags a session and adds, renames, archives and merges tags, and adds
-/// them inside others (TAG-1, TAG-2, TAG-4, TAG-5).
+/// them inside others or moves them (TAG-1, TAG-2, TAG-4, TAG-5).
 @MainActor
 @Observable
 public final class TagPickerModel {
@@ -268,6 +268,89 @@ public final class TagPickerModel {
 
     func undoMerge(_ tag: Tag) {
         perform { try library.unmerge(id: tag.id) }
+    }
+
+    /// The tag `tag` reads inside, or `nil` at the top level (ADR 0013).
+    func parent(of tag: Tag) -> Tag? {
+        index.parent(of: tag)
+    }
+
+    /// The tags `tag` can be moved inside: the others of its kind at the top level, on offer and not merged away,
+    /// built-in skills too, its current parent included (D4). A child isn't one, so tags nest one level deep.
+    func moveTargets(for tag: Tag) -> [Tag] {
+        tags.filter {
+            // A tag can read top-level while it still stores a parent: a grandchild, the loser of a ring, the winner of
+            // a mutual nesting, or one whose parent hasn't synced yet. A tag moved inside it would read top-level, now
+            // or once that parent arrives, so it isn't offered, as Add Inside refuses it too. Two exceptions: its link
+            // names the tag being moved, which the move clears, or it's where the tag already is, shown but never
+            // written.
+            $0.kind == tag.kind && $0.id != tag.id && !$0.isArchived && $0.mergedInto == nil
+                && index.parent(of: $0) == nil
+                && ($0.parentID == nil || index.link($0)?.id == tag.id || $0.id == index.parent(of: tag)?.id)
+        }
+        .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    /// Whether `tag` can be moved: a user's own tag, as built-in skills are never children, with nothing inside it,
+    /// archived or not, which it would take to a second level, and somewhere to go (D4, ADR 0013).
+    func canMove(_ tag: Tag) -> Bool {
+        !tag.isReadOnly && !parents.contains(tag.id) && (index.parent(of: tag) != nil || !moveTargets(for: tag).isEmpty)
+    }
+
+    /// Why `tag` can't go inside `parent`, or to the top level for `nil`: `parent` or another tag in that list has its
+    /// name, as names are unique within a list (Q1). `nil` if it can. A tag merged away doesn't count, as for Rename.
+    func moveRefusal(_ tag: Tag, to parent: Tag?) -> String? {
+        // A child can't share its parent's name, as Add Inside and Rename refuse too (the owner's pick 2026-11-10).
+        if let parent, Tag.existing(named: tag.name, kind: tag.kind, in: [parent]) != nil {
+            return tag.kind == .piece
+                ? String(
+                    localized: "A piece can't sit inside one with the same name. Rename one first.", bundle: .module,
+                    comment: "Why a piece or skill can't be moved")
+                : String(
+                    localized: "A skill can't sit inside one with the same name. Rename one first.", bundle: .module,
+                    comment: "Why a piece or skill can't be moved")
+        }
+        let others = tags.filter { $0.id != tag.id && $0.mergedInto == nil }
+        guard existing(named: tag.name, kind: tag.kind, inside: parent?.id, among: others) != nil else { return nil }
+        let name = tag.name
+        return switch (tag.kind, parent?.name) {
+        case (.piece, nil):
+            String(
+                localized: "A piece named “\(name)” is already at the top level. Rename one first.", bundle: .module,
+                comment: "Why a piece or skill can't be moved")
+        case (.skill, nil):
+            String(
+                localized: "A skill named “\(name)” is already at the top level. Rename one first.", bundle: .module,
+                comment: "Why a piece or skill can't be moved")
+        case (.piece, let parent?):
+            String(
+                localized: "A piece named “\(name)” is already inside “\(parent)”. Rename one first.", bundle: .module,
+                comment: "Why a piece or skill can't be moved")
+        case (.skill, let parent?):
+            String(
+                localized: "A skill named “\(name)” is already inside “\(parent)”. Rename one first.", bundle: .module,
+                comment: "Why a piece or skill can't be moved")
+        }
+    }
+
+    /// Moves `tag` inside `parent`, or to the top level for `nil`, unless it's there already, `parent` isn't one of
+    /// ``moveTargets(for:)`` or the move is refused (D4). Unfolds the new parent to show it there, as Add Inside does.
+    /// Its sessions aren't written: they follow it, as they name the tag, not its place.
+    func move(_ tag: Tag, to parent: Tag?) {
+        let from = index.parent(of: tag)
+        guard canMove(tag), parent?.id != from?.id, moveRefusal(tag, to: parent) == nil else { return }
+        if let parent, !moveTargets(for: tag).contains(where: { $0.id == parent.id }) { return }
+        perform {
+            // After two devices nest a pair opposite ways, the tag that won still names this one in its own link. Left
+            // there, the parent it leaves would jump inside it, and the parent it joins could win the pair and land
+            // inside it instead, so that link is cleared: two writes, no surprise (ADR 0013, plan §3). It goes first,
+            // so if the move's own write then fails, nothing has moved, rather than the other tag jumping.
+            for end in [from, parent].compactMap(\.self) where index.link(end)?.id == tag.id {
+                try library.setParent(id: end.id, to: nil)
+            }
+            try library.setParent(id: tag.id, to: parent?.id)
+            if let parent { unfolded.insert(parent.id) }
+        }
     }
 
     /// Loads the tags again. Call when the picker opens, and when iCloud brings changes (SYN-1).

@@ -163,9 +163,13 @@ public struct TagIndex: Sendable {
     }
 
     /// The tag `tag`'s stored parent stands for, through merges, unless it's unknown here (not synced yet), `tag`
-    /// itself (a parent merged into its own child) or of the other kind (ADR 0013).
-    private func link(_ tag: Tag) -> Tag? {
-        guard let parent = tag.parentID.flatMap({ resolved[$0] }), parent.id != tag.id, parent.kind == tag.kind
+    /// itself (a parent merged into its own child) or of the other kind (ADR 0013). Like ``parent(of:)``, it reads
+    /// `tag` as the tag its ID stands for here, so a tag from outside the index, such as a merged one from the
+    /// library, is never read through its own stale link, and a tag the index doesn't know has none. Public for Move,
+    /// which clears a link naming the tag it moves, so the other tag of a mutual nesting doesn't end up inside it.
+    public func link(_ tag: Tag) -> Tag? {
+        guard let tag = resolved[tag.id], let parent = tag.parentID.flatMap({ resolved[$0] }), parent.id != tag.id,
+            parent.kind == tag.kind
         else { return nil }
         return parent
     }
