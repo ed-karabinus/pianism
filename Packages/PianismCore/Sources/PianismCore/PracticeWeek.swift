@@ -21,17 +21,18 @@ public struct PracticeWeek: Sendable {
         }
     }
 
-    /// The week's practice time with each tag, longest first, ties by name as the tag picker sorts them, and then any
-    /// untagged time. A session with several tags counts in full toward each, and a merged tag as the tag it was
-    /// merged into. Each day counts its own part of a session, so one across midnight isn't counted twice, and one
-    /// across the week's edge counts only the minutes inside it.
+    /// The week's practice time with each top-level tag, longest first, ties by name as the tag picker sorts them, and
+    /// then any untagged time. A session with several tags counts in full toward each, a merged tag as the tag it was
+    /// merged into, and a tag inside another toward that parent, once however many of its children the session has
+    /// (D7). Each day counts its own part of a session, so one across midnight isn't counted twice, and one across the
+    /// week's edge counts only the minutes inside it.
     public func timeByTag(in index: TagIndex) -> [TagTime] {
         var byTag: [Tag.ID: TagTime] = [:]
         var untagged = TagTime(tag: nil, time: 0)
         for day in days {
             for session in day.sessions {
                 let time = day.part(of: session).practiced
-                let tags = index.tags(for: session.tagIDs)
+                let tags = index.counted(for: session.tagIDs).filter { index.parent(of: $0) == nil }
                 if tags.isEmpty { untagged.time += time }
                 for tag in tags { byTag[tag.id, default: TagTime(tag: tag, time: 0)].time += time }
             }

@@ -1,8 +1,9 @@
 import Foundation
 
 /// Every session as a CSV file the user can take anywhere (EXP-1): one row per session, oldest first, with its times
-/// in the zone it was played in, whole seconds, how it was recorded, its tags by name and its note, as typed (decided
-/// with Ed, 2026-11-08). RFC 4180, with CRLF line ends and a byte order mark, so spreadsheet apps read the accents.
+/// in the zone it was played in, whole seconds, how it was recorded, its tags by name ("Scales › D minor" for one
+/// inside another, D5) and its note, as typed (decided with Ed, 2026-11-08). RFC 4180, with CRLF line ends and a byte
+/// order mark, so spreadsheet apps read the accents.
 public enum PracticeLogCSV {
     private static let header = [
         "started_at", "ended_at", "practiced_seconds", "paused_seconds", "source", "tags", "note",
@@ -31,7 +32,7 @@ public enum PracticeLogCSV {
             String(practiced),
             String(max(0, span - practiced)),
             session.source.rawValue,
-            index.tags(for: session.tagIDs).map(\.name).joined(separator: "; "),
+            index.tags(for: session.tagIDs).map(index.name(of:)).joined(separator: "; "),
             session.note,
         ]
     }

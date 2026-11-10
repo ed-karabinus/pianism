@@ -269,6 +269,30 @@ struct HistoryModelTests {
         #expect(model.tagIndex.tags(for: session.tagIDs).map(\.name) == ["Ballade No. 1", "Scales"])
     }
 
+    @Test("TAG-5, ADR 0013: a skill inside a built-in one counts toward it, and exports as \"Scales › D minor\"")
+    func childOfABuiltInSkill() throws {
+        // Given a skill inside the built-in Scales, and a session tagged with it
+        let history = InMemorySessionHistory()
+        var session = PracticeSession(startedAt: clock.now)
+        try session.setTags(["d-minor"])
+        try session.stop(at: clock.now + 600)
+        history.save(session)
+        let tags = InMemoryTagLibrary([
+            Tag(id: "d-minor", kind: .skill, name: "D minor", isArchived: false, parentID: BuiltInSkill.scales.rawValue)
+        ])
+        let model = HistoryModel(
+            history: history, tags: tags, outbox: outbox, running: running, clock: clock, glance: glance)
+
+        // When History loads, and the log is exported
+        model.refresh()
+        let log = String(decoding: try model.practiceLog(), as: UTF8.self)
+
+        // Then Scales has the session's time, and the log names the skill inside it
+        #expect(model.stats(of: .skill).map(\.tag.id) == ["d-minor", BuiltInSkill.scales.rawValue])
+        #expect(model.stats(of: .skill).map(\.total) == [600, 600])
+        #expect(log.contains(",Scales › D minor,"))
+    }
+
     @Test("HIS-1: each refresh moves today along, so a screen left open past midnight catches up")
     func refreshMovesToday() {
         let model = HistoryModel(
