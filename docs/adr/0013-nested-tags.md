@@ -181,3 +181,12 @@ read-only on older builds for a change to tags.
   on one device while the other adds a child inside comes back on both, and goes again when the
   child is archived (row 8); after the first update that follows a public build, a parent set on
   another device shows (row 9).
+
+Amended 2026-11-10 by the deploy's step 5: **CloudKit merged two saves by field.** With the
+iPhone offline, it changed a piece's composer while the Mac renamed the same piece; when the iPhone
+came back, both devices showed the Mac's name and the iPhone's composer. So a rename on one device
+doesn't undo a move on another, and the "Bad" point above about a repeated Move doesn't arise.
+Step 5's other checks passed too: the Showcase's nested skill reached the Mac with `CD_parentID` set;
+main's build (schema v1) renamed it and the parent stayed in CloudKit Console; and a tag added there
+reached the new build at the top level. The schema was deployed the same day, and Production's
+export, equal to Development's, is kept as `docs/cloudkit/schema-v2.ckdb`.
