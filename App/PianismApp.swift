@@ -93,6 +93,12 @@ struct PianismApp: App {
                 try? FileManager.default.removeItem(at: dataDirectory)
                 UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier ?? "")
             }
+            // Before a CloudKit deploy, the owner clears only Debug's history and outbox with PIANISM_CLEAR_DEBUG_DATA=1
+            // (ADR 0008, step 2). The settings and the running session stay, as a Release build on the same device
+            // shares them.
+            if environment["PIANISM_CLEAR_DEBUG_DATA"] == "1" {
+                try? FileManager.default.removeItem(at: dataDirectory)
+            }
             // Tests about something else pass the welcome with PIANISM_SKIP_WELCOME=1. Release builds ignore it.
             if environment["PIANISM_SKIP_WELCOME"] == "1" {
                 PracticeModel.skipWelcome(in: .standard)

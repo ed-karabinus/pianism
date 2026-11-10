@@ -360,9 +360,13 @@ private struct UnavailableTagLibrary: TagLibrary {
 
     func tags() throws -> [PianismCore.Tag] { throw Failure() }
     func add(name _: String, kind _: PianismCore.Tag.Kind) throws -> PianismCore.Tag { throw Failure() }
+    func add(name _: String, kind _: PianismCore.Tag.Kind, inside _: String) throws -> PianismCore.Tag {
+        throw Failure()
+    }
     func rename(id _: String, to _: String) throws { throw Failure() }
     func setArchived(_: Bool, id _: String) throws { throw Failure() }
     func setDetails(composer _: String, targetTempo _: Int?, id _: String) throws { throw Failure() }
     func merge(id _: String, into _: String) throws { throw Failure() }
     func unmerge(id _: String) throws { throw Failure() }
+    func setParent(id _: String, to _: String?) throws { throw Failure() }
 }

@@ -1232,6 +1232,32 @@ final class PracticeTests: UITestCase {
         XCTAssertFalse(element(app, "welcome.start").exists)
     }
 
+    /// ADR 0008, step 2: before a CloudKit deploy, PIANISM_CLEAR_DEBUG_DATA=1 empties Debug's history but keeps the
+    /// settings and the running session, which a Release build on the same device shares (Ed, 2026-11-10).
+    @MainActor
+    func testClearingDebugDataKeepsSettingsAndTheRunningSession() throws {
+        // Given sample history and its running session, and a setting changed: sharing usage turned off
+        var app = launch(at: start, reset: true, showcase: true)
+        XCTAssertTrue(element(app, "practice.stop").waitForExistence(timeout: 5))
+        let sharing = sharingSwitch(in: app)
+        let off = app.switches.matching(NSPredicate(format: "identifier == 'settings.shares-usage' AND value == '0'"))
+            .firstMatch
+        sharing.tap()
+        if !off.waitForExistence(timeout: 3) { sharing.switches.firstMatch.tap() }
+        XCTAssertTrue(off.waitForExistence(timeout: 5), "The switch didn't turn off")
+        kill(app)
+
+        // When it opens again with Debug's data cleared
+        app = launch(at: start + 60, clearDebugData: true)
+
+        // Then the setting stays, the session still runs, and the history is empty
+        XCTAssertEqual(sharingSwitch(in: app).value as? String, "0", "The settings were cleared")
+        openPractice(app)
+        XCTAssertTrue(element(app, "practice.stop").waitForExistence(timeout: 10), "The running session was cleared")
+        openHistory(app)
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "Debug's history was kept")
+    }
+
     /// ONB-1: the welcome closes without starting anything, and it shows once.
     @MainActor
     func testWelcomeClosesForGood() throws {
@@ -1594,15 +1620,6 @@ final class PracticeTests: UITestCase {
     /// send nothing, so the adapter's tests check what's sent and stopped, against a fake network.
     @MainActor
     func testSharingUsageIsOnUntilTurnedOff() throws {
-        func sharingSwitch(in app: XCUIApplication) -> XCUIElement {
-            openSettings(app)
-            let sharing = app.switches["settings.shares-usage"]
-            // The last section, below the fold, where a Form may not have built the row yet.
-            for _ in 0..<8 where !(sharing.exists && sharing.isHittable) { app.swipeUp() }
-            XCTAssertTrue(sharing.waitForExistence(timeout: 5), "No switch for sharing usage in Settings")
-            return sharing
-        }
-
         var app = launch(at: start, reset: true)
         var sharing = sharingSwitch(in: app)
         XCTAssertEqual(sharing.value as? String, "1", "Sharing usage isn't on by default")
@@ -2269,6 +2286,17 @@ final class PracticeTests: UITestCase {
         app.descendants(matching: .any)[identifier].firstMatch
     }
 
+    /// Settings' switch for sharing anonymous usage (ADR 0011).
+    @MainActor
+    private func sharingSwitch(in app: XCUIApplication) -> XCUIElement {
+        openSettings(app)
+        let sharing = app.switches["settings.shares-usage"]
+        // The last section, below the fold, where a Form may not have built the row yet.
+        for _ in 0..<8 where !(sharing.exists && sharing.isHittable) { app.swipeUp() }
+        XCTAssertTrue(sharing.waitForExistence(timeout: 5), "No switch for sharing usage in Settings")
+        return sharing
+    }
+
     /// Launches the app with its clock fixed at `now`, or on the real clock if `nil`.
     @MainActor
     private func launch(
@@ -2278,7 +2306,7 @@ final class PracticeTests: UITestCase {
         textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
         midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil, intent: String? = nil,
         reminderMinute: Int? = nil, welcome: Bool = false, realStore: Bool = false, restoreFinds: Bool = false,
-        buying: String? = nil, noOffer: Bool = false, autoLogged: Int? = nil
+        buying: String? = nil, noOffer: Bool = false, autoLogged: Int? = nil, clearDebugData: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -2315,6 +2343,9 @@ final class PracticeTests: UITestCase {
         }
         if reset {
             app.launchEnvironment["PIANISM_RESET"] = "1"
+        }
+        if clearDebugData {
+            app.launchEnvironment["PIANISM_CLEAR_DEBUG_DATA"] = "1"
         }
         if !realStore {
             app.launchEnvironment["PIANISM_STORE"] = "free"

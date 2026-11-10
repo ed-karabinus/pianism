@@ -99,7 +99,7 @@ public final class HistoryStore: Sendable {
             try FileManager.default.createDirectory(
                 at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             let container = try ModelContainer(
-                for: Schema(versionedSchema: HistorySchemaV1.self),
+                for: Schema(versionedSchema: HistorySchemaV2.self),
                 migrationPlan: HistoryMigrationPlan.self,
                 configurations: configuration
             )
@@ -125,12 +125,12 @@ public final class HistoryStore: Sendable {
             try context.save()
         }
 
-        /// Debug only: creates schema v1's record types and fields in the Development environment of
+        /// Debug only: creates the current schema's record types and fields in the Development environment of
         /// `cloudKitContainer`, from a scratch store, ready to check and deploy (SYN-1, ADR 0008). It needs
         /// an iCloud account, so the owner runs it on a device signed into iCloud (ADR 0008, step 3).
         public static func initializeCloudKitSchema(cloudKitContainer: String) throws {
-            guard let model = NSManagedObjectModel.makeManagedObjectModel(for: HistorySchemaV1.models) else {
-                preconditionFailure("Schema v1 has no Core Data model")
+            guard let model = NSManagedObjectModel.makeManagedObjectModel(for: HistorySchemaV2.models) else {
+                preconditionFailure("Schema v2 has no Core Data model")
             }
             let directory = FileManager.default.temporaryDirectory.appending(path: "CloudKitSchema-\(UUID())")
             defer { try? FileManager.default.removeItem(at: directory) }

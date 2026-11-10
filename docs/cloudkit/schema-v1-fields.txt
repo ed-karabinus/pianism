@@ -34,6 +34,8 @@ CD_TagRecord.CD_moveReceipt BYTES
 CD_TagRecord.CD_moveReceipt_ckAsset ASSET
 CD_TagRecord.CD_name ENCRYPTED STRING
 CD_TagRecord.CD_name_ckAsset ASSET
+CD_TagRecord.CD_parentID STRING
+CD_TagRecord.CD_parentID_ckAsset ASSET
 CD_TagRecord.CD_targetTempo INT64
 CD_TagRecord.CD_version INT64
 Users.roles LIST<INT64>

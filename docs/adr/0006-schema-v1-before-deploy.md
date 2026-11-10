@@ -1,7 +1,8 @@
 # 6. Schema v1 gains a record version, a time zone and a deleted mark before it ships
 
 - Status: accepted; the deploy by [ADR 0008](0008-icloud-sync-environments-and-deploy.md); the
-  `version` rule's `source` example by [ADR 0009](0009-what-a-midi-session-stores.md)
+  `version` rule's `source` example by [ADR 0009](0009-what-a-midi-session-stores.md); schema v2 by
+  [ADR 0013](0013-nested-tags.md)
 - Date: 2026-10-15
 - Amends: [ADR 0004](0004-synced-data-model.md)
 

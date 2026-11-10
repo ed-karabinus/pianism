@@ -15,6 +15,10 @@ public struct Tag: Sendable, Hashable, Identifiable {
     public internal(set) var isArchived: Bool
     /// The tag this one was merged into, which its sessions count toward (TAG-4, ADR 0004).
     public internal(set) var mergedInto: Tag.ID?
+    /// The tag this one sits inside, as stored, or `nil` at the top level (TAG-5, ADR 0013). Sync can deliver a
+    /// link no device would write, so it's never trusted without the rules of ADR 0013.
+    // periphery:ignore - stored before any screen uses it, so the CloudKit deploy has the field (ADR 0013)
+    public internal(set) var parentID: Tag.ID?
     /// Decides which tag survives when two devices merged a pair in opposite directions (ADR 0004).
     public let createdAt: Date
     /// Built-in skills, and tags a newer version wrote (ADR 0006), can't be renamed, archived or given
@@ -26,7 +30,7 @@ public struct Tag: Sendable, Hashable, Identifiable {
     public internal(set) var targetTempo: Int?
 
     public init(
-        id: String, kind: Kind, name: String, isArchived: Bool, mergedInto: Tag.ID? = nil,
+        id: String, kind: Kind, name: String, isArchived: Bool, mergedInto: Tag.ID? = nil, parentID: Tag.ID? = nil,
         createdAt: Date = .distantPast, isReadOnly: Bool = false, composer: String = "", targetTempo: Int? = nil
     ) {
         self.id = id
@@ -34,6 +38,7 @@ public struct Tag: Sendable, Hashable, Identifiable {
         self.name = name
         self.isArchived = isArchived
         self.mergedInto = mergedInto
+        self.parentID = parentID
         self.createdAt = createdAt
         self.isReadOnly = isReadOnly
         self.composer = composer

@@ -21,24 +21,34 @@ public final class SwiftDataTagLibrary: TagLibrary {
             Tag(
                 id: record.id, kind: Tag.Kind(rawValue: record.kind) ?? .piece, name: record.name,
                 isArchived: record.isArchived, mergedInto: record.mergedInto.isEmpty ? nil : record.mergedInto,
-                createdAt: record.createdAt, isReadOnly: record.version > HistoryStore.recordVersion,
+                parentID: record.parentID.isEmpty ? nil : record.parentID, createdAt: record.createdAt,
+                isReadOnly: record.version > HistoryStore.recordVersion,
                 composer: record.composer, targetTempo: record.targetTempo)
         }
     }
 
     public func add(name: String, kind: Tag.Kind) throws -> Tag {
+        try add(name: name, kind: kind, parent: nil)
+    }
+
+    public func add(name: String, kind: Tag.Kind, inside parent: Tag.ID) throws -> Tag {
+        try add(name: name, kind: kind, parent: parent)
+    }
+
+    private func add(name: String, kind: Tag.Kind, parent: Tag.ID?) throws -> Tag {
         let context = ModelContext(try store.container())
         let now = clock.now
         let record = TagRecord()
         record.id = UUID().uuidString.lowercased()
         record.kind = kind.rawValue
         record.name = name
+        record.parentID = parent ?? ""
         record.createdAt = now
         record.modifiedAt = now
         record.version = HistoryStore.recordVersion  // mutate:ignore - the default until a release raises it
         context.insert(record)
         try context.save()
-        return Tag(id: record.id, kind: kind, name: name, isArchived: false, createdAt: now)
+        return Tag(id: record.id, kind: kind, name: name, isArchived: false, parentID: parent, createdAt: now)
     }
 
     public func rename(id: Tag.ID, to name: String) throws {
@@ -68,6 +78,10 @@ public final class SwiftDataTagLibrary: TagLibrary {
             $0.mergedInto = ""
             $0.isArchived = false
         }
+    }
+
+    public func setParent(id: Tag.ID, to parent: Tag.ID?) throws {
+        try change(id) { $0.parentID = parent ?? "" }
     }
 
     /// Applies `apply` to the copy of `id` that ``tags()`` shows, unless a newer version wrote it,

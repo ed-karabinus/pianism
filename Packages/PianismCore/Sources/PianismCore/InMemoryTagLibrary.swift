@@ -14,7 +14,14 @@ public final class InMemoryTagLibrary: TagLibrary {
     }
 
     public func add(name: String, kind: Tag.Kind) -> Tag {
-        let tag = Tag(id: UUID().uuidString.lowercased(), kind: kind, name: name, isArchived: false)
+        add(Tag(id: UUID().uuidString.lowercased(), kind: kind, name: name, isArchived: false))
+    }
+
+    public func add(name: String, kind: Tag.Kind, inside parent: Tag.ID) -> Tag {
+        add(Tag(id: UUID().uuidString.lowercased(), kind: kind, name: name, isArchived: false, parentID: parent))
+    }
+
+    private func add(_ tag: Tag) -> Tag {
         stored.withLock { $0.append(tag) }
         return tag
     }
@@ -46,6 +53,10 @@ public final class InMemoryTagLibrary: TagLibrary {
             $0.mergedInto = nil
             $0.isArchived = false
         }
+    }
+
+    public func setParent(id: Tag.ID, to parent: Tag.ID?) throws {
+        try change(id) { $0.parentID = parent }
     }
 
     private func change(_ id: Tag.ID, _ apply: (inout Tag) -> Void) throws {

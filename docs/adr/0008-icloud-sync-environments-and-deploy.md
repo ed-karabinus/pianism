@@ -1,6 +1,7 @@
 # 8. History syncs through CloudKit, with Debug and Release builds kept apart, and one checked deploy
 
-- Status: accepted
+- Status: accepted; step 1 for a later deploy (green on the branch that deploys, before it merges) by
+  [ADR 0013](0013-nested-tags.md)
 - Date: 2026-10-20
 - Amends: [ADR 0004](0004-synced-data-model.md), [ADR 0006](0006-schema-v1-before-deploy.md)
 
