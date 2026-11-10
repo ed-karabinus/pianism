@@ -3,7 +3,7 @@ import Testing
 
 @testable import PianismCore
 
-struct PieceStatsTests {
+struct TagStatsTests {
     let chopin = PianismCore.Tag(id: "chopin", kind: .piece, name: "Chopin", isArchived: false)
     let bach = PianismCore.Tag(id: "bach", kind: .piece, name: "Bach", isArchived: true)
     let scales = PianismCore.Tag(id: "scales", kind: .skill, name: "Scales", isArchived: false)
@@ -20,11 +20,11 @@ struct PieceStatsTests {
             try session(at: date(2026, 10, 15, 8, 0, in: calendar), minutes: 20, tags: ["chopin"]),
         ]
 
-        let stats = PieceStats.of(
-            PracticeDay.group(sessions, in: calendar), in: TagIndex([chopin]),
+        let stats = TagStats.of(
+            .piece, in: PracticeDay.group(sessions, in: calendar), tags: TagIndex([chopin]),
             today: try date(2026, 11, 30, 12, 0, in: calendar), calendar: calendar)
 
-        #expect(stats.map(\.piece.id) == ["chopin"])
+        #expect(stats.map(\.tag.id) == ["chopin"])
         let piece = try #require(stats.first)
         #expect(piece.total == 110 * 60)
         #expect(piece.recent == 60 * 60, "The 30 days hold 1 November's 30 minutes and 30 more after midnight")
@@ -41,10 +41,11 @@ struct PieceStatsTests {
             try session(at: start + 3_600, minutes: 5, tags: ["nocturne"]),
         ]
 
-        let stats = PieceStats.of(
-            PracticeDay.group(sessions, in: calendar), in: TagIndex([chopin, merged]), today: start, calendar: calendar)
+        let stats = TagStats.of(
+            .piece, in: PracticeDay.group(sessions, in: calendar), tags: TagIndex([chopin, merged]), today: start,
+            calendar: calendar)
 
-        #expect(stats.map(\.piece.id) == ["chopin"])
+        #expect(stats.map(\.tag.id) == ["chopin"])
         #expect(try #require(stats.first).total == 15 * 60)
     }
 
@@ -59,11 +60,11 @@ struct PieceStatsTests {
             try session(at: start + 3_600, minutes: 10, tags: ["chopin"]),
         ]
 
-        let stats = PieceStats.of(
-            PracticeDay.group(sessions, in: calendar), in: TagIndex([chopin, bach, scales]), today: start,
+        let stats = TagStats.of(
+            .piece, in: PracticeDay.group(sessions, in: calendar), tags: TagIndex([chopin, bach, scales]), today: start,
             calendar: calendar)
 
-        #expect(stats.map(\.piece.id) == ["chopin", "bach"])
+        #expect(stats.map(\.tag.id) == ["chopin", "bach"])
         #expect(stats.map(\.total) == [40 * 60, 30 * 60])
     }
 
@@ -76,10 +77,11 @@ struct PieceStatsTests {
         let second = PianismCore.Tag(id: "1", kind: .piece, name: "Chopin", isArchived: false)
         let sessions = [try session(at: start, minutes: 30, tags: ["1", "2"])]
 
-        let stats = PieceStats.of(
-            PracticeDay.group(sessions, in: calendar), in: TagIndex([first, second]), today: start, calendar: calendar)
+        let stats = TagStats.of(
+            .piece, in: PracticeDay.group(sessions, in: calendar), tags: TagIndex([first, second]), today: start,
+            calendar: calendar)
 
-        #expect(stats.map(\.piece.name) == ["Bach", "Chopin"])
+        #expect(stats.map(\.tag.name) == ["Bach", "Chopin"])
     }
 
     @Test(
@@ -103,15 +105,16 @@ struct PieceStatsTests {
             try session(at: start, minutes: 10, tags: ["bach"]),
         ]
 
-        let stats = PieceStats.of(
-            PracticeDay.group(sessions, in: calendar), in: TagIndex([chopin, bach]), today: today, calendar: calendar)
+        let stats = TagStats.of(
+            .piece, in: PracticeDay.group(sessions, in: calendar), tags: TagIndex([chopin, bach]), today: today,
+            calendar: calendar)
 
-        let chopinStats = try #require(stats.first { $0.piece.id == "chopin" })
+        let chopinStats = try #require(stats.first { $0.tag.id == "chopin" })
         #expect(chopinStats.recent == 45 * 60)
         #expect(chopinStats.playing == 35 * 60)
         #expect(chopinStats.paused == 5 * 60)
         #expect(chopinStats.hasPianoTime)
-        let bachStats = try #require(stats.first { $0.piece.id == "bach" })
+        let bachStats = try #require(stats.first { $0.tag.id == "bach" })
         #expect(!bachStats.hasPianoTime)
     }
 
@@ -126,14 +129,39 @@ struct PieceStatsTests {
         try piano.resume(at: start + 15 * 60)
         try piano.stop(at: start + 30 * 60)
 
-        let stats = PieceStats.of(
-            PracticeDay.group([piano], in: calendar), in: TagIndex([chopin]), today: today, calendar: calendar)
+        let stats = TagStats.of(
+            .piece, in: PracticeDay.group([piano], in: calendar), tags: TagIndex([chopin]), today: today,
+            calendar: calendar)
 
         let chopinStats = try #require(stats.first)
         #expect(chopinStats.total == 20 * 60)
         #expect(chopinStats.recent == 10 * 60)
         #expect(chopinStats.playing == 10 * 60)
         #expect(chopinStats.paused == 0)
+    }
+
+    @Test(
+        "HIS-4: skills get their own stats, without pieces, a session with several counting fully toward each, the way pieces do"
+    )
+    func skillsCountLikePieces() throws {
+        // Given a skill of the user's own beside a built-in one, as for scales in one key
+        let calendar = try losAngeles()
+        let start = try date(2026, 11, 20, 18, 0, in: calendar)
+        let dMinor = PianismCore.Tag(id: "d-minor", kind: .skill, name: "Scales: D minor", isArchived: false)
+        let sessions = [
+            try session(at: start, minutes: 20, tags: ["chopin", "scales", "d-minor"]),
+            try session(at: start + 3_600, minutes: 10, tags: ["scales"]),
+        ]
+
+        // When the skills' stats are counted
+        let stats = TagStats.of(
+            .skill, in: PracticeDay.group(sessions, in: calendar), tags: TagIndex([chopin, scales, dMinor]),
+            today: start, calendar: calendar)
+
+        // Then each skill has its own time, and the piece has none here
+        #expect(stats.map(\.tag.id) == ["scales", "d-minor"])
+        #expect(stats.map(\.total) == [30 * 60, 20 * 60])
+        #expect(stats.map(\.recent) == [30 * 60, 20 * 60])
     }
 
     private func losAngeles() throws -> Calendar {

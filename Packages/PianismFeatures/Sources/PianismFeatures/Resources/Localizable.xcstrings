@@ -28,6 +28,9 @@
     "A session with several pieces counts fully toward each." : {
 
     },
+    "A session with several skills counts fully toward each." : {
+
+    },
     "A target tempo is a whole number from %lld to %lld." : {
 
     },
@@ -226,6 +229,9 @@
     "No purchase found." : {
 
     },
+    "No skills yet" : {
+
+    },
     "None" : {
 
     },
@@ -293,6 +299,9 @@
 
     },
     "Pieces" : {
+
+    },
+    "Pieces or skills" : {
 
     },
     "Playing" : {
@@ -415,6 +424,9 @@
     "Tag a session with a piece to see its time here." : {
 
     },
+    "Tag a session with a skill to see its time here." : {
+
+    },
     "Tags" : {
 
     },
@@ -445,7 +457,7 @@
     "Time" : {
 
     },
-    "Time per piece" : {
+    "Time per piece and skill" : {
 
     },
     "Time your practice with one tap, tag what you worked on, and see your week build up." : {

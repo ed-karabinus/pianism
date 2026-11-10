@@ -3,7 +3,8 @@
 Settled on 2026-11-08, the owner's pick.
 
 A day tapped in History's week scrolls the row above its date to the top, so the date shows one row below the bar:
-the last session of the day above, or, for the newest day, the Time per piece row.
+the last session of the day above, or, for the newest day, the Time per piece row (Time per piece and skill since
+2026-11-09).
 
 **Why:** a List can't scroll to a section's header, so lining up the day's first session with the top left its date
 under the bar. Apple's suggested fix, a lazy stack, would lose swipe to delete. The owner picked this over a second
