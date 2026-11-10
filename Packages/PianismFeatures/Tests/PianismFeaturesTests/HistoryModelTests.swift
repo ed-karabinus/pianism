@@ -846,6 +846,7 @@ private struct UndeletableHistory: SessionHistory {
 
     func sessions() -> [PracticeSession] { saved.sessions() }
     func unshowableCount() -> Int { 0 }
+    func autoLoggedIDs() -> Set<UUID> { saved.autoLoggedIDs() }
     func save(_ session: PracticeSession) { saved.save(session) }
     func canEdit(id: UUID) -> Bool { saved.canEdit(id: id) }
     func edit(_ session: PracticeSession) throws { try saved.edit(session) }

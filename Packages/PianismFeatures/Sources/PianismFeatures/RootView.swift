@@ -30,7 +30,7 @@ public struct RootView: View {
     public var body: some View {
         TabView(selection: $tab) {
             Tab(LocalizedStringResource("Practice", bundle: .module), systemImage: "pianokeys", value: .practice) {
-                PracticeView(model: practice, tags: tags) { id in
+                PracticeView(model: practice, tags: tags, showPro: { pro.showPaywall() }) { id in
                     history.edit(id: id)
                     tab = .history
                 }
@@ -120,6 +120,9 @@ enum AccessibilityID {
     static let practiceTooShort = "practice.too-short"
     static let practiceWaiting = "practice.waiting"
     static let practicePianos = "practice.pianos"
+    static let practiceFreeLeft = "practice.free-left"
+    static let practiceFreeUsed = "practice.free-used"
+    static let practiceShowPro = "practice.show-pro"
     static let historyPieceStats = "history.piece-stats"
     static let pieceStatsPiece = "piece-stats.piece"
     static let practiceLowBattery = "practice.low-battery"

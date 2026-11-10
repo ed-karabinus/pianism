@@ -15,6 +15,24 @@ extension PracticeModel {
     /// A model over an in-memory store, 25 minutes into a session, 95 minutes into one past the 90-minute nudge,
     /// or 5 hours into one that ends itself at the 4-hour cap, just after a MIDI session too short to save, or with
     /// a MIDI session paused by a silence, also on a low battery, for previews.
+    /// A ready model without Pro, a piano connected, and `used` of the free piano sessions used, for previews (PRO-2).
+    static func preview(freeUsed used: Int) -> PracticeModel {
+        let history = InMemorySessionHistory()
+        for day in 0..<used {
+            let start = previewNow.addingTimeInterval(Double(-day - 1) * 86_400)
+            var session = PracticeSession(startedAt: start, source: .midi)
+            try? session.stop(at: session.startedAt + 1_200)
+            history.save(session)
+        }
+        let model = PracticeModel(
+            store: PreviewStore(nil), history: history, outbox: InMemorySessionHistory(),
+            clock: PreviewClock(now: previewNow), nudges: PreviewNudges(allowed: .allowed), glance: PreviewGlance(),
+            defaults: .standard, nudge: 90 * 60, cap: 4 * 60 * 60, isPro: { false })
+        model.connectedPianos = ["MIDI KEYBOARD"]
+        model.refresh()
+        return model
+    }
+
     static func preview(_ state: PreviewState, notifications: NotificationPermission = .notAsked) -> PracticeModel {
         let minutesEarlier: TimeInterval =
             switch state {
@@ -142,6 +160,7 @@ private struct PreviewUnavailableHistory: SessionHistory {
 
     func sessions() throws -> [PracticeSession] { throw Unavailable() }
     func unshowableCount() throws -> Int { throw Unavailable() }
+    func autoLoggedIDs() throws -> Set<UUID> { throw Unavailable() }
     func save(_: PracticeSession) throws { throw Unavailable() }
     func canEdit(id _: UUID) throws -> Bool { throw Unavailable() }
     func edit(_: PracticeSession) throws { throw Unavailable() }
