@@ -14,7 +14,6 @@ public protocol TagLibrary: Sendable {
 
     /// Adds a new tag inside `parent` and returns it: one record, so one change to sync, not an add and then a
     /// move (TAG-5, ADR 0013). The caller checks the parent can take it; the library stores what it's given.
-    // periphery:ignore - stored before any screen uses it, so the CloudKit deploy has the field (ADR 0013)
     func add(name: String, kind: Tag.Kind, inside parent: Tag.ID) throws -> Tag
 
     /// Throws ``RecordFromNewerVersion`` for a tag a newer version wrote.

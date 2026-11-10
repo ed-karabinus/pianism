@@ -1067,6 +1067,111 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(app.textFields["details.tempo"].value as? String, "72")
     }
 
+    /// TAG-5: a skill is added inside the built-in Scales from a swipe, and another from the row ending Scales's open
+    /// fold, where a name already inside Scales can't be added twice. The session reads "Scales › D minor" on Practice
+    /// and in History. Reopened with nothing inside chosen, Scales is folded, and tapping its name tags Scales itself.
+    /// A piece with a piece inside it can't be archived, and the alert says how many are inside (D1, D3, D4, D5).
+    @MainActor
+    func testAddingASkillInsideScales() throws {
+        // Given a running session, and Scales with nothing inside it
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        tap(app, "practice.tags")
+        XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 5))
+
+        // When "D minor" is added inside Scales from a swipe right
+        revealSwipeActions(tagRow(app, "Scales"), fromLeadingEdge: true)
+        attachScreenshot(of: app, named: "Tag picker, Scales swiped right")
+        tap(app, "tags.add-inside-swipe")
+        XCTAssertTrue(app.alerts["New skill inside Scales"].waitForExistence(timeout: 5), "Add Inside didn't ask")
+        let name = app.alerts.textFields.firstMatch
+        name.tap()
+        name.typeText("D minor")
+        attachScreenshot(of: app, named: "Add inside, naming")
+        app.alerts.buttons["Add"].tap()
+
+        // Then it tags the session, inside an open Scales
+        let dMinor = tagRow(app, "D minor")
+        XCTAssertTrue(dMinor.waitForExistence(timeout: 5), "It isn't under Scales")
+        XCTAssertTrue(dMinor.isSelected, "It didn't tag the session")
+
+        // When the row ending Scales adds "d minor", then "G major", which is then untagged. Add is checked on just
+        // before the last letter, so its turning off is down to the name already inside, not an empty field.
+        tap(app, "tags.add-inside")
+        XCTAssertTrue(name.waitForExistence(timeout: 5), "The row didn't ask")
+        name.tap()
+        name.typeText("d mino")
+        let add = app.alerts.buttons["Add"]
+        XCTAssertTrue(add.wait(for: \.isEnabled, toEqual: true, timeout: 5), "A new name couldn't be added")
+        name.typeText("r")
+        XCTAssertTrue(add.wait(for: \.isEnabled, toEqual: false, timeout: 5), "A name already inside could be added")
+        name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 7) + "G major")
+        add.tap()
+        let gMajor = tagRow(app, "G major")
+        XCTAssertTrue(gMajor.waitForExistence(timeout: 5), "The second skill isn't under Scales")
+        attachScreenshot(of: app, named: "Tag picker, two skills inside Scales")
+        gMajor.tap()
+        XCTAssertTrue(gMajor.wait(for: \.isSelected, toEqual: false, timeout: 5), "It stayed tagged")
+        tap(app, "tags.done")
+
+        // Then Practice names the skill with its parent
+        XCTAssertEqual(element(app, "practice.tags").value as? String, "Scales › D minor")
+        attachScreenshot(of: app, named: "Practicing, tagged inside Scales")
+        kill(app)
+
+        // When the session is stopped and History opens
+        app = launch(at: start + 25 * 60)
+        tap(app, "practice.stop")
+        openHistory(app)
+
+        // Then its row names the skill with its parent too
+        let session = element(app, "history.session")
+        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        XCTAssertTrue(session.label.hasSuffix(", Scales › D minor"), session.label)
+        attachScreenshot(of: app, named: "History, tagged inside Scales")
+
+        // When its tags open, D minor is untagged and Scales's name is tapped
+        session.tap()
+        tap(app, "editor.tags")
+        XCTAssertTrue(dMinor.waitForExistence(timeout: 5), "Scales opened folded with a skill inside it chosen")
+        dMinor.tap()
+        XCTAssertTrue(dMinor.wait(for: \.isSelected, toEqual: false, timeout: 5), "It stayed tagged")
+        let scales = tagRow(app, "Scales")
+        scales.tap()
+
+        // Then Scales itself is tagged, and opens folded next time, with nothing inside it chosen
+        XCTAssertTrue(scales.wait(for: \.isSelected, toEqual: true, timeout: 5), "Scales isn't tagged")
+        tap(app, "tags.done")
+        tap(app, "editor.tags")
+        XCTAssertTrue(scales.waitForExistence(timeout: 5))
+        XCTAssertTrue(scales.isSelected, "Scales lost its tag")
+        XCTAssertFalse(dMinor.exists, "Scales opened unfolded")
+        attachScreenshot(of: app, named: "Tag picker, Scales folded")
+
+        // When a piece gets a piece inside it, then is archived
+        let search = app.searchFields.firstMatch
+        search.tap()
+        search.typeText("Suite")
+        tap(app, "tags.add-piece")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        revealSwipeActions(tagRow(app, "Suite"), fromLeadingEdge: true)
+        tap(app, "tags.add-inside-swipe")
+        XCTAssertTrue(app.alerts["New piece inside Suite"].waitForExistence(timeout: 5), "Add Inside didn't ask")
+        name.tap()
+        name.typeText("Prelude")
+        app.alerts.buttons["Add"].tap()
+        XCTAssertTrue(tagRow(app, "Prelude").waitForExistence(timeout: 5), "It isn't under Suite")
+        revealSwipeActions(tagRow(app, "Suite"))
+        tap(app, "Archive")
+
+        // Then it says what's inside goes first, and the piece stays
+        let blocked = app.alerts["Archive the 1 piece inside “Suite” first."]
+        XCTAssertTrue(blocked.waitForExistence(timeout: 5), "Archiving wasn't blocked")
+        attachScreenshot(of: app, named: "Tag picker, archive blocked")
+        blocked.buttons.firstMatch.tap()
+        XCTAssertTrue(tagRow(app, "Suite").exists, "It was archived anyway")
+    }
+
     /// SYN-1: a piece iCloud brings from another device shows in the open tag picker, with no relaunch. A Debug
     /// switch saves it through a second store on the same file, as an iCloud import does, 25 seconds after
     /// launch, which leaves a slow CI iPad time to open the picker first. The picker is checked without it first,
@@ -2512,12 +2617,20 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(sessions.element(boundBy: count - 1).waitForNonExistence(timeout: 5))
     }
 
-    /// Shows `row`'s swipe actions with a press, then a drag halfway across, rather than a full swipe. A busy
+    /// The tag picker's row for the tag `name` reads as. A parent's fold can show its name twice, once as the
+    /// disclosure's own label, so this asks for the row's button by its identifier too.
+    @MainActor
+    private func tagRow(_ app: XCUIApplication, _ name: String) -> XCUIElement {
+        app.buttons.matching(identifier: "tags.tag").matching(NSPredicate(format: "label == %@", name)).firstMatch
+    }
+
+    /// Shows `row`'s swipe actions, its leading ones if `fromLeadingEdge`, with a press, then a drag halfway across,
+    /// rather than a full swipe. A busy
     /// simulator can read swipeLeft as a tap, which would open or toggle the row instead.
     @MainActor
-    private func revealSwipeActions(_ row: XCUIElement) {
+    private func revealSwipeActions(_ row: XCUIElement, fromLeadingEdge: Bool = false) {
         XCTAssertTrue(row.waitForExistence(timeout: 5), "No row to swipe")
-        row.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
+        row.coordinate(withNormalizedOffset: CGVector(dx: fromLeadingEdge ? 0.1 : 0.9, dy: 0.5))
             .press(forDuration: 0.1, thenDragTo: row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
     }
 

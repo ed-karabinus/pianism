@@ -142,10 +142,24 @@ public struct TagIndex: Sendable {
         return (parent.createdAt, parent.id) < (tag.createdAt, tag.id) ? parent : nil  // mutate:ignore - IDs never tie
     }
 
+    /// The tags that read inside `tag`, one of this index's, archived ones included, each once, in no set order
+    /// (ADR 0013).
+    public func children(of tag: Tag) -> [Tag] {
+        var seen = Set<Tag.ID>()
+        // A merged tag's ID stands for its kept tag too, so the kept tag can turn up more than once.
+        return resolved.values.filter { parent(of: $0)?.id == tag.id && seen.insert($0.id).inserted }
+    }
+
     /// How a tag of this index reads in a list of a session's tags: "Parent › child", or its own name at the top level
     /// (D5).
-    func name(of tag: Tag) -> String {
+    public func name(of tag: Tag) -> String {
         parent(of: tag).map { "\($0.name) › \(tag.name)" } ?? tag.name
+    }
+
+    /// How a session tagged `ids` names its tags, each once, in order (D5): what History, Practice, the session
+    /// editor and the CSV show.
+    public func names(for ids: [Tag.ID]) -> [String] {
+        tags(for: ids).map(name(of:))
     }
 
     /// The tag `tag`'s stored parent stands for, through merges, unless it's unknown here (not synced yet), `tag`

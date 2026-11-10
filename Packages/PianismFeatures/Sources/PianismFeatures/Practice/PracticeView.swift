@@ -257,7 +257,7 @@ struct PracticeView: View {
             isPickingTags = true
         } label: {
             Label {
-                tags.selected.isEmpty ? Text("Add tags", bundle: .module) : Text(tags: tags.selected)
+                tags.selected.isEmpty ? Text("Add tags", bundle: .module) : Text(tagNames: tags.selectedNames)
             } icon: {
                 Image(systemName: "tag")
             }
@@ -265,7 +265,7 @@ struct PracticeView: View {
         }
         .buttonStyle(.bordered)
         .accessibilityLabel(Text("Tags", bundle: .module))
-        .accessibilityValue(Text(tags: tags.selected))
+        .accessibilityValue(Text(tagNames: tags.selectedNames))
         .accessibilityIdentifier(AccessibilityID.practiceTags)
     }
 

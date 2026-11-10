@@ -37,6 +37,15 @@
     "A target tempo is a whole number from %lld to %lld." : {
 
     },
+    "Add" : {
+
+    },
+    "Add Inside" : {
+
+    },
+    "Add inside %@" : {
+
+    },
     "Add piece “%@”" : {
 
     },
@@ -55,6 +64,12 @@
     "Archive" : {
 
     },
+    "Archive the ^[%lld piece](inflect: true) inside “%@” first." : {
+
+    },
+    "Archive the ^[%lld skill](inflect: true) inside “%@” first." : {
+
+    },
     "Archived" : {
 
     },
@@ -71,6 +86,12 @@
 
     },
     "By piece and skill" : {
+
+    },
+    "Collapse" : {
+
+    },
+    "Collapsed" : {
 
     },
     "Composer" : {
@@ -148,6 +169,12 @@
     "End" : {
 
     },
+    "Expand" : {
+
+    },
+    "Expanded" : {
+
+    },
     "Export sessions" : {
 
     },
@@ -218,6 +245,12 @@
 
     },
     "Name" : {
+
+    },
+    "New piece inside %@" : {
+
+    },
+    "New skill inside %@" : {
 
     },
     "No piano connected" : {

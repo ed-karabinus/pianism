@@ -137,7 +137,7 @@ struct WeekView: View {
 
     /// A tag's time, marked as a piece or a skill, as a piece and a skill can share a name.
     private func row(_ tagTime: PracticeWeek.TagTime) -> some View {
-        let title = Text(tags: tagTime.tag.map { [$0] } ?? [])
+        let title = Text(tagNames: tagTime.tag.map { [model.tagIndex.name(of: $0)] } ?? [])
         let kind: (icon: String, name: Text)? =
             switch tagTime.tag?.kind {
             case .piece: ("music.note", Text("Piece", bundle: .module))
