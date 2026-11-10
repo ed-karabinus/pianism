@@ -35,6 +35,27 @@ struct InMemoryTagLibraryTests {
         #expect(library.tags() == [ballade])
     }
 
+    @Test("TAG-4: a merged tag is archived and points at the kept one, and undoing it brings it back")
+    func mergeAndUndo() throws {
+        // Given two pieces
+        let library = InMemoryTagLibrary()
+        let ballade = library.add(name: "Ballade", kind: .piece)
+        let kept = library.add(name: "Ballade No. 1", kind: .piece)
+
+        // When the first is merged into the second
+        try library.merge(id: ballade.id, into: kept.id)
+
+        // Then it's archived and names the kept piece
+        #expect(library.tags().map(\.isArchived) == [true, false])
+        #expect(library.tags().map(\.mergedInto) == [kept.id, nil])
+
+        // When the merge is undone
+        try library.unmerge(id: ballade.id)
+
+        // Then it's back as it was
+        #expect(library.tags() == [ballade, kept])
+    }
+
     @Test("ADR 0006: a read-only tag can't be renamed, archived or given details, and an unknown ID changes nothing")
     func readOnlyAndUnknown() throws {
         let newer = PianismCore.Tag(id: "newer", kind: .piece, name: "Étude", isArchived: false, isReadOnly: true)

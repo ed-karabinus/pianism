@@ -64,8 +64,10 @@ struct TagStatsTests {
             .piece, in: PracticeDay.group(sessions, in: calendar), tags: TagIndex([chopin, bach, scales]), today: start,
             calendar: calendar)
 
+        // Typed apart, as CI's older compiler times out inferring the literal inside the comparison.
+        let totals: [TimeInterval] = [40 * 60, 30 * 60]
         #expect(stats.map(\.tag.id) == ["chopin", "bach"])
-        #expect(stats.map(\.total) == [40 * 60, 30 * 60])
+        #expect(stats.map(\.total) == totals)
     }
 
     @Test("HIS-4: two pieces with the same time are in name order")
@@ -159,9 +161,10 @@ struct TagStatsTests {
             today: start, calendar: calendar)
 
         // Then each skill has its own time, and the piece has none here
+        let times: [TimeInterval] = [30 * 60, 20 * 60]
         #expect(stats.map(\.tag.id) == ["scales", "d-minor"])
-        #expect(stats.map(\.total) == [30 * 60, 20 * 60])
-        #expect(stats.map(\.recent) == [30 * 60, 20 * 60])
+        #expect(stats.map(\.total) == times)
+        #expect(stats.map(\.recent) == times)
     }
 
     private func losAngeles() throws -> Calendar {
