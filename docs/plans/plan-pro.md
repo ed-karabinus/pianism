@@ -91,7 +91,7 @@ public protocol ProStore: Sendable {
 **HIS-4:** (the screen says "Playing" and "Paused" for played and bench, decided 2026-11-08 in `docs/decisions.md`)
 
 - Total and 30 days sum `day.part(of:).practiced` (`PracticeDay.swift:28-33`), so they match History, over today plus the previous 29 days. Waiting sessions in the outbox count, as they do in History.
-- It covers pieces only, archived included, with merges resolved through `TagIndex`.
+- It covers pieces only, archived included, with merges resolved through `TagIndex`. (Skills too since 2026-11-09, behind a switch.)
 - Bench is span minus played (spec MIDI-R2, ADR 0009), clipped per day to the 30-day window, so the closing 5 s counts as bench.
 - Timer and manual sessions have no split, so Played plus Bench won't equal Total. Label it "From sessions your piano started", and hide it with no MIDI data.
 
@@ -148,7 +148,7 @@ New `docs/device-checklist.md` rows, added with their PRs:
 | D5 | 2 | Drop `Paywall.purchased` and `Paywall.restored` from ADR 0011 | Drop them. Sending them fits Apple's Purchase History type [26], which the label doesn't declare. It loses paywall-to-purchase conversion, which sales ÷ downloads can't give. If kept, the label and `App/PrivacyInfo.xcprivacy` must declare it |
 | D6 | 3 | Practice line | "N free piano sessions left", shown only with a piano connected, then "Sessions that start themselves are part of Pro" with a link. No modal |
 | D7 | 4 | What free users see | A locked row that opens the paywall, no preview. The week's by-piece stays free. EXP-1 works the same way |
-| D8 | 4 | Where stats live | A row under the week in History, pieces only, with the words "Played" and "On the bench" |
+| D8 | 4 | Where stats live | A row under the week in History, pieces only, with the words "Played" and "On the bench". (Skills added on 2026-11-09, behind a Pieces \| Skills switch, the owner's pick.) |
 | N4 | 4 | A session with several pieces | Counts fully toward each, labelled |
 | D9 | 5 | Export | In Settings › History, with notes and source included |
 | N3 | 5 | User text in the CSV | Verbatim, with RFC 4180 quoting. A `'` prefix against formula injection would rewrite "- slow practice" in a file promised to be theirs, and here the reader and author are the same person |

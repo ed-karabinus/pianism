@@ -4,7 +4,7 @@ import SwiftUI
 /// The History screen: finished sessions grouped by day, newest first, with each day's total (HIS-1).
 struct HistoryView: View {
     @Bindable var model: HistoryModel
-    /// Whether time per piece opens, or the Pro screen instead (HIS-4).
+    /// Whether time per piece and skill opens, or the Pro screen instead (HIS-4).
     let pro: ProModel
     /// The session a swipe asked to delete, until the deletion is confirmed or cancelled (SES-5).
     @State private var confirmingDeletion: PracticeSession?
@@ -56,13 +56,14 @@ struct HistoryView: View {
         .storageAlert(Text("Couldn't delete that session", bundle: .module), isPresented: $model.isShowingDeleteError)
     }
 
-    /// Time per piece, part of Pro: without it, the row says so and opens the Pro screen, with no preview (HIS-4, D7).
+    /// Time per piece and skill, part of Pro: without it, the row says so and opens the Pro screen, with no preview
+    /// (HIS-4, D7).
     @ViewBuilder private var pieceStatsRow: some View {
         if pro.isPro {
             NavigationLink {
-                PieceStatsView { model.pieceStats }
+                TagStatsView { model.stats(of: $0) }
             } label: {
-                Label(LocalizedStringResource("Time per piece", bundle: .module), systemImage: "chart.bar")
+                Label(LocalizedStringResource("Time per piece and skill", bundle: .module), systemImage: "chart.bar")
             }
             .accessibilityIdentifier(AccessibilityID.historyPieceStats)
         } else {
@@ -70,7 +71,7 @@ struct HistoryView: View {
                 pro.showPaywall()
             } label: {
                 Label {
-                    Text("Time per piece", bundle: .module)
+                    Text("Time per piece and skill", bundle: .module)
                 } icon: {
                     Image(systemName: "lock.fill")
                 }
@@ -82,7 +83,7 @@ struct HistoryView: View {
 
     /// The locked row, read as its name first, then that it's part of Pro.
     private var lockedLabel: Text {
-        let name = Text("Time per piece", bundle: .module)
+        let name = Text("Time per piece and skill", bundle: .module)
         let locked = Text("Part of Pro", bundle: .module)
         return Text("\(name), \(locked)", bundle: .module)
     }

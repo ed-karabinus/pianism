@@ -807,7 +807,7 @@ final class PracticeTests: UITestCase {
     }
 
     /// HIS-2: a tapped day scrolls up to its date, one row below the bar, with the row above it on top: the last session
-    /// of the day above, or Time per piece's row for the newest day. Not to its first session, with the date hidden
+    /// of the day above, or Time per piece and skill's row for the newest day. Not to its first session, with the date hidden
     /// under the bar. At the largest text, where the week fills the screen. The sample practice is `Showcase`'s.
     @MainActor
     func testATappedDayShowsItsDate() throws {
@@ -850,9 +850,9 @@ final class PracticeTests: UITestCase {
         app.buttons["History"].firstMatch.tap()
         tapBar(now)
 
-        // Then Today's date shows, under Time per piece's row, with the week scrolled away
+        // Then Today's date shows, under Time per piece and skill's row, with the week scrolled away
         showsUnderTheBar(date("Today"), scrolledAway: chart)
-        XCTAssertTrue(app.buttons["history.piece-stats"].isHittable, "Time per piece's row isn't on top")
+        XCTAssertTrue(app.buttons["history.piece-stats"].isHittable, "Time per piece and skill's row isn't on top")
         attachScreenshot(of: app, named: "History, Today tapped, at the largest text")
     }
 
@@ -1089,7 +1089,7 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true, syncArrivesSeconds: 20)
         openHistory(app)
         let synced = app.descendants(matching: .any).matching(identifier: "history.session")
-            .matching(NSPredicate(format: "label ENDSWITH 'Synced piece'")).firstMatch
+            .matching(NSPredicate(format: "label CONTAINS 'Synced piece'")).firstMatch
         XCTAssertFalse(synced.exists, "The session arrived before History opened")
         XCTAssertTrue(synced.waitForExistence(timeout: 60), "The session didn't show")
         attachScreenshot(of: app, named: "History, with a session from another device")
@@ -1453,17 +1453,16 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5), "History lost its sessions")
     }
 
-    /// HIS-4, D7: without Pro, History's Time per piece opens the Pro screen, with no numbers. Once Pro is bought, it
-    /// lists a piece another device practiced, with its 30 minutes in all and in the last 30 days.
+    /// HIS-4, D7: without Pro, History's Time per piece and skill opens the Pro screen, with no numbers. Once Pro is
+    /// bought, it lists a piece another device practiced, with its 30 minutes in all and in the last 30 days, and with
+    /// the switch on Skills, the skill it was tagged with. Before that session arrives, both sides are empty, and the
+    /// switch still works over the empty state. The session comes 40 s after launch, leaving a slow CI iPad time to buy.
     @MainActor
     func testTimePerPieceOpensOnlyWithPro() throws {
         executionTimeAllowance = 5 * 60  // a stalled audit then costs 5 min, not the default 15
-        let app = launch(at: start, reset: true, syncArrivesSeconds: 1)
+        // An untagged session, so History shows the row
+        let app = launch(at: start, reset: true, syncArrivesSeconds: 20, autoLogged: 1)
         openHistory(app)
-        let synced = app.descendants(matching: .any).matching(identifier: "history.session")
-            .matching(NSPredicate(format: "label ENDSWITH 'Synced piece'")).firstMatch
-        XCTAssertTrue(synced.waitForExistence(timeout: 30), "The session from another device didn't arrive")
-
         tap(app, "history.piece-stats")
         let buy = app.buttons["paywall.buy"]
         XCTAssertTrue(buy.waitForExistence(timeout: 5), "The locked row didn't open the Pro screen")
@@ -1472,17 +1471,40 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 10), "Buying didn't unlock Pro")
         app.buttons["paywall.close"].tap()
 
+        // Given nothing tagged yet, when the switch goes to Skills over "No pieces yet"
         tap(app, "history.piece-stats")
-        let piece = element(app, "piece-stats.piece")
-        XCTAssertTrue(piece.waitForExistence(timeout: 5), "No piece is listed")
-        XCTAssertEqual(piece.label, "Synced piece")
+        XCTAssertTrue(app.staticTexts["No pieces yet"].waitForExistence(timeout: 5), "Pieces weren't empty")
+        let skills = app.segmentedControls["piece-stats.kind"].buttons["Skills"]
+        skills.tap()
+        // Then Skills shows, empty too
+        XCTAssertTrue(app.staticTexts["No skills yet"].waitForExistence(timeout: 5), "The switch didn't work")
+        attachScreenshot(of: app, named: "Time per piece and skill, no skills")
+
+        // Given the session from another device, tagged with a piece and a skill
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        let synced = app.descendants(matching: .any).matching(identifier: "history.session")
+            .matching(NSPredicate(format: "label CONTAINS 'Synced piece'")).firstMatch
+        XCTAssertTrue(synced.waitForExistence(timeout: 60), "The session from another device didn't arrive")
+        // When the stats open again
+        tap(app, "history.piece-stats")
+        // Then the piece has its 30 minutes, on Pieces as before
+        let tag = element(app, "piece-stats.piece")
+        XCTAssertTrue(tag.waitForExistence(timeout: 5), "No piece is listed")
+        XCTAssertEqual(tag.label, "Synced piece")
         let times = app.descendants(matching: .any).matching(
             NSPredicate(format: "label IN {'Total', 'Last 30 days'} AND value == '30 minutes'"))
         XCTAssertEqual(times.count, 2, "The piece's times are wrong")
         XCTAssertFalse(app.descendants(matching: .any)["Playing"].exists, "A timed session showed a piano's split")
         // Contrast only noted, as for History: the system's grey header nearly passes it (#165).
-        try audit(app, "Time per piece", contrast: false)
-        attachScreenshot(of: app, named: "Time per piece")
+        try audit(app, "Time per piece and skill", contrast: false)
+        attachScreenshot(of: app, named: "Time per piece and skill")
+
+        // When the switch shows skills
+        skills.tap()
+        // Then the skill has the same 30 minutes, and the piece is gone
+        XCTAssertTrue(tag.wait(for: \.label, toEqual: "Synced skill", timeout: 5), "No skill is listed")
+        XCTAssertEqual(times.count, 2, "The skill's times are wrong")
+        attachScreenshot(of: app, named: "Time per piece and skill, skills")
     }
 
     /// PRO-3: buying from the Pro screen unlocks Pro at once, there and in Settings.
