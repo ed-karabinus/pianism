@@ -89,8 +89,16 @@ struct ProTransaction: Equatable {
     }
 }
 
+/// The parts of a StoreKit transaction that Pro reads, so a test can stand in for one, as it can't make a real one.
+protocol ProPurchase {
+    var productID: String { get }
+    var revocationDate: Date? { get }
+}
+
+extension Transaction: ProPurchase {}
+
 extension ProTransaction {
-    init(_ result: VerificationResult<Transaction>) {
+    init(_ result: VerificationResult<some ProPurchase>) {
         let transaction = result.unsafePayloadValue
         var isVerified = false
         if case .verified = result { isVerified = true }
