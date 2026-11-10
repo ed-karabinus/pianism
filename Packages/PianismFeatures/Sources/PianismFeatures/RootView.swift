@@ -126,6 +126,7 @@ enum AccessibilityID {
     static let historyPieceStats = "history.piece-stats"
     static let pieceStatsPiece = "piece-stats.piece"
     static let tagStatsKind = "piece-stats.kind"
+    static let tagStatsInside = "piece-stats.inside"
     static let practiceLowBattery = "practice.low-battery"
     static let practiceStart = "practice.start"
     static let practicePause = "practice.pause"

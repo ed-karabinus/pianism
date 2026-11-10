@@ -1481,8 +1481,10 @@ final class PracticeTests: UITestCase {
 
     /// HIS-4, D7: without Pro, History's Time per piece and skill opens the Pro screen, with no numbers. Once Pro is
     /// bought, it lists a piece another device practiced, with its 30 minutes in all and in the last 30 days, and with
-    /// the switch on Skills, the skill it was tagged with. Before that session arrives, both sides are empty, and the
-    /// switch still works over the empty state. The session comes 40 s after launch, leaving a slow CI iPad time to buy.
+    /// the switch on Skills, Scales, which the skill it was tagged with sits inside, with the same 30 minutes and a
+    /// "1 inside" row that opens the skill with its own (D6). Before that session arrives, both sides are empty, and
+    /// the switch still works over the empty state. The session comes 40 s after launch, leaving a slow CI iPad time
+    /// to buy.
     @MainActor
     func testTimePerPieceOpensOnlyWithPro() throws {
         executionTimeAllowance = 5 * 60  // a stalled audit then costs 5 min, not the default 15
@@ -1527,10 +1529,22 @@ final class PracticeTests: UITestCase {
 
         // When the switch shows skills
         skills.tap()
-        // Then the skill has the same 30 minutes, and the piece is gone
-        XCTAssertTrue(tag.wait(for: \.label, toEqual: "Synced skill", timeout: 5), "No skill is listed")
-        XCTAssertEqual(times.count, 2, "The skill's times are wrong")
+        // Then Scales, which the skill sits inside, has the same 30 minutes, and the piece is gone
+        XCTAssertTrue(tag.wait(for: \.label, toEqual: "Scales", timeout: 5), "Scales isn't listed")
+        XCTAssertEqual(times.count, 2, "Scales's times are wrong")
         attachScreenshot(of: app, named: "Time per piece and skill, skills")
+
+        // When Scales's "1 inside" row opens
+        let inside = element(app, "piece-stats.inside")
+        XCTAssertTrue(inside.waitForExistence(timeout: 5), "No inside row")
+        XCTAssertEqual(inside.label, "1 inside")
+        inside.tap()
+        // Then a screen titled Scales lists the skill with its own 30 minutes, with no switch
+        XCTAssertTrue(app.navigationBars["Scales"].waitForExistence(timeout: 5), "The skills inside didn't open")
+        XCTAssertTrue(tag.wait(for: \.label, toEqual: "Synced skill", timeout: 5), "The skill inside isn't listed")
+        XCTAssertEqual(times.count, 2, "The skill's times are wrong")
+        XCTAssertFalse(app.segmentedControls["piece-stats.kind"].exists, "The switch showed inside Scales")
+        attachScreenshot(of: app, named: "Time per piece and skill, inside Scales")
     }
 
     /// PRO-3: buying from the Pro screen unlocks Pro at once, there and in Settings.

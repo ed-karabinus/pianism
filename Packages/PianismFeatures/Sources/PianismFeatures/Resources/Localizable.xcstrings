@@ -13,6 +13,9 @@
     "%lld BPM" : {
       "comment" : "A target tempo"
     },
+    "%lld inside" : {
+      "comment" : "A row opening the pieces, or skills, practiced inside the one above"
+    },
     "A day counts after" : {
 
     },

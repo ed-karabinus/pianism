@@ -31,6 +31,13 @@ public final class HistoryModel {
     func stats(of kind: Tag.Kind) -> [TagStats] {
         TagStats.of(kind, in: days, tags: tagIndex, today: now, calendar: calendar)
     }
+    /// Time per piece and skill's lists (D6): ``stats(of:)`` grouped by the tag each sits inside, `nil` for the top
+    /// level, which the screen lists, a parent's numbers including its children's once per session. A parent's group
+    /// is what its "N inside" row opens, so N counts only children with practice. A child never has a group, as tags
+    /// nest one level (ADR 0013).
+    func statsByParent(of kind: Tag.Kind) -> [Tag.ID?: [TagStats]] {
+        Dictionary(grouping: stats(of: kind)) { tagIndex.parent(of: $0.tag)?.id }
+    }
     /// Whether the last refresh found no practice at all, counting practice it can't show, or nil if it couldn't read
     /// the history to know (ONB-1).
     var isEmpty: Bool? { loadFailed ? nil : sessions.isEmpty && unshowableCount == 0 }

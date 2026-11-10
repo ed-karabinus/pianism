@@ -130,7 +130,7 @@ public struct TagIndex: Sendable {
     /// The tag that `tag`, one of this index's, sits inside, or `nil` at the top level (ADR 0013). It looks one link
     /// further and never asks for the parent's own parent: that recursion never ends on a ring three devices can make,
     /// T inside P, P inside G and G inside T, which this reads as three top-level tags.
-    func parent(of tag: Tag) -> Tag? {
+    public func parent(of tag: Tag) -> Tag? {
         // A tag from outside the index, such as a merged one from the library, reads as the tag it stands for, never
         // through its own stale link.
         guard let tag = resolved[tag.id], let parent = link(tag) else { return nil }

@@ -293,6 +293,72 @@ struct HistoryModelTests {
         #expect(log.contains(",Scales › D minor,"))
     }
 
+    @Test(
+        "HIS-4, D6: time per piece lists top-level pieces, a parent with its children's time once per session, and only a parent has a group to open"
+    )
+    func statsListTopLevelTags() throws {
+        // Given two pieces inside Études, a session with both and one with one, and a piece with nothing inside it
+        let model = try nestedPieces()
+
+        // When the pieces are grouped by parent
+        let groups = model.statsByParent(of: .piece)
+
+        // Then the top level lists Études with both sessions once and the Ballade, and only Études has a group
+        #expect(groups[nil]?.map(\.tag.id) == ["etudes", "ballade"])
+        #expect(groups[nil]?.map(\.total) == [1_800, 300])
+        #expect(groups["etudes"] != nil)
+        #expect(groups["ballade"] == nil)
+    }
+
+    @Test(
+        "HIS-4, D6: a parent's group, which its \"N inside\" row opens, lists its practiced children with their own numbers, and none of them has a group"
+    )
+    func parentsGroupListsPracticedChildren() throws {
+        // Given two pieces inside Études with practice and one without
+        let model = try nestedPieces()
+
+        // When the pieces are grouped by parent
+        let groups = model.statsByParent(of: .piece)
+
+        // Then Études's group, titled with its name, holds the two practiced ones with their own times, and no further
+        // group opens from them
+        #expect(groups[nil]?.first?.tag.name == "Études, Op. 10")
+        #expect(groups["etudes"]?.map(\.tag.id) == ["no-3", "no-12"])
+        #expect(groups["etudes"]?.map(\.total) == [1_800, 1_200])
+        #expect(groups["no-3"] == nil && groups["no-12"] == nil)
+    }
+
+    @Test(
+        "HIS-4, D6, ADR 0013: a piece is grouped under the parent the tags resolve to: the kept piece of a merge, and none two deep"
+    )
+    func statsGroupByResolvedParent() throws {
+        // Given a piece inside one merged into another, and a piece synced inside that child, each practiced
+        let history = InMemorySessionHistory()
+        for (offset, tag) in [(-1_200.0, "child"), (-600, "two-deep")] {
+            var session = PracticeSession(startedAt: clock.now + offset)
+            try session.setTags([tag])
+            try session.stop(at: clock.now + offset + 300)
+            history.save(session)
+        }
+        let tags = InMemoryTagLibrary([
+            Tag(id: "old", kind: .piece, name: "Études", isArchived: true, mergedInto: "kept"),
+            Tag(id: "kept", kind: .piece, name: "Études, Op. 10", isArchived: false),
+            Tag(id: "child", kind: .piece, name: "No. 3", isArchived: false, parentID: "old"),
+            Tag(id: "two-deep", kind: .piece, name: "Middle section", isArchived: false, parentID: "child"),
+        ])
+        let model = HistoryModel(
+            history: history, tags: tags, outbox: outbox, running: running, clock: clock, glance: glance)
+        model.refresh()
+
+        // When the pieces are grouped by parent
+        let groups = model.statsByParent(of: .piece)
+
+        // Then the child is inside the kept piece, and the piece two deep is at the top level
+        #expect(groups[nil]?.map(\.tag.id) == ["kept", "two-deep"])
+        #expect(groups["kept"]?.map(\.tag.id) == ["child"])
+        #expect(groups["child"] == nil)
+    }
+
     @Test("HIS-1: each refresh moves today along, so a screen left open past midnight catches up")
     func refreshMovesToday() {
         let model = HistoryModel(
@@ -906,6 +972,31 @@ struct HistoryModelTests {
         var session = PracticeSession(startedAt: clock.now + seconds)
         try session.stop(at: clock.now + seconds + 600)
         return session
+    }
+
+    /// History with "No. 3" and "No. 12" inside "Études, Op. 10", practiced 20 minutes together and No. 3 10 more on
+    /// its own, "No. 5" inside it never practiced, and a Ballade with nothing inside it, practiced 5 minutes (D6).
+    private func nestedPieces() throws -> HistoryModel {
+        let history = InMemorySessionHistory()
+        for (offset, minutes, tags) in [
+            (-7_200.0, 20.0, ["no-3", "no-12"]), (-3_600, 10, ["no-3"]), (-1_800, 5, ["ballade"]),
+        ] {
+            var session = PracticeSession(startedAt: clock.now + offset)
+            try session.setTags(tags)
+            try session.stop(at: clock.now + offset + minutes * 60)
+            history.save(session)
+        }
+        let tags = InMemoryTagLibrary([
+            Tag(id: "etudes", kind: .piece, name: "Études, Op. 10", isArchived: false),
+            Tag(id: "no-3", kind: .piece, name: "No. 3", isArchived: false, parentID: "etudes"),
+            Tag(id: "no-12", kind: .piece, name: "No. 12", isArchived: false, parentID: "etudes"),
+            Tag(id: "no-5", kind: .piece, name: "No. 5", isArchived: false, parentID: "etudes"),
+            Tag(id: "ballade", kind: .piece, name: "Ballade No. 1", isArchived: false),
+        ])
+        let model = HistoryModel(
+            history: history, tags: tags, outbox: outbox, running: running, clock: clock, glance: glance)
+        model.refresh()
+        return model
     }
 }
 
