@@ -121,11 +121,11 @@ struct PracticeView: View {
                 VStack(spacing: 0) {
                     if left > 0 {
                         Text("^[\(left) free piano session](inflect: true) left", bundle: .module)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.secondaryText)
                             .accessibilityIdentifier(AccessibilityID.practiceFreeLeft)
                     } else {
                         Text("Sessions that start themselves are part of Pro.", bundle: .module)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.secondaryText)
                             .accessibilityIdentifier(AccessibilityID.practiceFreeUsed)
                         // Footnote-sized, so it's given a target big enough to hit.
                         Button(action: showPro) {

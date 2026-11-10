@@ -57,10 +57,12 @@ struct TagStatsView: View {
             } header: {
                 // The user's own name for it, as typed.
                 Text(verbatim: tag.tag.name).textCase(nil)
+                    .foregroundStyle(.secondaryText)
                     .accessibilityIdentifier(AccessibilityID.pieceStatsPiece)
             } footer: {
                 if tag.hasPianoTime {
                     Text("From sessions your piano started in the last 30 days.", bundle: .module)
+                        .foregroundStyle(.secondaryText)
                 }
             }
         }
@@ -71,7 +73,7 @@ struct TagStatsView: View {
             }
         }
         .font(.footnote)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.secondaryText)
         .listRowBackground(Color.clear)
     }
 }
