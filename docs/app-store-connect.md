@@ -59,7 +59,7 @@ History lists every session, with a widget for your home screen and your session
 PIANISM PRO
 One purchase, no subscription:
 • Piano sessions start, pause and save themselves while Pianism is open, after the first 5
-• Time per piece: total, last 30 days, and time playing and paused
+• Time per piece and skill: total, last 30 days, and time playing and paused
 • Export every session as a CSV file, for Numbers or Excel
 
 No account, no ads. Your practice stays in your iCloud.
