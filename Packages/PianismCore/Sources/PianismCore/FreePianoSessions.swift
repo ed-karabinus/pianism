@@ -2,7 +2,7 @@ import Foundation
 
 /// The piano sessions free before Pro: a piano starts the first 5 sessions it saves by itself, then only with Pro.
 /// Starting by tapping is always free (PRO-2, ADR 0012).
-public enum FreeTaste {
+public enum FreePianoSessions {
     /// How many piano sessions are free.
     public static let sessions = 5
 

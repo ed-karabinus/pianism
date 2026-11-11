@@ -115,7 +115,7 @@
     "Composer" : {
 
     },
-    "Connect a digital piano and sessions can start themselves while Pianism is open. The first 5 are free, then it's part of Pro." : {
+    "Connect a digital piano to start a session by playing while Pianism is open. Your first 5 are free. After that, it's part of Pro." : {
 
     },
     "Connect a piano" : {
@@ -191,6 +191,9 @@
 
     },
     "Expanded" : {
+
+    },
+    "Export every session as a spreadsheet file (CSV)." : {
 
     },
     "Export sessions" : {
@@ -302,6 +305,12 @@
 
     },
     "None" : {
+
+    },
+    "Not saved: under 10 seconds" : {
+
+    },
+    "Not saved: under a minute of playing" : {
 
     },
     "Note" : {
@@ -529,13 +538,13 @@
     "Time per piece and skill" : {
 
     },
-    "Time your practice with one tap, tag what you worked on, and see your week build up." : {
+    "Time per piece and skill, in all and over the last 30 days." : {
+
+    },
+    "Time your practice with one tap. Tag what you worked on. Watch your week build up." : {
 
     },
     "Today" : {
-
-    },
-    "Too short to save" : {
 
     },
     "Top level" : {

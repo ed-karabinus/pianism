@@ -30,6 +30,8 @@ build that's submitted, and the auto-start always says "while Pianism is open" (
 | Keywords (100) | `log,timer,midi,keyboard,lessons,music,student,teacher,scales,sight reading,repertoire,habit,goal` | |
 | Promotional text (170; changes need no review) | Below | |
 | Description (4,000) | Below | |
+| Support URL | https://ed-karabinus.github.io/pianism/ (live 2026-11-10, website PR #4) | |
+| Privacy Policy URL | https://ed-karabinus.github.io/pianism/privacy/ (live 2026-11-10, website PRs #4 and #5) | |
 
 Promotional text:
 
@@ -90,15 +92,14 @@ Review notes, as entered:
 > Pianism is open. The rest of the app works without one.
 
 If the Pro screen says "The price isn't available right now." with a working network, the App Store isn't offering
-the product: check the status above, the product ID, and the Sandbox account (S1 in `docs/device-checklist.md`).
+the product: check the status above, the product ID, and, in a Debug build, the Sandbox account (S1 in
+`docs/device-checklist.md`).
 
 ## Still to do
 
 | What | When |
 | --- | --- |
-| A Sandbox test account | Before S1 |
 | Enter the listing above | Before submission |
-| A Pianism-only support email (the owner makes it), then the support and privacy-policy pages on the website and their URLs here | Before submission (#56) |
 | Age rating, and the App Privacy answers: **Device ID** and **Product Interaction**, both for analytics, not linked to the person and not used for tracking, as ADR 0011 says and `App/PrivacyInfo.xcprivacy` declares | Before submission (#56) |
 | A new review screenshot showing stats and export too | Before submission, once HIS-4 and EXP-1 ship |
 | Change the description if CSV export (EXP-1) is cut | Before submission |

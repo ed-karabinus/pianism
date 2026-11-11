@@ -39,7 +39,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
         XCTAssertTrue(app.buttons["practice.start"].exists)
-        // The clock is fixed, so it had no practice: under 10 s, it's dropped quietly (SES-1).
+        // The clock is fixed, so it had no practice: under 10 s, it isn't saved (SES-1).
         XCTAssertFalse(app.staticTexts["practice.last-session"].exists, "A session under 10 s was kept")
         openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A session under 10 s was kept")
@@ -82,11 +82,36 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
 
         XCTAssertTrue(app.staticTexts["practice.too-short"].waitForExistence(timeout: 5), "It didn't say so")
-        XCTAssertEqual(text(app, "practice.too-short"), "Too short to save")
+        XCTAssertEqual(text(app, "practice.too-short"), "Not saved: under a minute of playing")
+        XCTAssertEqual(text(app, "practice.not-saved-pop-up"), "Not saved: under a minute of playing")
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
-        attachScreenshot(of: app, named: "Too short to save")
+        attachScreenshot(of: app, named: "Not saved, a piano's session")
         openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A MIDI session under 1 min was kept")
+    }
+
+    /// SES-1: a tapped session stopped under 10 s isn't saved, which a pop-up says for 4 s and a line under Start
+    /// until the next start, so it doesn't look like the app lost it.
+    @MainActor
+    func testAShortTappedSessionSaysItWasntSaved() throws {
+        // Given a session started by tapping
+        let app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 5), "Start didn't start")
+
+        // When it's stopped at once
+        tap(app, "practice.stop")
+
+        // Then a pop-up and the line say it wasn't saved, and the pop-up goes after a few seconds
+        let popUp = app.staticTexts["practice.not-saved-pop-up"]
+        XCTAssertTrue(popUp.waitForExistence(timeout: 5), "No pop-up")
+        XCTAssertEqual(popUp.label, "Not saved: under 10 seconds")
+        XCTAssertEqual(text(app, "practice.too-short"), "Not saved: under 10 seconds")
+        attachScreenshot(of: app, named: "Not saved, a tapped session")
+        XCTAssertTrue(popUp.waitForNonExistence(timeout: 8), "The pop-up stayed")
+        XCTAssertEqual(text(app, "practice.too-short"), "Not saved: under 10 seconds", "The line went too")
+        openHistory(app)
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A session under 10 s was kept")
     }
 
     /// MIDI-1: a silence pauses a MIDI session at its last note, and a longer one saves it 5 s after that note, with no
@@ -1452,11 +1477,11 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testWelcomeClosesForGood() throws {
         var app = launch(at: start, reset: true, welcome: true)
-        // PRO-2 (#53): it says auto-start is Pro, with the first 5 free, and only while Pianism is open.
+        // PRO-2 (#53): it says playing starts a session, only while Pianism is open, and that it's Pro after 5 free.
         let words = element(app, "welcome.words")
         XCTAssertTrue(words.waitForExistence(timeout: 10))
-        XCTAssertTrue(words.label.contains("while Pianism is open"), words.label)
-        XCTAssertTrue(words.label.contains("The first 5 are free, then it's part of Pro."), words.label)
+        XCTAssertTrue(words.label.contains("to start a session by playing while Pianism is open"), words.label)
+        XCTAssertTrue(words.label.contains("Your first 5 are free. After that, it's part of Pro."), words.label)
         tap(app, "welcome.close")
         XCTAssertTrue(element(app, "practice.start").waitForExistence(timeout: 5))
         XCTAssertFalse(element(app, "welcome.start").exists)
@@ -1509,8 +1534,17 @@ final class PracticeTests: UITestCase {
     /// Scrolls to a row of Settings, such as Pro's in the last section, which a Form may not have built yet (PRO-1).
     @MainActor
     private func proRow(_ id: String, in app: XCUIApplication) -> XCUIElement {
-        let row = app.descendants(matching: .any)[id].firstMatch
-        for _ in 0..<8 where !(row.exists && row.isHittable) { app.swipeUp() }
+        scrolledTo(app.descendants(matching: .any)[id].firstMatch, in: app)
+    }
+
+    /// The most swipes up to reach a row: Settings is shorter than this, so a row that never shows fails the test
+    /// instead of swiping on.
+    private static let mostSwipesToARow = 8
+
+    /// Swipes up until `row`, which a Form builds only near the screen, exists and can be tapped.
+    @MainActor
+    private func scrolledTo(_ row: XCUIElement, in app: XCUIApplication) -> XCUIElement {
+        for _ in 0..<Self.mostSwipesToARow where !(row.exists && row.isHittable) { app.swipeUp() }
         return row
     }
 
@@ -1614,6 +1648,9 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.staticTexts["One purchase, no subscription."].exists)
         let included = app.staticTexts["Piano sessions start, pause and save themselves while Pianism is open."]
         XCTAssertTrue(included.exists, "Nothing's listed as included")
+        // Each of Pro's features has its own line.
+        XCTAssertTrue(app.staticTexts["Time per piece and skill, in all and over the last 30 days."].exists, "No stats")
+        XCTAssertTrue(app.staticTexts["Export every session as a spreadsheet file (CSV)."].exists, "No export")
         XCTAssertTrue(app.buttons["paywall.restore"].exists, "No Restore")
         try audit(app, "Pro screen", contrast: false, stallsOnIPadIOS26: true, overASheet: true)
         close.tap()
@@ -1654,9 +1691,7 @@ final class PracticeTests: UITestCase {
         // in place of the 5th.
         XCTAssertFalse(app.staticTexts["practice.too-short"].exists, "The 6th started")
         XCTAssertTrue(app.staticTexts["practice.last-session"].exists, "The 5th isn't the last session")
-        // Without contrast: Practice's grey footnote lines, the last session and the piano's name among them, nearly
-        // pass, and they're older than this line.
-        try audit(app, "Practice, free piano sessions used", contrast: false)
+        try audit(app, "Practice, free piano sessions used")
 
         tap(app, "practice.show-pro")
         let close = app.buttons["paywall.close"]
@@ -1713,8 +1748,15 @@ final class PracticeTests: UITestCase {
             NSPredicate(format: "label IN {'Total', 'Last 30 days'} AND value == '30 minutes'"))
         XCTAssertEqual(times.count, 2, "The piece's times are wrong")
         XCTAssertFalse(app.descendants(matching: .any)["Playing"].exists, "A timed session showed a piano's split")
-        // Contrast only noted, as for History: the system's grey header nearly passes it (#165).
-        try audit(app, "Time per piece and skill", contrast: false)
+        try audit(app, "Time per piece and skill")
+        // And on iPhone the title is in the bar, level with the back button, not a large title under the bar's edge. An
+        // iPad's title was always in the bar, a row below the back button, which sits beside the tabs.
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            let title = app.navigationBars.staticTexts["Time per piece and skill"]
+            let back = app.navigationBars.buttons.element(boundBy: 0)
+            XCTAssertLessThan(
+                abs(title.frame.midY - back.frame.midY), back.frame.height / 2, "The title isn't in the bar")
+        }
         attachScreenshot(of: app, named: "Time per piece and skill")
 
         // When the switch shows skills
@@ -2494,9 +2536,8 @@ final class PracticeTests: UITestCase {
     @MainActor
     private func sharingSwitch(in app: XCUIApplication) -> XCUIElement {
         openSettings(app)
-        let sharing = app.switches["settings.shares-usage"]
-        // The last section, below the fold, where a Form may not have built the row yet.
-        for _ in 0..<8 where !(sharing.exists && sharing.isHittable) { app.swipeUp() }
+        // The last section, below the fold.
+        let sharing = scrolledTo(app.switches["settings.shares-usage"], in: app)
         XCTAssertTrue(sharing.waitForExistence(timeout: 5), "No switch for sharing usage in Settings")
         return sharing
     }

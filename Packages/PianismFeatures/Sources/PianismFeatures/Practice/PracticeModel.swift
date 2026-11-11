@@ -86,9 +86,11 @@ public final class PracticeModel: TagTarget {
     var nudgeOpened: NudgeOpening?
     /// The session that ended itself at the cap, until the banner explaining it is acted on (SES-4).
     private var cappedID: UUID?
-    /// Whether the last MIDI session had under a minute of played time, so it wasn't saved, until the next start
-    /// (MIDI-1).
-    private(set) var lastRunWasTooShort = false
+    /// Why the last session wasn't saved, until the next start: a piano's with under a minute played (MIDI-1), or a
+    /// tapped one under 10 s (SES-1).
+    private(set) var notSaved: NotSaved?
+    /// Counts the sessions not saved, so Practice's pop-up shows again for the next one, even for the same reason.
+    private(set) var notSavedCount = 0
     /// The names of the pianos connected, as the system gives them (MIDI-2).
     public var connectedPianos: [String] = [] {
         didSet { readyUntil = clock.now + Self.readyAwake }
@@ -106,12 +108,12 @@ public final class PracticeModel: TagTarget {
     /// once they're used, or `nil` to say nothing, as during a session or while history can't say (PRO-2, D6).
     var freePianoSessionsLeft: Int? {
         guard !isPro(), !connectedPianos.isEmpty, session == nil, let used = freePianoSessionsUsed else { return nil }
-        return FreeTaste.left(afterUsing: used)
+        return FreePianoSessions.left(afterUsing: used)
     }
     /// Whether a piano's notes can start a session, as far as the last refresh knows: with Pro, while free ones are
     /// left, or while history can't say, so a store failure never takes it away (PRO-2).
     private var pianoCanStart: Bool {
-        isPro() || freePianoSessionsUsed.map { FreeTaste.left(afterUsing: $0) > 0 } ?? true
+        isPro() || freePianoSessionsUsed.map { FreePianoSessions.left(afterUsing: $0) > 0 } ?? true
     }
     /// Turns the piano's notes into MIDI sessions, following the stored session at each refresh (MIDI-1).
     @ObservationIgnored private var detector: MIDIDetector
@@ -223,7 +225,7 @@ public final class PracticeModel: TagTarget {
         perform {
             try recorder.start()
             lastSession = nil
-            lastRunWasTooShort = false
+            notSaved = nil
         }
     }
 
@@ -384,13 +386,12 @@ public final class PracticeModel: TagTarget {
     /// A MIDI session ended with under a minute played is dropped in the refresh, which Practice then says.
     private func apply(_ effects: [MIDIDetector.Effect]) {
         guard !effects.isEmpty else { return }  // mutate:ignore - without it, a note only refreshes needlessly
-        var endedID: UUID?
         perform {
             for effect in effects {
                 switch effect {
                 case .start(let date):
                     try recorder.start(at: date)
-                    lastRunWasTooShort = false
+                    notSaved = nil
                 case .pause(let date):
                     try recorder.pause(at: date)
                 case .resume(let date):
@@ -398,13 +399,9 @@ public final class PracticeModel: TagTarget {
                 case .end(let lastNote, let date):
                     readyUntil = lastNote + Self.readyAwake
                     // A Stop dated before the last note, as after the clock steps back, ends the session at it.
-                    endedID = try recorder.end(afterLastNote: lastNote, at: max(date, lastNote)).id
+                    _ = try recorder.end(afterLastNote: lastNote, at: max(date, lastNote))
                 }
             }
-        }
-        // Neither kept nor still stored, as one is when history and the outbox both fail, so it was dropped.
-        if let endedID {
-            lastRunWasTooShort = lastSession?.id != endedID && session?.id != endedID
         }
         // Last among the effects and stored, so not when a late note resumes it at once or the store refused the pause.
         if case .pause = effects.last, session?.state == .paused {
@@ -461,7 +458,7 @@ public final class PracticeModel: TagTarget {
     /// device's sessions may have synced in, unless the last refresh found them used, which they stay.
     private func mayAutoStart() -> Bool {
         guard pianoCanStart else { return false }
-        if !isPro(), let used = try? FreeTaste.used(history: history, outbox: outbox) {
+        if !isPro(), let used = try? FreePianoSessions.used(history: history, outbox: outbox) {
             freePianoSessionsUsed = used
         }
         return pianoCanStart
@@ -581,9 +578,16 @@ public final class PracticeModel: TagTarget {
             if let capped = try recorder.end(atCap: cap) {
                 cappedID = capped.id
             }
+            let ended = try recorder.current().flatMap { $0.state == .ended ? $0 : nil }
             if let archived = try recorder.archive(to: history, or: outbox) {
                 lastSession = archived
                 analytics?.sessionSaved(archived)
+            } else if let ended {
+                // It ended and the archive kept nothing, without failing, so it was too short to be practice.
+                let reason: NotSaved = ended.source == .midi ? .underAMinuteOfPlaying : .underTenSeconds
+                notSaved = reason
+                notSavedCount += 1
+                announce(reason.message)
             }
             waitingCount = try outbox.sessions().count
         } catch {
@@ -592,7 +596,7 @@ public final class PracticeModel: TagTarget {
             isShowingStorageError = true
         }
         // For Practice's line and the screen, so after a save they show the session it used. Pro needs neither.
-        freePianoSessionsUsed = isPro() ? nil : try? FreeTaste.used(history: history, outbox: outbox)
+        freePianoSessionsUsed = isPro() ? nil : try? FreePianoSessions.used(history: history, outbox: outbox)
         do {
             session = try recorder.current()
             if session != nil { isShowingWelcome = false }
@@ -661,5 +665,20 @@ extension Date {
         func minute(of date: Date) -> Date { calendar.dateInterval(of: .minute, for: date)?.start ?? date }
         let picked = minute(of: self) + reference.timeIntervalSince(minute(of: reference))
         return min(max(picked, range.lowerBound), range.upperBound)
+    }
+}
+
+/// Why a session that ended wasn't saved, which Practice says in a pop-up and then a line until the next start.
+enum NotSaved: Equatable {
+    /// A piano's, with under a minute played (MIDI-1).
+    case underAMinuteOfPlaying
+    /// A tapped one, under 10 s (SES-1).
+    case underTenSeconds
+
+    var message: String {
+        switch self {
+        case .underAMinuteOfPlaying: String(localized: "Not saved: under a minute of playing", bundle: .module)
+        case .underTenSeconds: String(localized: "Not saved: under 10 seconds", bundle: .module)
+        }
     }
 }

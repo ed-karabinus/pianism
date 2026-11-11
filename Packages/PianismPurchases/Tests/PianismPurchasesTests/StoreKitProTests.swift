@@ -1,5 +1,6 @@
 import Foundation
 import PianismCore
+import StoreKit
 import Testing
 
 @testable import PianismPurchases
@@ -45,6 +46,25 @@ struct StoreKitProTests {
     func anotherProduct() {
         #expect(ProTransaction.status(from: [transaction(productID: "other")]) == .unknown)
         #expect(ProTransaction.status(from: [transaction(productID: "other", isRevoked: true)]) == .unknown)
+    }
+
+    @Test("PRO-1: StoreKit's answer is read as it says: verified or not, refunded or not")
+    func readsStoreKitsAnswer() {
+        // Given a purchase and a refunded one, as StoreKit hands them over verified or not
+        struct Purchase: ProPurchase {
+            let productID = ProProduct.id
+            var revocationDate: Date?
+        }
+        let refunded = Purchase(revocationDate: .now)
+
+        // When each is read
+        let read = [
+            ProTransaction(VerificationResult.verified(Purchase())),
+            ProTransaction(VerificationResult.unverified(refunded, .invalidSignature)),
+        ]
+
+        // Then each keeps what StoreKit said
+        #expect(read == [transaction(), transaction(isVerified: false, isRevoked: true)])
     }
 
     /// The tests' StoreKit configuration describes the product the app asks for. App Store Connect can only be checked

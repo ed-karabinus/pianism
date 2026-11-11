@@ -143,7 +143,7 @@ public struct SessionRecorder: Sendable {
 
     /// Moves an ended session out of the store, so a new one can start: into `history`, or into
     /// `outbox` if history can't save it (ADR 0007), unless it isn't practice, which drops it: a mis-tap under
-    /// 10 s, quietly (SES-1), or a few stray notes under a MIDI session's minimum played time (MIDI-1). Then moves any waiting sessions into history. Returns the
+    /// 10 s (SES-1), or a few stray notes under a MIDI session's minimum played time (MIDI-1), which Practice then says. Then moves any waiting sessions into history. Returns the
     /// ended session it kept, or `nil` if none had ended or it was dropped.
     ///
     /// Throws only if the ended session could go nowhere; it then stays in the store. Safe to repeat
