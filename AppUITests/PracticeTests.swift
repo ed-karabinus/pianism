@@ -1319,8 +1319,17 @@ final class PracticeTests: UITestCase {
     /// Scrolls to a row of Settings, such as Pro's in the last section, which a Form may not have built yet (PRO-1).
     @MainActor
     private func proRow(_ id: String, in app: XCUIApplication) -> XCUIElement {
-        let row = app.descendants(matching: .any)[id].firstMatch
-        for _ in 0..<8 where !(row.exists && row.isHittable) { app.swipeUp() }
+        scrolledTo(app.descendants(matching: .any)[id].firstMatch, in: app)
+    }
+
+    /// The most swipes up to reach a row: Settings is shorter than this, so a row that never shows fails the test
+    /// instead of swiping on.
+    private static let mostSwipesToARow = 8
+
+    /// Swipes up until `row`, which a Form builds only near the screen, exists and can be tapped.
+    @MainActor
+    private func scrolledTo(_ row: XCUIElement, in app: XCUIApplication) -> XCUIElement {
+        for _ in 0..<Self.mostSwipesToARow where !(row.exists && row.isHittable) { app.swipeUp() }
         return row
     }
 
@@ -2287,9 +2296,8 @@ final class PracticeTests: UITestCase {
     @MainActor
     private func sharingSwitch(in app: XCUIApplication) -> XCUIElement {
         openSettings(app)
-        let sharing = app.switches["settings.shares-usage"]
-        // The last section, below the fold, where a Form may not have built the row yet.
-        for _ in 0..<8 where !(sharing.exists && sharing.isHittable) { app.swipeUp() }
+        // The last section, below the fold.
+        let sharing = scrolledTo(app.switches["settings.shares-usage"], in: app)
         XCTAssertTrue(sharing.waitForExistence(timeout: 5), "No switch for sharing usage in Settings")
         return sharing
     }

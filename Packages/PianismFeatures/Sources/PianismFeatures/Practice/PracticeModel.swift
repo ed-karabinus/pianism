@@ -106,12 +106,12 @@ public final class PracticeModel: TagTarget {
     /// once they're used, or `nil` to say nothing, as during a session or while history can't say (PRO-2, D6).
     var freePianoSessionsLeft: Int? {
         guard !isPro(), !connectedPianos.isEmpty, session == nil, let used = freePianoSessionsUsed else { return nil }
-        return FreeTaste.left(afterUsing: used)
+        return FreePianoSessions.left(afterUsing: used)
     }
     /// Whether a piano's notes can start a session, as far as the last refresh knows: with Pro, while free ones are
     /// left, or while history can't say, so a store failure never takes it away (PRO-2).
     private var pianoCanStart: Bool {
-        isPro() || freePianoSessionsUsed.map { FreeTaste.left(afterUsing: $0) > 0 } ?? true
+        isPro() || freePianoSessionsUsed.map { FreePianoSessions.left(afterUsing: $0) > 0 } ?? true
     }
     /// Turns the piano's notes into MIDI sessions, following the stored session at each refresh (MIDI-1).
     @ObservationIgnored private var detector: MIDIDetector
@@ -461,7 +461,7 @@ public final class PracticeModel: TagTarget {
     /// device's sessions may have synced in, unless the last refresh found them used, which they stay.
     private func mayAutoStart() -> Bool {
         guard pianoCanStart else { return false }
-        if !isPro(), let used = try? FreeTaste.used(history: history, outbox: outbox) {
+        if !isPro(), let used = try? FreePianoSessions.used(history: history, outbox: outbox) {
             freePianoSessionsUsed = used
         }
         return pianoCanStart
@@ -592,7 +592,7 @@ public final class PracticeModel: TagTarget {
             isShowingStorageError = true
         }
         // For Practice's line and the screen, so after a save they show the session it used. Pro needs neither.
-        freePianoSessionsUsed = isPro() ? nil : try? FreeTaste.used(history: history, outbox: outbox)
+        freePianoSessionsUsed = isPro() ? nil : try? FreePianoSessions.used(history: history, outbox: outbox)
         do {
             session = try recorder.current()
             if session != nil { isShowingWelcome = false }

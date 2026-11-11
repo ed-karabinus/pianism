@@ -12,7 +12,7 @@ Path key: `Core/`, `Features/` and `Persistence/` are `Sources/` of `Packages/Pi
 |---|---|---|---|---|
 | 1 | `feat(PRO-1): Know on- or offline whether Pro is unlocked, with Restore in Settings` | `Core/ProStore.swift`, `Core/InMemoryProStore.swift`, new `Packages/PianismPurchases`, `Features/Pro/ProModel.swift`, `SettingsView`, `RootView`, `App/PianismApp.swift`, `Makefile`, pbxproj, `AppUITests/Pianism.storekit`, `Config/UITests.xcconfig` | 280 / 300 | Entitlement, Restore, offline and refund, with real StoreKit on iOS 27 and a fake store on all four simulators |
 | 2 | `feat(PRO-3): Show what Pro offers and its price, and buy it, only when asked` | `Features/Pro/PaywallView.swift`, `ProModel`, `RootView`, `WelcomeView`, `Core/Analytics.swift`, ADR 0011 | 200 / 200 | Only a tap opens it, it lists only what exists, and the welcome says auto-start is Pro |
-| 3 | `feat(PRO-2): Give the first 5 piano sessions free, then start them only with Pro` | `Core/SessionHistory.swift`, `Core/FreeTaste.swift`, `InMemorySessionHistory`, `FlakyHistory`, `Persistence/SwiftDataSessionHistory.swift`, `PracticeModel`, `PracticeView` | 130 / 280 | The 5th starts, the 6th doesn't, and deleting gives nothing back |
+| 3 | `feat(PRO-2): Give the first 5 piano sessions free, then start them only with Pro` | `Core/SessionHistory.swift`, `Core/FreePianoSessions.swift`, `InMemorySessionHistory`, `FlakyHistory`, `Persistence/SwiftDataSessionHistory.swift`, `PracticeModel`, `PracticeView` | 130 / 280 | The 5th starts, the 6th doesn't, and deleting gives nothing back |
 | 4 | `feat(HIS-4): Show where time goes per piece, with played and bench time from a piano` | `Core/PieceStats.swift`, `PracticeSession`, `HistoryModel`, `Features/History/PieceStatsView.swift`, `HistoryView` | 200 / 240 | Totals match History, and the split is honest |
 | 5 | `feat(EXP-1): Export every session as a CSV file through the share sheet` | `Core/PracticeLogCSV.swift`, a Transferable in Features, a Settings row | 125 / 210 | The file is correct. First to cut if the date slips |
 
@@ -106,7 +106,7 @@ public protocol ProStore: Sendable {
 | PRO-1 Restore | Features (found, empty, cancelled, failed); `testRestorePurchasesInSettingsUnlocksPro` | No re-read after sync; cancel shown as error | S2 |
 | PRO-1 offline | Mapping tests; `aProUserLaunchingOfflineStaysPro`; real test with the store unreachable | `.unverified` grants; revoked grants; entitlement needs `offer()`; an empty answer clears Pro | S3 |
 | Pending, refund, second device | Features; real tests on iOS 27; fake store via notify | Pending unlocks; revocation ignored | S4, S5, S6, S7 |
-| PRO-2 first 5, then Pro | `FreeTaste`; `theFifthPianoSessionStartsTheSixthDoesNot`; deleted and duplicate persistence tests; E2E seeded at 4 | `<=`; reads `sessions()`; counts at start; counts timer; gates resume | S8 |
+| PRO-2 first 5, then Pro | `FreePianoSessions`; `theFifthPianoSessionStartsTheSixthDoesNot`; deleted and duplicate persistence tests; E2E seeded at 4 | `<=`; reads `sessions()`; counts at start; counts timer; gates resume | S8 |
 | PRO-2 data stays | E2E: a locked user keeps History and Start | Gate placed in `start()` | |
 | PRO-2 welcome line | Extend `PracticeTests.swift:1110-1145` for "while Pianism is open" and "first 5" | Phrase dropped | |
 | PRO-3 only on tap | `testThePaywallShowsOnlyWhenAProFeatureIsTapped` | Shows at launch when locked; shows on a refused note | |
