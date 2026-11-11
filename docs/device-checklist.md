@@ -124,9 +124,9 @@ the real service.
 
 ## Pro (PRO-1, PRO-2 and PRO-3, issues #52, #53 and #54)
 
-These need the product in App Store Connect and a Sandbox Apple Account, on a TestFlight or dev-signed build, except S4 and S5, which use the StoreKit configuration file from Xcode. The first purchase comes with the paywall (PRO-3).
+These need the product in App Store Connect, and a TestFlight build, which buys from Apple's test store with your own Apple Account, or a dev-signed build with a Sandbox Apple Account, except S4 and S5, which use the StoreKit configuration file from Xcode. The first purchase comes with the paywall (PRO-3).
 
-On a build with PRO-2, a piano starts sessions on the owner's iPhone only with Pro, as the owner's iCloud account already has more than 5 piano sessions: run S8 first, as it needs Pro off, then buy Pro with the Sandbox account (S1) before any other piano check on such a build. Pro then stays on that phone, and after a reinstall comes back once the App Store answers, or with Restore Purchases (S2).
+On a build with PRO-2, a piano starts sessions on the owner's iPhone only with Pro, as the owner's iCloud account already has more than 5 piano sessions: run S8 first, as it needs Pro off, then buy Pro (S1) before any other piano check on such a build. Pro then stays on that phone, and after a reinstall comes back once the App Store answers, or with Restore Purchases (S2).
 
 | # | Check | Last result |
 | --- | --- | --- |

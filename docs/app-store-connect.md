@@ -90,7 +90,8 @@ Review notes, as entered:
 > Pianism is open. The rest of the app works without one.
 
 If the Pro screen says "The price isn't available right now." with a working network, the App Store isn't offering
-the product: check the status above, the product ID, and the Sandbox account (S1 in `docs/device-checklist.md`).
+the product: check the status above, the product ID, and, in a Debug build, the Sandbox account (S1 in
+`docs/device-checklist.md`).
 
 ## Still to do
 
