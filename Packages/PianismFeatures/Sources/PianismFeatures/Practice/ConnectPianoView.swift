@@ -4,15 +4,30 @@ import SwiftUI
 /// Which pianos Pianism hears, how to connect one over USB, and Apple's screen for pairing one over Bluetooth (MIDI-2).
 /// Opened from Settings (SET-1).
 struct ConnectPianoView: View {
-    let pianos: [String]
+    let practice: PracticeModel
 
     var body: some View {
         Form {
             Section {
-                if pianos.isEmpty {
+                if let piano = practice.missingBluetoothPiano {
+                    Text("\(piano) isn't connected", bundle: .module)
+                        .accessibilityIdentifier(AccessibilityID.pianosMissing)
+                    #if os(iOS)
+                        NavigationLink {
+                            PairingScreen(practice: practice)
+                        } label: {
+                            Text("Reconnect", bundle: .module)
+                        }
+                        .accessibilityIdentifier(AccessibilityID.pianosReconnect)
+                    #endif
+                    Button(role: .destructive, action: practice.forgetBluetoothPiano) {
+                        Text("Forget This Piano", bundle: .module)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.pianosForget)
+                } else if practice.connectedPianos.isEmpty {
                     Text("No piano connected", bundle: .module)
                 }
-                ForEach(pianos, id: \.self) { Text($0) }
+                ForEach(practice.connectedPianos, id: \.self) { Text($0) }
             } header: {
                 Text("Connected", bundle: .module)
             }
@@ -36,10 +51,7 @@ struct ConnectPianoView: View {
                 // Apple's pairing screen, which the simulator and macOS, where the feature tests run, can't show.
                 #if os(iOS)
                     NavigationLink {
-                        BluetoothPairingView()
-                            .navigationTitle(Text("Bluetooth", bundle: .module))
-                            // A UIKit list doesn't collapse a large title, which would crowd Apple's short list.
-                            .navigationBarTitleDisplayMode(.inline)
+                        PairingScreen(practice: practice)
                     } label: {
                         Text("Pair a Bluetooth piano", bundle: .module)
                     }
@@ -58,6 +70,28 @@ struct ConnectPianoView: View {
 }
 
 #if os(iOS)
+    /// Apple's pairing screen, titled, telling `practice` while it's open so it knows a piano that shows up then as a
+    /// Bluetooth one (MIDI-2).
+    struct PairingScreen: View {
+        let practice: PracticeModel
+        /// Changed each time it goes off screen, so it's a new one, searching afresh, when it comes back: left open in
+        /// another tab, Apple's screen kept spinning on "No devices found" (the owner's device check, 2026-11-11).
+        @State private var search = 0
+
+        var body: some View {
+            BluetoothPairingView()
+                .id(search)
+                .navigationTitle(Text("Bluetooth", bundle: .module))
+                // A UIKit list doesn't collapse a large title, which would crowd Apple's short list.
+                .navigationBarTitleDisplayMode(.inline)
+                .onAppear { practice.isPairing = true }
+                .onDisappear {
+                    practice.isPairing = false
+                    search += 1
+                }
+        }
+    }
+
     /// Apple's screen that finds Bluetooth MIDI devices nearby and pairs them, which CoreMIDI then hears.
     private struct BluetoothPairingView: UIViewControllerRepresentable {
         func makeUIViewController(context _: Context) -> CABTMIDICentralViewController {
@@ -79,11 +113,15 @@ struct ConnectPianoView: View {
 #endif
 
 #Preview("A piano") {
-    NavigationStack { ConnectPianoView(pianos: ["MIDI KEYBOARD"]) }
+    NavigationStack { ConnectPianoView(practice: .preview(freeUsed: 0)) }
+}
+
+#Preview("A Bluetooth piano gone") {
+    NavigationStack { ConnectPianoView(practice: .preview(.bluetoothMissing)) }
 }
 
 #Preview("None, dark, AX5") {
-    NavigationStack { ConnectPianoView(pianos: []) }
+    NavigationStack { ConnectPianoView(practice: .preview(.ready)) }
         .preferredColorScheme(.dark)
         .dynamicTypeSize(.accessibility5)
 }

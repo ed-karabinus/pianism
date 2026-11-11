@@ -93,7 +93,29 @@ public final class PracticeModel: TagTarget {
     private(set) var notSavedCount = 0
     /// The names of the pianos connected, as the system gives them (MIDI-2).
     public var connectedPianos: [String] = [] {
-        didSet { readyUntil = clock.now + Self.readyAwake }
+        didSet {
+            readyUntil = clock.now + Self.readyAwake
+            // CoreMIDI doesn't say which pianos are Bluetooth ones, but one that shows up while Apple's pairing screen
+            // is open was just paired there.
+            if isPairing, let paired = connectedPianos.first(where: { !oldValue.contains($0) }) {
+                bluetoothPiano = paired
+            }
+        }
+    }
+    /// Whether Apple's screen for pairing a Bluetooth piano is open (MIDI-2).
+    var isPairing = false
+    /// The piano paired last on Apple's screen, kept until it's forgotten: iOS doesn't reconnect one after it restarts,
+    /// so Practice offers to (device check P5, the owner's picks 2026-11-11).
+    private(set) var bluetoothPiano: String? {
+        didSet { defaults.set(bluetoothPiano, forKey: SettingsKey.bluetoothPiano) }
+    }
+    /// The Bluetooth piano to offer to reconnect: the one paired last, while no piano is connected. One over USB is
+    /// often the same piano under another name, such as the CA59's "MIDI KEYBOARD".
+    var missingBluetoothPiano: String? { connectedPianos.isEmpty ? bluetoothPiano : nil }
+
+    /// Stops offering to reconnect the Bluetooth piano, as for one sold or now connected by USB.
+    func forgetBluetoothPiano() {
+        bluetoothPiano = nil
     }
     /// Until when Practice keeps the screen on with a piano connected, ready for a note: 15 minutes after the last
     /// note, the piano connecting or the app coming to the front, which is about when a piano switches itself off
@@ -203,6 +225,7 @@ public final class PracticeModel: TagTarget {
         wantsDailyReminder = defaults.bool(forKey: SettingsKey.remindsDaily)
         dailyReminderMinute =
             defaults.object(forKey: SettingsKey.dailyReminderMinute) as? Int ?? DailyReminder.defaultMinute
+        bluetoothPiano = defaults.string(forKey: SettingsKey.bluetoothPiano)
         // Loads the stored session now, so the first frame after a relaunch already shows it, with the silence
         // since its last change applied. As `cameToFront()`, but not yet on screen: a Live Activity's button can
         // launch the app in the background.

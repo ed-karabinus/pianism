@@ -21,7 +21,7 @@ struct SettingsView: View {
                 let pianos = practice.connectedPianos
                 Section {
                     NavigationLink {
-                        ConnectPianoView(pianos: pianos)
+                        ConnectPianoView(practice: practice)
                     } label: {
                         if pianos.isEmpty {
                             Text("Connect a piano", bundle: .module)

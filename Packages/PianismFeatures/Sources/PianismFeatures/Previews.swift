@@ -9,12 +9,12 @@ private let previewNow = Date(timeIntervalSince1970: 1_798_761_600)
 
 extension PracticeModel {
     enum PreviewState {
-        case ready, running, paused, pastNudge, capped, tooShort, midiPaused, lowBattery
+        case ready, running, paused, pastNudge, capped, tooShort, midiPaused, lowBattery, bluetoothMissing
     }
 
     /// A model over an in-memory store, 25 minutes into a session, 95 minutes into one past the 90-minute nudge,
     /// or 5 hours into one that ends itself at the 4-hour cap, just after a MIDI session too short to save, or with
-    /// a MIDI session paused by a silence, also on a low battery, for previews.
+    /// a MIDI session paused by a silence, also on a low battery, or ready with a Bluetooth piano gone, for previews.
     /// A ready model without Pro, a piano connected, and `used` of the free piano sessions used, for previews (PRO-2).
     static func preview(freeUsed used: Int) -> PracticeModel {
         let history = InMemorySessionHistory()
@@ -42,13 +42,16 @@ extension PracticeModel {
             }
         let started = previewNow.addingTimeInterval(-minutesEarlier * 60)
         let store = PreviewStore(
-            state == .ready || state == .midiPaused || state == .lowBattery
+            [.ready, .midiPaused, .lowBattery, .bluetoothMissing].contains(state)
                 ? nil : PracticeSession(startedAt: started, source: state == .tooShort ? .midi : .timer))
         let clock = PreviewClock(now: previewNow.addingTimeInterval(25 * 60 + 3))
+        // Its own suite, so the piano it remembers stays out of the other previews.
+        let defaults = state == .bluetoothMissing ? UserDefaults(suiteName: "Practice preview, Bluetooth") : nil
+        defaults?.set("CA59 Bluetooth", forKey: SettingsKey.bluetoothPiano)
         let model = PracticeModel(
             store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
-            nudges: PreviewNudges(allowed: notifications), glance: PreviewGlance(), defaults: .standard, nudge: 90 * 60,
-            cap: 4 * 60 * 60)
+            nudges: PreviewNudges(allowed: notifications), glance: PreviewGlance(), defaults: defaults ?? .standard,
+            nudge: 90 * 60, cap: 4 * 60 * 60)
         if state == .paused {
             model.pause()
         } else if state == .tooShort {
