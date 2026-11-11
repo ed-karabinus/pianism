@@ -41,7 +41,7 @@ enum HistorySchemaV1: VersionedSchema {
         var kind: String = "piece"
         /// Encrypted in iCloud, as the user's own words, like a session's note.
         @Attribute(.allowsCloudEncryption) var name: String = ""
-        var isArchived: Bool = false
+        var isArchived: Bool = false  // mutate:ignore - nothing makes a v1 tag now, and stores keep the value they have
         /// Encrypted in iCloud, like `name`.
         @Attribute(.allowsCloudEncryption) var composer: String = ""
         /// In beats per minute.
