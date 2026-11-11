@@ -217,6 +217,40 @@ struct TagNestingTests {
         #expect(counted.map(\.id) == ["c1", "c2", "p", "t"])
     }
 
+    @Test("TAG-5: a tag's children are the tags that read inside it, archived ones and merged siblings' kept tags once")
+    func children() {
+        // Given a parent with a live child, an archived one, one merged into its sibling, and a grandchild
+        let index = TagIndex([
+            tag("p"), tag("live", parent: "p"), tag("old", parent: "p", archived: true),
+            tag("dup", parent: "p", mergedInto: "live", archived: true), tag("deep", parent: "live"), tag("t"),
+        ])
+
+        // When each tag's children are read
+        let children = index["p"].map(index.children(of:)) ?? []
+
+        // Then the parent has the live and the archived child, the merged one only as the tag it stands for, and the
+        // grandchild reads at the top level, inside nothing
+        #expect(Set(children.map(\.id)) == ["live", "old"])
+        #expect(children.count == 2)
+        #expect(index["live"].map(index.children(of:))?.isEmpty == true)
+        #expect(index["t"].map(index.children(of:))?.isEmpty == true)
+    }
+
+    @Test("TAG-5: a session's tags are named in order, each once, a child as \"Parent › child\" (D5)")
+    func names() {
+        // Given a parent, a child inside it and one merged into the child
+        let index = TagIndex([
+            tag("scales", name: "Scales"), tag("d-minor", name: "D minor", parent: "scales"),
+            tag("old", name: "Old", mergedInto: "d-minor", archived: true),
+        ])
+
+        // When a session tagged with all three and an unknown tag is named
+        let names = index.names(for: ["old", "scales", "d-minor", "not-synced"])
+
+        // Then the child reads with its parent once, and the parent as itself
+        #expect(names == ["Scales › D minor", "Scales"])
+    }
+
     private func tag(
         _ id: String, kind: PianismCore.Tag.Kind = .skill, name: String? = nil, parent: String? = nil,
         mergedInto: String? = nil, archived: Bool = false, created: TimeInterval = 0

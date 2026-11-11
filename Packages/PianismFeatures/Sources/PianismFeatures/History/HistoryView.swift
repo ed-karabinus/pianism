@@ -168,7 +168,7 @@ struct HistoryView: View {
                                 isWaiting
                                 ? Text("\(part.times), not saved yet", bundle: .module) : Text(part.times)
                             let row = TimedRow(
-                                title: title, detail: Text(tags: model.tagIndex.tags(for: session.tagIDs)),
+                                title: title, detail: Text(tagNames: model.tagIndex.names(for: session.tagIDs)),
                                 duration: part.practiced)
                             // A session waiting to be saved can't be edited yet (ADR 0007).
                             Group {

@@ -35,7 +35,7 @@ public enum PracticeLogCSV {
             String(practiced),
             String(max(0, span - practiced)),
             session.source.rawValue,
-            index.tags(for: session.tagIDs).map(index.name(of:)).joined(separator: "; "),
+            index.names(for: session.tagIDs).joined(separator: "; "),
             session.note,
         ]
     }

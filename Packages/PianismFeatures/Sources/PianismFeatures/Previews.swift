@@ -73,6 +73,7 @@ private let previewTags = [
     Tag(id: "invention", kind: .piece, name: "Invention No. 1 in C major", isArchived: false),
     Tag(id: "nocturne", kind: .piece, name: "Nocturne in E-flat major", isArchived: true),
     Tag(id: "pedalling", kind: .skill, name: "Pedalling", isArchived: false),
+    Tag(id: "d-minor", kind: .skill, name: "D minor", isArchived: false, parentID: BuiltInSkill.scales.rawValue),
 ]
 
 extension TagPickerModel {

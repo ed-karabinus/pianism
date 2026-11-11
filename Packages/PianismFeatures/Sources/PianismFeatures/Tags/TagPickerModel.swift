@@ -10,8 +10,8 @@ protocol TagTarget: AnyObject {
     func setTags(_ ids: [Tag.ID])
 }
 
-/// State and commands for the tag picker, which tags a session and adds, renames, archives and merges tags
-/// (TAG-1, TAG-2, TAG-4).
+/// State and commands for the tag picker, which tags a session and adds, renames, archives and merges tags, and adds
+/// them inside others (TAG-1, TAG-2, TAG-4, TAG-5).
 @MainActor
 @Observable
 public final class TagPickerModel {
@@ -21,8 +21,12 @@ public final class TagPickerModel {
     var query = ""
     /// Whether to show that the tags couldn't be loaded or changed.
     var isShowingError = false
+    /// The parents shown unfolded: those with a chosen child when the picker opens, then as the user folds them (D3).
+    private var unfolded: Set<Tag.ID> = []
 
     private var index = TagIndex([])
+    /// The tags with anything inside them, archived or not, worked out once per load as each row asks (D2).
+    private var parents: Set<Tag.ID> = []
     private let target: any TagTarget
     private let library: any TagLibrary
     private let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "tags")
@@ -44,30 +48,77 @@ public final class TagPickerModel {
         index.tags(for: target.tagIDs)
     }
 
-    /// The tags of `kind` to offer: unarchived ones and the session's own or, while searching, every tag
-    /// whose name contains the query, archived ones too, so they can come back (TAG-1). Unarchived tags
-    /// come first, each group by name. A merged tag's name offers the tag it was merged into.
+    /// How the session's tags read, a child as "Parent › child" (D5).
+    var selectedNames: [String] {
+        index.names(for: target.tagIDs)
+    }
+
+    /// Clears a search left typed, as the model outlives the sheet, loads the tags, and unfolds each parent with a
+    /// chosen child, so the choice shows (D3). Call when the picker opens.
+    func open() {
+        query = ""
+        refresh()
+        unfolded = Set(selected.compactMap { index.parent(of: $0)?.id })
+    }
+
+    /// Whether `parent`'s children show under it (D3).
+    subscript(isUnfolded parent: Tag.ID) -> Bool {
+        get { unfolded.contains(parent) }
+        set { if newValue { unfolded.insert(parent) } else { unfolded.remove(parent) } }
+    }
+
+    /// The tags of `kind` to offer: top-level ones that are unarchived, the session's own or hold one of its tags or,
+    /// while searching, every tag whose name contains the query, children and archived ones too, so they can come
+    /// back (TAG-1, D3). Unarchived tags come first, each group by how ``label(_:)`` reads. A merged tag's name offers
+    /// the tag it was merged into.
     func shown(_ kind: Tag.Kind) -> [Tag] {
         let search = Self.trimmed(query)
         let named = Tag.existing(named: search, kind: kind, in: tags).flatMap { index[$0.id] }
+        let selectedIDs = Set(selected.map(\.id) + selected.compactMap { index.parent(of: $0)?.id })
+        return sorted(
+            tags.filter { tag in
+                guard tag.kind == kind else { return false }
+                if tag.id == named?.id { return true }
+                if !search.isEmpty { return tag.mergedInto == nil && tag.name.localizedStandardContains(search) }
+                return index.parent(of: tag) == nil && (!tag.isArchived || selectedIDs.contains(tag.id))
+            })
+    }
+
+    /// The children to show folded under `parent`: unarchived ones and the session's own. None while searching, which
+    /// lists every hit on its own (D3).
+    func shown(inside parent: Tag) -> [Tag] {
+        guard Self.trimmed(query).isEmpty else { return [] }
         let selectedIDs = Set(selected.map(\.id))
-        return tags.filter { tag in
-            guard tag.kind == kind else { return false }
-            if tag.id == named?.id { return true }
-            if !search.isEmpty { return tag.mergedInto == nil && tag.name.localizedStandardContains(search) }
-            return !tag.isArchived || selectedIDs.contains(tag.id)
-        }
-        .sorted {
+        return sorted(index.children(of: parent).filter { !$0.isArchived || selectedIDs.contains($0.id) })
+    }
+
+    /// How `tag` reads in the picker: its name under its parent, or "Parent › child" in a search, which lists it
+    /// apart from its parent (D3).
+    func label(_ tag: Tag) -> String {
+        Self.trimmed(query).isEmpty ? tag.name : index.name(of: tag)
+    }
+
+    private func sorted(_ tags: [Tag]) -> [Tag] {
+        tags.sorted {
             $0.isArchived != $1.isArchived
-                ? !$0.isArchived : $0.name.localizedStandardCompare($1.name) == .orderedAscending
+                ? !$0.isArchived : label($0).localizedStandardCompare(label($1)) == .orderedAscending
         }
     }
 
-    /// The query as a new tag of `kind`, or `nil` if it's empty or a tag of that kind has the name.
+    /// The query as a new top-level tag of `kind`, or `nil` if it's empty or a top-level tag of that kind has the
+    /// name (Q1).
     func newName(_ kind: Tag.Kind) -> String? {
         let name = Self.trimmed(query)
-        guard !name.isEmpty, Tag.existing(named: name, kind: kind, in: tags) == nil else { return nil }
+        guard !name.isEmpty, existing(named: name, kind: kind, inside: nil, among: tags) == nil else { return nil }
         return name
+    }
+
+    /// The tag of `kind` named `name` in the list inside `parent`, or at the top level for `nil`: names are unique
+    /// within a list, so "Scales › D minor" and "Arpeggios › D minor" can both be (Q1). Lists are read through the
+    /// index, as a stored link alone can't be trusted (ADR 0013); a merged tag is in the list of the tag it stands for.
+    private func existing(named name: String, kind: Tag.Kind, inside parent: Tag.ID?, among tags: [Tag]) -> Tag? {
+        let list = tags.filter { tag in index[tag.id].flatMap(index.parent(of:))?.id == parent }
+        return Tag.existing(named: name, kind: kind, in: list)
     }
 
     /// Adds `tag` to the session, or removes it with any tag merged into it. Choosing an archived tag
@@ -94,12 +145,45 @@ public final class TagPickerModel {
         }
     }
 
-    /// Whether `tag` can be renamed to `name`: it isn't empty, or another tag's name of its kind. A tag merged away
-    /// doesn't count, so the tag it was merged into can take its name.
+    /// Whether a tag can be added inside `parent`: only at the top level and on offer, built-in skills included, so
+    /// tags nest one level deep (ADR 0013). A tag that reads top-level but still has a stored link, as its parent
+    /// hasn't synced yet or it lost a mutual nesting, can't either: a child added there becomes a grandchild once the
+    /// link reads again, and only sync may make a record that breaks the rule.
+    func canAddInside(_ parent: Tag) -> Bool {
+        !parent.isArchived && parent.parentID == nil && index.parent(of: parent) == nil
+    }
+
+    /// Whether `name` can be added inside `parent`: it isn't empty, the name of a tag already inside it (Q1), or the
+    /// parent's own name, as "Scales › Scales" reads like a mistake (the owner's pick 2026-11-10).
+    func canAdd(_ name: String, inside parent: Tag) -> Bool {
+        let name = Self.trimmed(name)
+        return canAddInside(parent) && !name.isEmpty
+            && existing(named: name, kind: parent.kind, inside: parent.id, among: tags) == nil
+            && Tag.existing(named: name, kind: parent.kind, in: [parent]) == nil
+    }
+
+    /// Adds `name` inside `parent`, tags the session with it, as adding at the top level does, and unfolds the parent
+    /// to show it (D3, D4). Clears a search, which would otherwise hide the new tag unless it matched.
+    func add(_ name: String, inside parent: Tag) {
+        guard canAdd(name, inside: parent) else { return }
+        perform {
+            let tag = try library.add(name: Self.trimmed(name), kind: parent.kind, inside: parent.id)
+            query = ""
+            target.setTags(target.tagIDs + [tag.id])
+            unfolded.insert(parent.id)
+        }
+    }
+
+    /// Whether `tag` can be renamed to `name`: it isn't empty, another tag's name in its list (Q1), or the name of its
+    /// parent or of a tag inside it, so a child never shares its parent's name (the owner's pick 2026-11-10). A tag
+    /// merged away doesn't count, so the tag it was merged into can take its name.
     func canRename(_ tag: Tag, to name: String) -> Bool {
         let name = Self.trimmed(name)
         let others = tags.filter { $0.id != tag.id && $0.mergedInto == nil }
-        return !name.isEmpty && Tag.existing(named: name, kind: tag.kind, in: others) == nil
+        let parent = index.parent(of: tag)
+        let family = (parent.map { [$0] } ?? []) + index.children(of: tag)
+        return !name.isEmpty && existing(named: name, kind: tag.kind, inside: parent?.id, among: others) == nil
+            && Tag.existing(named: name, kind: tag.kind, in: family) == nil
     }
 
     func rename(_ tag: Tag, to name: String) {
@@ -136,21 +220,35 @@ public final class TagPickerModel {
         }
     }
 
-    /// Stops offering `tag`. Sessions keep it (TAG-1).
+    /// How many unarchived tags are inside `tag`, which can't be archived until they are (D1): an archived tag never
+    /// has anything live inside it. Archived children don't count.
+    func liveChildren(of tag: Tag) -> Int {
+        index.children(of: tag).count { !$0.isArchived }
+    }
+
+    /// Stops offering `tag`, unless something live is inside it (D1). Sessions keep it (TAG-1).
     func archive(_ tag: Tag) {
+        guard liveChildren(of: tag) == 0 else { return }
         perform { try library.setArchived(true, id: tag.id) }
     }
 
-    /// The tags `tag` can be merged into: the others of its kind that are on offer, built-in skills too (TAG-4).
+    /// The tags `tag` can be merged into: the others of its kind in its list, inside the same parent or at the top
+    /// level, that are on offer and have nothing inside them, built-in skills too (TAG-4, D2). Merging a parent, or
+    /// across parents, would leave children counting toward a parent they don't read inside.
     func mergeTargets(for tag: Tag) -> [Tag] {
-        tags.filter { $0.kind == tag.kind && $0.id != tag.id && !$0.isArchived }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        let parent = index.parent(of: tag)?.id
+        return tags.filter {
+            $0.kind == tag.kind && $0.id != tag.id && !$0.isArchived && index.parent(of: $0)?.id == parent
+                && !parents.contains($0.id)
+        }
+        .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     /// Whether `tag` can be merged into another. Built-in skills have no record to change. Archived tags can't, so
-    /// that undoing, which unarchives (ADR 0006), restores a merged tag exactly.
+    /// that undoing, which unarchives (ADR 0006), restores a merged tag exactly. Nor can a tag with anything inside it,
+    /// archived or not (D2).
     func canMerge(_ tag: Tag) -> Bool {
-        !tag.isReadOnly && !tag.isArchived && !mergeTargets(for: tag).isEmpty
+        !tag.isReadOnly && !tag.isArchived && !parents.contains(tag.id) && !mergeTargets(for: tag).isEmpty
     }
 
     func merge(_ tag: Tag, into kept: Tag) {
@@ -194,6 +292,7 @@ public final class TagPickerModel {
                 guard let kept = index[tag.id], kept.id == tag.id else { return tag }
                 return kept
             }
+            parents = Set(all.compactMap { index[$0.id].flatMap(index.parent(of:))?.id })
         } catch {
             logger.error("Couldn't load the tags: \(error, privacy: .public)")
             isShowingError = true

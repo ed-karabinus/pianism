@@ -352,6 +352,258 @@ struct TagPickerModelTests {
         #expect(model.isShowingError)
         #expect(practice.session?.tagIDs.isEmpty == true)
     }
+
+    @Test("TAG-5, D3: a parent opens folded, unfolded if one of its children is chosen, and then as the user folds it")
+    func folding() {
+        // Given a skill inside Scales, chosen, and one inside Arpeggios, not chosen
+        let dMinor = skill("d-minor", "D minor", inside: .scales)
+        let cMajor = skill("c-major", "C major", inside: .arpeggios)
+        let model = TagPickerModel(practice: practice, library: InMemoryTagLibrary([dMinor, cMajor]))
+        let scales = BuiltInSkill.scales.rawValue
+        let arpeggios = BuiltInSkill.arpeggios.rawValue
+        model.toggle(dMinor)
+
+        // When the picker opens
+        model.open()
+
+        // Then only Scales is unfolded, until the user folds it
+        #expect(model[isUnfolded: scales])
+        #expect(!model[isUnfolded: arpeggios])
+        model[isUnfolded: scales] = false
+        model.toggle(cMajor)
+        #expect(!model[isUnfolded: scales])
+        #expect(!model[isUnfolded: arpeggios], "Choosing a child while open doesn't unfold its parent")
+    }
+
+    @Test("TAG-5, D3: children fold under their parent, archived ones only if chosen, and a search lists them flat")
+    func childrenFoldUnderTheParent() {
+        // Given Scales with a live and an archived skill inside it, and a top-level skill
+        let dMinor = skill("d-minor", "D minor", inside: .scales)
+        let old = skill("old", "A minor", inside: .scales, archived: true)
+        let pedalling = skill("pedalling", "Pedalling")
+        let model = TagPickerModel(practice: practice, library: InMemoryTagLibrary([dMinor, old, pedalling]))
+        let scales = BuiltInSkill.scales.tag
+
+        // When the picker shows its skills
+        let topLevel = model.shown(.skill).map(\.id)
+
+        // Then the children are under Scales, not at the top level
+        #expect(!topLevel.contains("d-minor"))
+        #expect(topLevel.contains("pedalling") && topLevel.contains(scales.id))
+        #expect(model.shown(inside: scales).map(\.id) == ["d-minor"])
+        #expect(model.label(dMinor) == "D minor")
+        // Tagged before it was archived, which choosing it in the picker would undo.
+        practice.setTags(["old"])
+        #expect(model.shown(inside: scales).map(\.id) == ["d-minor", "old"], "A chosen archived child shows, last")
+
+        // When the user searches for part of a child's name
+        model.query = "minor"
+
+        // Then each hit is listed on its own, a child named with its parent, and nothing is folded under Scales
+        #expect(model.shown(.skill).map(\.id) == ["d-minor", "old"])
+        #expect(model.label(dMinor) == "Scales › D minor")
+        #expect(model.shown(inside: scales).isEmpty)
+    }
+
+    @Test(
+        "TAG-5, D4: a skill added inside a built-in is stored in it, tags the session, unfolds it and clears a search")
+    func addsInside() throws {
+        // Given the picker, closed folds, an untagged session and a search that matches Scales but not the new name
+        let model = TagPickerModel(practice: practice, library: library)
+        let scales = BuiltInSkill.scales.tag
+        model.open()
+        model.query = "Scal"
+
+        // When "D minor" is added inside Scales
+        model.add(" D minor ", inside: scales)
+
+        // Then the search is cleared, so it isn't hidden, and it's one record inside Scales, the session's tag, read
+        // as "Scales › D minor", under an open Scales
+        #expect(model.query.isEmpty)
+        let added = try #require(library.tags().first { $0.name == "D minor" })
+        #expect(added.parentID == scales.id)
+        #expect(added.kind == .skill)
+        #expect(practice.session?.tagIDs == [added.id])
+        #expect(model.selectedNames == ["Scales › D minor"])
+        #expect(model[isUnfolded: scales.id])
+        #expect(model.shown(inside: scales).map(\.id) == [added.id])
+    }
+
+    @Test("TAG-5, D5: the session's tags read with their parents, and a parent as itself")
+    func selectedNames() {
+        // Given a session tagged with a piece, a skill inside Scales, and Scales
+        let dMinor = skill("d-minor", "D minor", inside: .scales)
+        let model = TagPickerModel(practice: practice, library: InMemoryTagLibrary([ballade, dMinor]))
+        practice.setTags(["ballade", "d-minor", BuiltInSkill.scales.rawValue])
+
+        // When its tags are named
+        let names = model.selectedNames
+
+        // Then the child carries its parent's name, and nothing else does
+        #expect(names == ["Ballade No. 1", "Scales › D minor", "Scales"])
+    }
+
+    @Test("TAG-5, Q1, ADR 0013: a list is read as shown, so a child of a tag merged away is in the kept tag's list")
+    func listsAreReadThroughMerges() {
+        // Given "D minor" inside a skill that another device merged into Technique
+        let merged = skill("left-hand", "Left hand", archived: true)
+        let dMinor = skill("d-minor", "D minor")
+        let library = InMemoryTagLibrary([
+            PianismCore.Tag(
+                id: merged.id, kind: .skill, name: merged.name, isArchived: true,
+                mergedInto: BuiltInSkill.technique.rawValue),
+            PianismCore.Tag(id: dMinor.id, kind: .skill, name: dMinor.name, isArchived: false, parentID: merged.id),
+        ])
+        let model = TagPickerModel(practice: practice, library: library)
+        let technique = BuiltInSkill.technique.tag
+
+        // When a name is checked inside Technique
+        // Then the child it now shows inside Technique has the name
+        #expect(model.shown(inside: technique).map(\.id) == ["d-minor"])
+        #expect(!model.canAdd("D minor", inside: technique))
+    }
+
+    @Test("TAG-5: only a top-level tag on offer, a built-in skill too, can have a tag added inside it")
+    func addInsideEligibility() {
+        // Given a top-level piece, a skill inside Scales and an archived skill
+        let dMinor = skill("d-minor", "D minor", inside: .scales)
+        let archived = skill("old", "Old", archived: true)
+        let model = TagPickerModel(practice: practice, library: InMemoryTagLibrary([ballade, dMinor, archived]))
+
+        // When each is asked whether it can take a tag inside it
+        // Then the top-level ones can, and a child or an archived tag can't
+        #expect(model.canAddInside(ballade))
+        #expect(model.canAddInside(BuiltInSkill.scales.tag))
+        #expect(!model.canAddInside(dMinor), "Tags nest one level deep")
+        #expect(!model.canAddInside(archived))
+        #expect(!model.canAdd("Rubato", inside: dMinor))
+    }
+
+    @Test("TAG-5, ADR 0013: a tag that reads top-level but has a stored link can't have a tag added inside it")
+    func addInsideNeedsNoStoredLink() {
+        // Given a piece inside a tag that hasn't synced to this device yet, so it reads top-level
+        let waiting = PianismCore.Tag(
+            id: "waiting", kind: .piece, name: "Waiting", isArchived: false, parentID: "unseen")
+        let model = TagPickerModel(practice: practice, library: InMemoryTagLibrary([waiting]))
+
+        // When it's asked whether it can take a tag inside it
+        // Then it can't, though it's listed at the top level: once its parent syncs, the new tag would be a grandchild
+        #expect(model.shown(.piece).map(\.id) == ["waiting"])
+        #expect(!model.canAddInside(waiting))
+        #expect(!model.canAdd("Prelude", inside: waiting))
+    }
+
+    @Test("TAG-5, Q1: a name is unique within its list, folding case and accents, and free in another list")
+    func namesAreUniquePerList() {
+        // Given "D minor" inside Scales, "Étude" inside Ballade, and a top-level skill
+        let dMinor = skill("d-minor", "D minor", inside: .scales)
+        let gMajor = skill("g-major", "G major", inside: .scales)
+        let etude = PianismCore.Tag(id: "etude", kind: .piece, name: "Étude", isArchived: false, parentID: "ballade")
+        let pedalling = skill("pedalling", "Pedalling")
+        let model = TagPickerModel(
+            practice: practice, library: InMemoryTagLibrary([ballade, etude, dMinor, gMajor, pedalling]))
+        let scales = BuiltInSkill.scales.tag
+
+        // When names are checked in each list
+        // Then a clash within a list is refused, and the same name in another list is allowed
+        #expect(!model.canAdd("d MINOR", inside: scales))
+        #expect(!model.canAdd("etude", inside: ballade))
+        #expect(!model.canAdd("  ", inside: scales))
+        #expect(model.canAdd("D minor", inside: BuiltInSkill.arpeggios.tag))
+        #expect(model.canAdd("Pedalling", inside: scales))
+        #expect(!model.canRename(gMajor, to: "D Minor"))
+        #expect(model.canRename(gMajor, to: "Pedalling"))
+        #expect(model.canRename(pedalling, to: "D minor"))
+        #expect(!model.canRename(pedalling, to: "Arpeggios"), "Built-in skills are in the top-level list")
+        model.query = "d minor"
+        #expect(model.newName(.skill) == "d minor", "No top-level skill has the name")
+        model.query = "ARPEGGIOS"
+        #expect(model.newName(.skill) == nil)
+    }
+
+    @Test("TAG-5: a child can't share its parent's name, folding case and accents, when added or renamed")
+    func childNotNamedLikeItsParent() {
+        // Given "D minor" inside the built-in Scales, and "Étude" inside a piece named "Etude"
+        let dMinor = skill("d-minor", "D minor", inside: .scales)
+        let etudes = PianismCore.Tag(id: "etudes", kind: .piece, name: "Etude", isArchived: false)
+        let first = PianismCore.Tag(id: "first", kind: .piece, name: "No. 1", isArchived: false, parentID: "etudes")
+        let model = TagPickerModel(practice: practice, library: InMemoryTagLibrary([dMinor, etudes, first]))
+        let scales = BuiltInSkill.scales.tag
+
+        // When a child is given its parent's name, by adding or by renaming either one
+        // Then it's refused, and a name only like the parent's is allowed
+        #expect(!model.canAdd("Scales", inside: scales))
+        #expect(!model.canAdd(" scales ", inside: scales))
+        #expect(!model.canAdd("ÉTUDE", inside: etudes))
+        #expect(model.canAdd("Scales in thirds", inside: scales))
+        #expect(!model.canRename(dMinor, to: "Scales"))
+        #expect(!model.canRename(first, to: "étude"))
+        #expect(!model.canRename(etudes, to: "no. 1"), "Its child would share its new name")
+        #expect(model.canRename(etudes, to: "Études"))
+    }
+
+    @Test(
+        "TAG-5, D1: a parent with something unarchived inside can't be archived until it's archived; archived don't count"
+    )
+    func archiveWaitsForWhatsInside() throws {
+        // Given a piece with two unarchived pieces and an archived one inside it
+        let inside = ["no-1", "no-2"].map {
+            PianismCore.Tag(id: $0, kind: .piece, name: $0, isArchived: false, parentID: "ballade")
+        }
+        let old = PianismCore.Tag(id: "old", kind: .piece, name: "Old", isArchived: true, parentID: "ballade")
+        let library = InMemoryTagLibrary([ballade] + inside + [old])
+        let model = TagPickerModel(practice: practice, library: library)
+
+        // When the parent is archived
+        #expect(model.liveChildren(of: ballade) == 2)
+        model.archive(ballade)
+
+        // Then it stays on offer
+        #expect(library.tags().first?.isArchived == false)
+
+        // When what's inside is archived, then the parent
+        model.archive(inside[0])
+        #expect(model.liveChildren(of: ballade) == 1)
+        model.archive(inside[1])
+        model.archive(ballade)
+
+        // Then it's archived
+        #expect(model.liveChildren(of: ballade) == 0)
+        #expect(library.tags().first?.isArchived == true)
+    }
+
+    @Test("TAG-5, D2: a tag merges only within its list, into a tag with nothing inside, and a parent can't merge")
+    func mergeStaysInOneList() {
+        // Given two pieces inside Ballade, one inside another piece, a parent whose only child is archived, and two
+        // top-level pieces without children
+        let first = PianismCore.Tag(id: "first", kind: .piece, name: "First", isArchived: false, parentID: "ballade")
+        let second = PianismCore.Tag(id: "second", kind: .piece, name: "Second", isArchived: false, parentID: "ballade")
+        let cousin = PianismCore.Tag(id: "cousin", kind: .piece, name: "Cousin", isArchived: false, parentID: "suite")
+        let suite = PianismCore.Tag(id: "suite", kind: .piece, name: "Suite", isArchived: false)
+        let emptied = PianismCore.Tag(id: "emptied", kind: .piece, name: "Emptied", isArchived: false)
+        let gone = PianismCore.Tag(id: "gone", kind: .piece, name: "Gone", isArchived: true, parentID: "emptied")
+        let lone = PianismCore.Tag(id: "lone", kind: .piece, name: "Lone", isArchived: false)
+        let twin = PianismCore.Tag(id: "twin", kind: .piece, name: "Lone", isArchived: false)
+        let model = TagPickerModel(
+            practice: practice,
+            library: InMemoryTagLibrary([ballade, first, second, suite, cousin, emptied, gone, lone, twin]))
+
+        // When each is asked what it can merge into
+        // Then a child merges only into its siblings, a top-level tag only into childless top-level ones, and a
+        // parent, even of only archived tags, into nothing
+        #expect(model.mergeTargets(for: first).map(\.id) == ["second"])
+        #expect(model.mergeTargets(for: lone).map(\.id) == ["twin"], "Two duplicates from un-nesting can merge")
+        #expect(model.canMerge(first))
+        #expect(!model.canMerge(ballade))
+        #expect(!model.canMerge(emptied), "Archived children count")
+        #expect(!model.mergeTargets(for: cousin).contains { $0.id == "first" })
+    }
+
+    private func skill(
+        _ id: String, _ name: String, inside parent: BuiltInSkill? = nil, archived: Bool = false
+    ) -> PianismCore.Tag {
+        PianismCore.Tag(id: id, kind: .skill, name: name, isArchived: archived, parentID: parent?.rawValue)
+    }
 }
 
 /// A tag library that can't be reached, as when the store can't open.

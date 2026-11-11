@@ -64,7 +64,7 @@ struct SessionEditorView: View {
                     isPickingTags = true
                 } label: {
                     LabeledContent {
-                        Text(tags: tags.selected)
+                        Text(tagNames: tags.selectedNames)
                     } label: {
                         Text("Tags", bundle: .module).foregroundStyle(Color.primary)
                     }
