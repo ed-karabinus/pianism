@@ -24,20 +24,37 @@ public struct PracticeWeek: Sendable {
     /// The week's practice time with each top-level tag, longest first, ties by name as the tag picker sorts them, and
     /// then any untagged time. A session with several tags counts in full toward each, a merged tag as the tag it was
     /// merged into, and a tag inside another toward that parent, once however many of its children the session has
-    /// (D7). Each day counts its own part of a session, so one across midnight isn't counted twice, and one across the
-    /// week's edge counts only the minutes inside it.
+    /// (D7). A parent brings the tags inside it with any time this week, each with its own, sorted the same way. Each
+    /// day counts its own part of a session, so one across midnight isn't counted twice, and one across the week's
+    /// edge counts only the minutes inside it.
     public func timeByTag(in index: TagIndex) -> [TagTime] {
         var byTag: [Tag.ID: TagTime] = [:]
+        var byChild: [Tag.ID: TagTime] = [:]
         var untagged = TagTime(tag: nil, time: 0)
         for day in days {
             for session in day.sessions {
                 let time = day.part(of: session).practiced
-                let tags = index.counted(for: session.tagIDs).filter { index.parent(of: $0) == nil }
+                let tags = index.counted(for: session.tagIDs)
                 if tags.isEmpty { untagged.time += time }
-                for tag in tags { byTag[tag.id, default: TagTime(tag: tag, time: 0)].time += time }
+                for tag in tags {
+                    if index.parent(of: tag) == nil {
+                        byTag[tag.id, default: TagTime(tag: tag, time: 0)].time += time
+                    } else {
+                        byChild[tag.id, default: TagTime(tag: tag, time: 0)].time += time
+                    }
+                }
             }
         }
-        let tagged = byTag.values.sorted { first, second in
+        // A session counts toward a child's parent too, so every child's parent has a time here.
+        for child in Self.sorted(byChild.values) {
+            if let tag = child.tag, let parent = index.parent(of: tag) { byTag[parent.id]?.inside.append(child) }
+        }
+        return Self.sorted(byTag.values) + (untagged.time > 0 ? [untagged] : [])
+    }
+
+    /// Longest first, ties by name as the tag picker sorts them, then by ID.
+    private static func sorted(_ times: some Sequence<TagTime>) -> [TagTime] {
+        times.sorted { first, second in
             guard first.time == second.time else {
                 return first.time > second.time  // mutate:ignore - the times differ here
             }
@@ -46,13 +63,14 @@ public struct PracticeWeek: Sendable {
             guard order == .orderedSame else { return order == .orderedAscending }
             return first.id ?? "" < second.id ?? ""  // mutate:ignore - two tags never share an ID
         }
-        return tagged + (untagged.time > 0 ? [untagged] : [])
     }
 
     /// Practice time with a tag, or untagged with `tag` nil (HIS-2).
     public struct TagTime: Sendable, Hashable, Identifiable {
         public let tag: Tag?
         public var time: TimeInterval
+        /// The time with each tag inside this one that has any, longest first (TAG-5).
+        public var inside: [TagTime] = []
         public var id: Tag.ID? { tag?.id }
     }
 }

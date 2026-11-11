@@ -150,7 +150,7 @@ struct PracticeWeekTests {
     }
 
     @Test(
-        "HIS-2, TAG-5: the week lists top-level tags only, a parent with its children's time once per session, and a tag without children keeps its row"
+        "HIS-2, TAG-5: the week lists top-level tags, a parent with its children's time once per session and each child's own inside it, and a tag without children keeps its row"
     )
     func timeByTopLevelTag() throws {
         // Given two skills inside Scales, one synced inside D minor (two deep, so it reads at the top level), and a
@@ -176,10 +176,12 @@ struct PracticeWeekTests {
         // When the week's time by tag is listed
         let times = week.timeByTag(in: TagIndex([scales, dMinor, gMajor, ballade, twoDeep]))
 
-        // Then Scales holds both sessions once, the children have no rows, the piece keeps its own, and the tag two
-        // deep has its own row, as it reads at the top level
+        // Then Scales holds both sessions once, with each child's own time inside it, longest first; the piece keeps its
+        // own row, and the tag two deep has its own, as it reads at the top level
+        let inside: [PracticeWeek.TagTime] = [.init(tag: gMajor, time: 40 * 60), .init(tag: dMinor, time: 30 * 60)]
         let expected: [PracticeWeek.TagTime] = [
-            .init(tag: scales, time: 40 * 60), .init(tag: ballade, time: 15 * 60), .init(tag: twoDeep, time: 3 * 60),
+            .init(tag: scales, time: 40 * 60, inside: inside), .init(tag: ballade, time: 15 * 60),
+            .init(tag: twoDeep, time: 3 * 60),
         ]
         #expect(times == expected)
     }
