@@ -43,6 +43,8 @@ struct TagStatsView: View {
         }
         // The user's own name for the parent, as typed.
         .navigationTitle(parent.map { Text(verbatim: $0.name) } ?? Text("Time per piece and skill", bundle: .module))
+        // In the bar, as on iPad: an iPhone's large title sat under the hard top edge above, which blurred it.
+        .toolbarTitleDisplayMode(.inline)
     }
 
     /// The kind listed: the switch's, or inside a parent, the parent's.
