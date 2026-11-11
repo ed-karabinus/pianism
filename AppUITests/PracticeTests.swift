@@ -39,7 +39,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
         XCTAssertTrue(app.buttons["practice.start"].exists)
-        // The clock is fixed, so it had no practice: under 10 s, it's dropped quietly (SES-1).
+        // The clock is fixed, so it had no practice: under 10 s, it isn't saved (SES-1).
         XCTAssertFalse(app.staticTexts["practice.last-session"].exists, "A session under 10 s was kept")
         openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A session under 10 s was kept")

@@ -51,6 +51,8 @@ struct PracticeView: View {
                     .padding(.top, 8)
                     .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
                     .accessibilityIdentifier(AccessibilityID.practiceNotSavedPopUp)
+                    // Taps go through to whatever it covers.
+                    .allowsHitTesting(false)
             }
         }
         .onChange(of: model.notSavedCount) { _, count in
@@ -486,12 +488,12 @@ private struct PracticeTimelineSchedule: TimelineSchedule {
         .dynamicTypeSize(.accessibility5)
 }
 
-#Preview("Too short to save") {
+#Preview("Not saved, a piano's session") {
     let model = PracticeModel.preview(.tooShort)
     PracticeView(model: model, tags: .preview(for: model)) { _ in }
 }
 
-#Preview("Too short to save, dark, AX5") {
+#Preview("Not saved, a piano's session, dark, AX5") {
     let model = PracticeModel.preview(.tooShort)
     PracticeView(model: model, tags: .preview(for: model)) { _ in }
         .preferredColorScheme(.dark)
