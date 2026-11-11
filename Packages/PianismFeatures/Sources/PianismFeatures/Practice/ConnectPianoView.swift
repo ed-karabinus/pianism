@@ -74,21 +74,25 @@ struct ConnectPianoView: View {
     /// Bluetooth one (MIDI-2).
     struct PairingScreen: View {
         let practice: PracticeModel
-        /// Changed each time it goes off screen, so it's a new one, searching afresh, when it comes back: left open in
-        /// another tab, Apple's screen kept spinning on "No devices found" (the owner's device check, 2026-11-11).
-        @State private var search = 0
+        /// Apple's screen is made only while this is on screen, so each time it comes back it searches afresh: left
+        /// open in another tab, it kept spinning on "No devices found" (the owner's device check, 2026-11-11).
+        @State private var isShown = false
 
         var body: some View {
-            BluetoothPairingView()
-                .id(search)
-                .navigationTitle(Text("Bluetooth", bundle: .module))
-                // A UIKit list doesn't collapse a large title, which would crowd Apple's short list.
-                .navigationBarTitleDisplayMode(.inline)
-                .onAppear { practice.isPairing = true }
-                .onDisappear {
-                    practice.isPairing = false
-                    search += 1
-                }
+            ZStack {
+                if isShown { BluetoothPairingView() }
+            }
+            .navigationTitle(Text("Bluetooth", bundle: .module))
+            // A UIKit list doesn't collapse a large title, which would crowd Apple's short list.
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                isShown = true
+                practice.isPairing = true
+            }
+            .onDisappear {
+                isShown = false
+                practice.isPairing = false
+            }
         }
     }
 
