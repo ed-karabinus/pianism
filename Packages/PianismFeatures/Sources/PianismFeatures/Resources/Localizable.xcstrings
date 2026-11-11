@@ -13,6 +13,9 @@
     "%lld BPM" : {
       "comment" : "A target tempo"
     },
+    "%lld inside" : {
+      "comment" : "A row opening the pieces, or skills, practiced inside the one above"
+    },
     "A day counts after" : {
 
     },
@@ -236,6 +239,12 @@
 
     },
     "None" : {
+
+    },
+    "Not saved: under 10 seconds" : {
+
+    },
+    "Not saved: under a minute of playing" : {
 
     },
     "Note" : {
@@ -470,9 +479,6 @@
 
     },
     "Today" : {
-
-    },
-    "Too short to save" : {
 
     },
     "Total" : {

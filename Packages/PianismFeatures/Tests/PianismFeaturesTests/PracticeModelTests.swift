@@ -958,7 +958,7 @@ struct PracticeModelTests {
         #expect(model.session == nil)
         #expect(model.lastSession?.endedAt == start + 70 + endsAfter)
         #expect(model.lastSession?.elapsed(at: clock.now) == 70)
-        #expect(!model.lastRunWasTooShort)
+        #expect(model.notSaved == nil)
     }
 
     @Test("MIDI-1: a Stop with under a minute of played time discards the MIDI session, and Practice says so")
@@ -975,17 +975,17 @@ struct PracticeModelTests {
         model.stop()
 
         #expect(model.session == nil)
-        #expect(model.lastRunWasTooShort)
+        #expect(model.notSaved == .underAMinuteOfPlaying)
         #expect(history.sessions().isEmpty)
     }
 
     @Test(
-        "MIDI-1: \"Too short to save\" shows until the next start, by tapping or by playing", arguments: [false, true])
+        "MIDI-1: \"Not saved\" shows until the next start, by tapping or by playing", arguments: [false, true])
     func tooShortClearsOnTheNextStart(byPlaying: Bool) {
         let model = makeModel()
         for _ in 1...3 { model.noteOn(at: clock.now) }
         model.stop()
-        #expect(model.lastRunWasTooShort)
+        #expect(model.notSaved == .underAMinuteOfPlaying)
         clock.advance(by: 60)
 
         if byPlaying {
@@ -995,7 +995,47 @@ struct PracticeModelTests {
         }
 
         #expect(model.session?.state == .running)
-        #expect(!model.lastRunWasTooShort)
+        #expect(model.notSaved == nil)
+    }
+
+    @Test("SES-1: a tapped session under 10 s isn't saved, and Practice says so, to VoiceOver too")
+    func aShortTappedSessionSaysNotSaved() {
+        // Given a session started by tapping
+        let model = makeModel()
+        model.start()
+        clock.advance(by: 9)
+
+        // When it's stopped before 10 s
+        model.stop()
+
+        // Then nothing was kept, and Practice and VoiceOver say why
+        #expect(model.session == nil && model.lastSession == nil)
+        #expect(model.notSaved == .underTenSeconds)
+        #expect(model.notSavedCount == 1)
+        #expect(voiceOver.lines == ["Not saved: under 10 seconds"])
+    }
+
+    @Test("SES-1, MIDI-1: each session not saved counts, so its pop-up shows again; one that's saved says nothing")
+    func eachSessionNotSavedCounts() {
+        // Given a tapped session not saved, then a piano's
+        let model = makeModel()
+        model.start()
+        model.stop()
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+        model.stop()
+        #expect(model.notSaved == .underAMinuteOfPlaying)
+        #expect(model.notSavedCount == 2)
+
+        // When a session long enough to save ends
+        model.start()
+        clock.advance(by: 600)
+        model.stop()
+
+        // Then it's saved, and nothing says otherwise
+        #expect(model.lastSession != nil)
+        #expect(model.notSaved == nil)
+        #expect(model.notSavedCount == 2)
+        #expect(voiceOver.lines == ["Not saved: under 10 seconds", "Not saved: under a minute of playing"])
     }
 
     @Test("MIDI-1: a MIDI session that history and the outbox can't take isn't called too short; the error shows")
@@ -1014,7 +1054,7 @@ struct PracticeModelTests {
 
         #expect(model.session?.state == .ended)
         #expect(model.isShowingStorageError)
-        #expect(!model.lastRunWasTooShort)
+        #expect(model.notSaved == nil)
     }
 
     @Test("MIDI-1: a Stop dated before the last note, as after the clock steps back, ends the session at that note")
@@ -1028,7 +1068,7 @@ struct PracticeModelTests {
         model.stop()
 
         #expect(model.session == nil)
-        #expect(model.lastRunWasTooShort)
+        #expect(model.notSaved == .underAMinuteOfPlaying)
     }
 
     @Test("MIDI-R4: Stop after a tapped Pause ends the MIDI session at the tap, within 5 s of the pause")
@@ -1126,7 +1166,9 @@ struct PracticeModelTests {
         #expect(voiceOver.lines.count == 2)
     }
 
-    @Test("MIDI-1: VoiceOver hears nothing of a tapped Pause, a silence that ends the session, or a late note")
+    @Test(
+        "MIDI-1: VoiceOver hears nothing of a tapped Pause, a silence that ends the session, or a late note, but that a session wasn't saved"
+    )
     func onlyASilencePauseThatStandsIsAnnounced() {
         let tapped = makeModel()
         for _ in 1...3 { tapped.noteOn(at: clock.now) }
@@ -1146,7 +1188,8 @@ struct PracticeModelTests {
         late.noteOn(at: clock.now)
         #expect(late.session?.state == .running)
 
-        #expect(voiceOver.lines.isEmpty)
+        // The first two had under a minute played, so each wasn't saved, which is said (SES-1).
+        #expect(voiceOver.lines == Array(repeating: "Not saved: under a minute of playing", count: 2))
     }
 
     @Test("MIDI-1: VoiceOver hears of a silence that paused the session while away, back in the app")
@@ -1223,7 +1266,7 @@ struct PracticeModelTests {
         #expect(model.session == nil)
         #expect(model.lastSession?.endedAt == start + 65)
         #expect(model.lastSession?.elapsed(at: clock.now) == 60)
-        #expect(!model.lastRunWasTooShort)
+        #expect(model.notSaved == nil)
     }
 
     @Test(
@@ -1331,7 +1374,7 @@ struct PracticeModelTests {
         model.tick()
 
         #expect(model.session == nil)
-        #expect(model.lastRunWasTooShort)
+        #expect(model.notSaved == .underAMinuteOfPlaying)
         #expect(history.sessions().isEmpty)
     }
 

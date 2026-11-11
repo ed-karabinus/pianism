@@ -39,7 +39,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
         XCTAssertTrue(app.buttons["practice.start"].exists)
-        // The clock is fixed, so it had no practice: under 10 s, it's dropped quietly (SES-1).
+        // The clock is fixed, so it had no practice: under 10 s, it isn't saved (SES-1).
         XCTAssertFalse(app.staticTexts["practice.last-session"].exists, "A session under 10 s was kept")
         openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A session under 10 s was kept")
@@ -82,11 +82,36 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
 
         XCTAssertTrue(app.staticTexts["practice.too-short"].waitForExistence(timeout: 5), "It didn't say so")
-        XCTAssertEqual(text(app, "practice.too-short"), "Too short to save")
+        XCTAssertEqual(text(app, "practice.too-short"), "Not saved: under a minute of playing")
+        XCTAssertEqual(text(app, "practice.not-saved-pop-up"), "Not saved: under a minute of playing")
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
-        attachScreenshot(of: app, named: "Too short to save")
+        attachScreenshot(of: app, named: "Not saved, a piano's session")
         openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A MIDI session under 1 min was kept")
+    }
+
+    /// SES-1: a tapped session stopped under 10 s isn't saved, which a pop-up says for 4 s and a line under Start
+    /// until the next start, so it doesn't look like the app lost it.
+    @MainActor
+    func testAShortTappedSessionSaysItWasntSaved() throws {
+        // Given a session started by tapping
+        let app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 5), "Start didn't start")
+
+        // When it's stopped at once
+        tap(app, "practice.stop")
+
+        // Then a pop-up and the line say it wasn't saved, and the pop-up goes after a few seconds
+        let popUp = app.staticTexts["practice.not-saved-pop-up"]
+        XCTAssertTrue(popUp.waitForExistence(timeout: 5), "No pop-up")
+        XCTAssertEqual(popUp.label, "Not saved: under 10 seconds")
+        XCTAssertEqual(text(app, "practice.too-short"), "Not saved: under 10 seconds")
+        attachScreenshot(of: app, named: "Not saved, a tapped session")
+        XCTAssertTrue(popUp.waitForNonExistence(timeout: 8), "The pop-up stayed")
+        XCTAssertEqual(text(app, "practice.too-short"), "Not saved: under 10 seconds", "The line went too")
+        openHistory(app)
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A session under 10 s was kept")
     }
 
     /// MIDI-1: a silence pauses a MIDI session at its last note, and a longer one saves it 5 s after that note, with no
@@ -1482,8 +1507,10 @@ final class PracticeTests: UITestCase {
 
     /// HIS-4, D7: without Pro, History's Time per piece and skill opens the Pro screen, with no numbers. Once Pro is
     /// bought, it lists a piece another device practiced, with its 30 minutes in all and in the last 30 days, and with
-    /// the switch on Skills, the skill it was tagged with. Before that session arrives, both sides are empty, and the
-    /// switch still works over the empty state. The session comes 40 s after launch, leaving a slow CI iPad time to buy.
+    /// the switch on Skills, Scales, which the skill it was tagged with sits inside, with the same 30 minutes and a
+    /// "1 inside" row that opens the skill with its own (D6). Before that session arrives, both sides are empty, and
+    /// the switch still works over the empty state. The session comes 40 s after launch, leaving a slow CI iPad time
+    /// to buy.
     @MainActor
     func testTimePerPieceOpensOnlyWithPro() throws {
         executionTimeAllowance = 5 * 60  // a stalled audit then costs 5 min, not the default 15
@@ -1532,10 +1559,22 @@ final class PracticeTests: UITestCase {
 
         // When the switch shows skills
         skills.tap()
-        // Then the skill has the same 30 minutes, and the piece is gone
-        XCTAssertTrue(tag.wait(for: \.label, toEqual: "Synced skill", timeout: 5), "No skill is listed")
-        XCTAssertEqual(times.count, 2, "The skill's times are wrong")
+        // Then Scales, which the skill sits inside, has the same 30 minutes, and the piece is gone
+        XCTAssertTrue(tag.wait(for: \.label, toEqual: "Scales", timeout: 5), "Scales isn't listed")
+        XCTAssertEqual(times.count, 2, "Scales's times are wrong")
         attachScreenshot(of: app, named: "Time per piece and skill, skills")
+
+        // When Scales's "1 inside" row opens
+        let inside = element(app, "piece-stats.inside")
+        XCTAssertTrue(inside.waitForExistence(timeout: 5), "No inside row")
+        XCTAssertEqual(inside.label, "1 inside")
+        inside.tap()
+        // Then a screen titled Scales lists the skill with its own 30 minutes, with no switch
+        XCTAssertTrue(app.navigationBars["Scales"].waitForExistence(timeout: 5), "The skills inside didn't open")
+        XCTAssertTrue(tag.wait(for: \.label, toEqual: "Synced skill", timeout: 5), "The skill inside isn't listed")
+        XCTAssertEqual(times.count, 2, "The skill's times are wrong")
+        XCTAssertFalse(app.segmentedControls["piece-stats.kind"].exists, "The switch showed inside Scales")
+        attachScreenshot(of: app, named: "Time per piece and skill, inside Scales")
     }
 
     /// PRO-3: buying from the Pro screen unlocks Pro at once, there and in Settings.

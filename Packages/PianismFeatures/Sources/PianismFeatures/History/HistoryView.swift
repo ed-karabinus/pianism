@@ -61,7 +61,7 @@ struct HistoryView: View {
     @ViewBuilder private var pieceStatsRow: some View {
         if pro.isPro {
             NavigationLink {
-                TagStatsView { model.stats(of: $0) }
+                TagStatsView { model.statsByParent(of: $0) }
             } label: {
                 Label(LocalizedStringResource("Time per piece and skill", bundle: .module), systemImage: "chart.bar")
             }

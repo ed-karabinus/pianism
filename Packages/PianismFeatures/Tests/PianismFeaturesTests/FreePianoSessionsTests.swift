@@ -61,7 +61,7 @@ struct FreePianoSessionsTests {
         for _ in 1...3 { model.noteOn(at: clock.now) }
         clock.advance(by: 601)
         model.tick()
-        #expect(model.lastRunWasTooShort)
+        #expect(model.notSaved == .underAMinuteOfPlaying)
 
         #expect(model.freePianoSessionsLeft == 1)
     }

@@ -136,16 +136,16 @@ struct PianismApp: App {
                 Showcase.seed(into: historyStore, running: store, clock: clock)
             }
             // End-to-end tests have another device's changes arrive while the app is open with
-            // PIANISM_SYNC_ARRIVES_SECONDS: after that long a piece and a skill, and after as long again a 30-minute
-            // session tagged with both, each saved through a second store on the same file, as an iCloud import saves
-            // them. It runs on the main actor, like the rest of launch.
+            // PIANISM_SYNC_ARRIVES_SECONDS: after that long a piece and a skill inside Scales, and after as long again
+            // a 30-minute session tagged with both, each saved through a second store on the same file, as an iCloud
+            // import saves them. It runs on the main actor, like the rest of launch.
             if let seconds = environment["PIANISM_SYNC_ARRIVES_SECONDS"].flatMap(Double.init) {
                 Task { [clock, historyURL] in
                     let elsewhere = HistoryStore(url: historyURL)
                     try? await Task.sleep(for: .seconds(seconds))
                     let tags = SwiftDataTagLibrary(store: elsewhere, clock: clock)
                     let piece = try? tags.add(name: "Synced piece", kind: .piece)
-                    let skill = try? tags.add(name: "Synced skill", kind: .skill)
+                    let skill = try? tags.add(name: "Synced skill", kind: .skill, inside: BuiltInSkill.scales.rawValue)
                     try? await Task.sleep(for: .seconds(seconds))
                     var session = PracticeSession(startedAt: clock.now - 30 * 60)
                     try? session.setTags([piece, skill].compactMap { $0?.id })
