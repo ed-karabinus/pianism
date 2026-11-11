@@ -64,8 +64,10 @@ struct TagStatsTests {
             .piece, in: PracticeDay.group(sessions, in: calendar), tags: TagIndex([chopin, bach, scales]), today: start,
             calendar: calendar)
 
+        // Typed apart, as CI's older compiler times out inferring the literal inside the comparison.
+        let totals: [TimeInterval] = [40 * 60, 30 * 60]
         #expect(stats.map(\.tag.id) == ["chopin", "bach"])
-        #expect(stats.map(\.total) == [40 * 60, 30 * 60])
+        #expect(stats.map(\.total) == totals)
     }
 
     @Test("HIS-4: two pieces with the same time are in name order")
@@ -118,6 +120,28 @@ struct TagStatsTests {
         #expect(!bachStats.hasPianoTime)
     }
 
+    @Test("HIS-4: a piano session paused longer than it played still has piano time")
+    func mostlyPausedIsStillPianoTime() throws {
+        // Given a piano session that played 10 minutes and paused for 20
+        let calendar = try losAngeles()
+        let start = try date(2026, 11, 29, 18, 0, in: calendar)
+        var piano = PracticeSession(startedAt: start, source: .midi)
+        try piano.setTags(["chopin"])
+        try piano.pause(at: start + 5 * 60)
+        try piano.resume(at: start + 25 * 60)
+        try piano.stop(at: start + 30 * 60)
+
+        // When its stats are counted
+        let stats = TagStats.of(
+            .piece, in: PracticeDay.group([piano], in: calendar), tags: TagIndex([chopin]), today: start,
+            calendar: calendar)
+
+        // Then the split shows
+        let chopinStats = try #require(stats.first)
+        #expect(chopinStats.playing == 10 * 60 && chopinStats.paused == 20 * 60)
+        #expect(chopinStats.hasPianoTime)
+    }
+
     @Test("HIS-4: a piano session from before the 30 days splits only its part inside them")
     func theSplitKeepsToTheDays() throws {
         let calendar = try losAngeles()
@@ -159,9 +183,37 @@ struct TagStatsTests {
             today: start, calendar: calendar)
 
         // Then each skill has its own time, and the piece has none here
+        let times: [TimeInterval] = [30 * 60, 20 * 60]
         #expect(stats.map(\.tag.id) == ["scales", "d-minor"])
-        #expect(stats.map(\.total) == [30 * 60, 20 * 60])
-        #expect(stats.map(\.recent) == [30 * 60, 20 * 60])
+        #expect(stats.map(\.total) == times)
+        #expect(stats.map(\.recent) == times)
+    }
+
+    @Test(
+        "HIS-4, TAG-5: a parent's time includes its children's, once per session, and each child keeps its own"
+    )
+    func parentsIncludeChildrenOnce() throws {
+        // Given two skills inside Scales, a session with both, and one with a child and Scales itself
+        let calendar = try losAngeles()
+        let start = try date(2026, 11, 20, 18, 0, in: calendar)
+        let dMinor = PianismCore.Tag(
+            id: "d-minor", kind: .skill, name: "D minor", isArchived: false, parentID: "scales")
+        let gMajor = PianismCore.Tag(
+            id: "g-major", kind: .skill, name: "G major", isArchived: false, parentID: "scales")
+        let sessions = [
+            try session(at: start, minutes: 20, tags: ["d-minor", "g-major"]),
+            try session(at: start + 3_600, minutes: 10, tags: ["g-major", "scales"]),
+        ]
+
+        // When the skills' stats are counted
+        let stats = TagStats.of(
+            .skill, in: PracticeDay.group(sessions, in: calendar), tags: TagIndex([scales, dMinor, gMajor]),
+            today: start, calendar: calendar)
+
+        // Then Scales has each session once, and each child its own sessions
+        #expect(stats.map(\.tag.id) == ["g-major", "scales", "d-minor"])
+        let minutes: [TimeInterval] = [30, 30, 20]
+        #expect(stats.map(\.total) == minutes.map { $0 * 60 })
     }
 
     private func losAngeles() throws -> Calendar {

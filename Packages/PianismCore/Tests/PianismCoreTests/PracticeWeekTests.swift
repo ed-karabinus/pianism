@@ -84,7 +84,8 @@ struct PracticeWeekTests {
 
         let starts = try (0..<7).map { try date(year, month, day + $0, 0, 0, in: calendar) }
         #expect(week.days.map(\.start) == starts)
-        #expect(week.days.map(\.total) == [0, 0, 0, 0, 0, 0, 15 * 60])
+        let totals: [TimeInterval] = [0, 0, 0, 0, 0, 0, 15 * 60]
+        #expect(week.days.map(\.total) == totals)
     }
 
     @Test(
@@ -146,6 +147,41 @@ struct PracticeWeekTests {
         let week = PracticeWeek(containing: monday, days: PracticeDay.group([tagged], in: calendar), in: calendar)
 
         #expect(week.timeByTag(in: TagIndex([scales])).map(\.tag) == [scales])
+    }
+
+    @Test(
+        "HIS-2, TAG-5: the week lists top-level tags only, a parent with its children's time once per session, and a tag without children keeps its row"
+    )
+    func timeByTopLevelTag() throws {
+        // Given two skills inside Scales, one synced inside D minor (two deep, so it reads at the top level), and a
+        // piece with nothing inside it
+        let calendar = try calendar(firstWeekday: 2)
+        let scales = PianismCore.Tag(id: "scales", kind: .skill, name: "Scales", isArchived: false)
+        let dMinor = PianismCore.Tag(
+            id: "d-minor", kind: .skill, name: "D minor", isArchived: false, parentID: "scales")
+        let gMajor = PianismCore.Tag(
+            id: "g-major", kind: .skill, name: "G major", isArchived: false, parentID: "scales")
+        let ballade = PianismCore.Tag(id: "ballade", kind: .piece, name: "Ballade", isArchived: false)
+        let twoDeep = PianismCore.Tag(
+            id: "two-deep", kind: .skill, name: "Two deep", isArchived: false, parentID: "d-minor")
+        let monday = try date(2026, 10, 12, 8, 0, in: calendar)
+        let sessions = [
+            try session(at: monday, minutes: 30, tags: ["d-minor", "g-major"]),
+            try session(at: monday + 3_600, minutes: 10, tags: ["g-major", "scales", "ballade"]),
+            try session(at: monday + 7_200, minutes: 5, tags: ["ballade"]),
+            try session(at: monday + 10_800, minutes: 3, tags: ["two-deep"]),
+        ]
+        let week = PracticeWeek(containing: monday, days: PracticeDay.group(sessions, in: calendar), in: calendar)
+
+        // When the week's time by tag is listed
+        let times = week.timeByTag(in: TagIndex([scales, dMinor, gMajor, ballade, twoDeep]))
+
+        // Then Scales holds both sessions once, the children have no rows, the piece keeps its own, and the tag two
+        // deep has its own row, as it reads at the top level
+        let expected: [PracticeWeek.TagTime] = [
+            .init(tag: scales, time: 40 * 60), .init(tag: ballade, time: 15 * 60), .init(tag: twoDeep, time: 3 * 60),
+        ]
+        #expect(times == expected)
     }
 
     private func calendar(firstWeekday: Int, zone: String = "America/Los_Angeles") throws -> Calendar {

@@ -3,7 +3,7 @@ import Foundation
 /// Where a piece's or a skill's practice time goes (HIS-4): in all, over the last 30 days, and, from sessions a piano
 /// started in those days, the time playing and the time paused. Archived tags included, and a merged tag as the tag it
 /// was merged into. A session with several pieces or skills counts fully toward each (decided with Ed, 2026-11-08;
-/// skills added 2026-11-09).
+/// skills added 2026-11-09), and toward the tag each sits inside, once per session (D6, ADR 0013).
 public struct TagStats: Sendable, Hashable, Identifiable {
     public let tag: Tag
     /// Practice time in all, as History's days add it up.
@@ -33,7 +33,7 @@ public struct TagStats: Sendable, Hashable, Identifiable {
             let isRecent = day.start >= since
             for session in day.sessions {
                 let part = day.part(of: session)
-                for tag in index.tags(for: session.tagIDs) where tag.kind == kind {
+                for tag in index.counted(for: session.tagIDs) where tag.kind == kind {
                     var stats = byTag[tag.id] ?? TagStats(tag: tag)
                     stats.total += part.practiced
                     if isRecent {
@@ -49,7 +49,8 @@ public struct TagStats: Sendable, Hashable, Identifiable {
             }
         }
         return byTag.values.sorted { first, second in
-            guard first.total == second.total else { return first.total > second.total }
+            // Past the guard the totals differ, so `>=` would sort them the same.
+            guard first.total == second.total else { return first.total > second.total }  // mutate:ignore - see above
             // Two tags can share a name, so the ID settles it, or their rows could swap between launches.
             let order = first.tag.name.localizedStandardCompare(second.tag.name)
             guard order == .orderedSame else { return order == .orderedAscending }
