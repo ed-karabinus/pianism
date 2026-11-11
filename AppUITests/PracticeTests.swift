@@ -1433,6 +1433,9 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.staticTexts["One purchase, no subscription."].exists)
         let included = app.staticTexts["Piano sessions start, pause and save themselves while Pianism is open."]
         XCTAssertTrue(included.exists, "Nothing's listed as included")
+        // Each of Pro's features has its own line.
+        XCTAssertTrue(app.staticTexts["Time per piece and skill, in all and over the last 30 days."].exists, "No stats")
+        XCTAssertTrue(app.staticTexts["Export every session as a spreadsheet file (CSV)."].exists, "No export")
         XCTAssertTrue(app.buttons["paywall.restore"].exists, "No Restore")
         try audit(app, "Pro screen", contrast: false, stallsOnIPadIOS26: true, overASheet: true)
         close.tap()
