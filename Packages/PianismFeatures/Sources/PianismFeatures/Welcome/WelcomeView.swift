@@ -43,10 +43,10 @@ struct WelcomeView: View {
                 .font(.largeTitle.bold())
                 .accessibilityAddTraits(.isHeader)
             Text(
-                "Time your practice with one tap, tag what you worked on, and see your week build up.",
+                "Time your practice with one tap. Tag what you worked on. Watch your week build up.",
                 bundle: .module)
             Text(
-                "Connect a digital piano and sessions can start themselves while Pianism is open. The first 5 are free, then it's part of Pro.",
+                "Connect a digital piano to start a session by playing while Pianism is open. Your first 5 are free. After that, it's part of Pro.",
                 bundle: .module
             )
             .accessibilityIdentifier(AccessibilityID.welcomeWords)
