@@ -238,6 +238,12 @@
     "None" : {
 
     },
+    "Not saved: under 10 seconds" : {
+
+    },
+    "Not saved: under a minute of playing" : {
+
+    },
     "Note" : {
 
     },
@@ -470,9 +476,6 @@
 
     },
     "Today" : {
-
-    },
-    "Too short to save" : {
 
     },
     "Total" : {
