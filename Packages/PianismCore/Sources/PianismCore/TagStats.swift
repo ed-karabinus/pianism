@@ -49,7 +49,8 @@ public struct TagStats: Sendable, Hashable, Identifiable {
             }
         }
         return byTag.values.sorted { first, second in
-            guard first.total == second.total else { return first.total > second.total }
+            // Past the guard the totals differ, so `>=` would sort them the same.
+            guard first.total == second.total else { return first.total > second.total }  // mutate:ignore - see above
             // Two tags can share a name, so the ID settles it, or their rows could swap between launches.
             let order = first.tag.name.localizedStandardCompare(second.tag.name)
             guard order == .orderedSame else { return order == .orderedAscending }

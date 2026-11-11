@@ -84,7 +84,8 @@ struct PracticeWeekTests {
 
         let starts = try (0..<7).map { try date(year, month, day + $0, 0, 0, in: calendar) }
         #expect(week.days.map(\.start) == starts)
-        #expect(week.days.map(\.total) == [0, 0, 0, 0, 0, 0, 15 * 60])
+        let totals: [TimeInterval] = [0, 0, 0, 0, 0, 0, 15 * 60]
+        #expect(week.days.map(\.total) == totals)
     }
 
     @Test(

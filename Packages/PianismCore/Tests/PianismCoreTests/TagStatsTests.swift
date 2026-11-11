@@ -64,8 +64,10 @@ struct TagStatsTests {
             .piece, in: PracticeDay.group(sessions, in: calendar), tags: TagIndex([chopin, bach, scales]), today: start,
             calendar: calendar)
 
+        // Typed apart, as CI's older compiler times out inferring the literal inside the comparison.
+        let totals: [TimeInterval] = [40 * 60, 30 * 60]
         #expect(stats.map(\.tag.id) == ["chopin", "bach"])
-        #expect(stats.map(\.total) == [40 * 60, 30 * 60])
+        #expect(stats.map(\.total) == totals)
     }
 
     @Test("HIS-4: two pieces with the same time are in name order")
@@ -118,6 +120,28 @@ struct TagStatsTests {
         #expect(!bachStats.hasPianoTime)
     }
 
+    @Test("HIS-4: a piano session paused longer than it played still has piano time")
+    func mostlyPausedIsStillPianoTime() throws {
+        // Given a piano session that played 10 minutes and paused for 20
+        let calendar = try losAngeles()
+        let start = try date(2026, 11, 29, 18, 0, in: calendar)
+        var piano = PracticeSession(startedAt: start, source: .midi)
+        try piano.setTags(["chopin"])
+        try piano.pause(at: start + 5 * 60)
+        try piano.resume(at: start + 25 * 60)
+        try piano.stop(at: start + 30 * 60)
+
+        // When its stats are counted
+        let stats = TagStats.of(
+            .piece, in: PracticeDay.group([piano], in: calendar), tags: TagIndex([chopin]), today: start,
+            calendar: calendar)
+
+        // Then the split shows
+        let chopinStats = try #require(stats.first)
+        #expect(chopinStats.playing == 10 * 60 && chopinStats.paused == 20 * 60)
+        #expect(chopinStats.hasPianoTime)
+    }
+
     @Test("HIS-4: a piano session from before the 30 days splits only its part inside them")
     func theSplitKeepsToTheDays() throws {
         let calendar = try losAngeles()
@@ -159,9 +183,10 @@ struct TagStatsTests {
             today: start, calendar: calendar)
 
         // Then each skill has its own time, and the piece has none here
+        let times: [TimeInterval] = [30 * 60, 20 * 60]
         #expect(stats.map(\.tag.id) == ["scales", "d-minor"])
-        #expect(stats.map(\.total) == [30 * 60, 20 * 60])
-        #expect(stats.map(\.recent) == [30 * 60, 20 * 60])
+        #expect(stats.map(\.total) == times)
+        #expect(stats.map(\.recent) == times)
     }
 
     private func losAngeles() throws -> Calendar {
