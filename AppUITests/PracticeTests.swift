@@ -82,11 +82,36 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
 
         XCTAssertTrue(app.staticTexts["practice.too-short"].waitForExistence(timeout: 5), "It didn't say so")
-        XCTAssertEqual(text(app, "practice.too-short"), "Too short to save")
+        XCTAssertEqual(text(app, "practice.too-short"), "Not saved: under a minute of playing")
+        XCTAssertEqual(text(app, "practice.not-saved-pop-up"), "Not saved: under a minute of playing")
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
-        attachScreenshot(of: app, named: "Too short to save")
+        attachScreenshot(of: app, named: "Not saved, a piano's session")
         openHistory(app)
         XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A MIDI session under 1 min was kept")
+    }
+
+    /// SES-1: a tapped session stopped under 10 s isn't saved, which a pop-up says for 4 s and a line under Start
+    /// until the next start, so it doesn't look like the app lost it.
+    @MainActor
+    func testAShortTappedSessionSaysItWasntSaved() throws {
+        // Given a session started by tapping
+        let app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 5), "Start didn't start")
+
+        // When it's stopped at once
+        tap(app, "practice.stop")
+
+        // Then a pop-up and the line say it wasn't saved, and the pop-up goes after a few seconds
+        let popUp = app.staticTexts["practice.not-saved-pop-up"]
+        XCTAssertTrue(popUp.waitForExistence(timeout: 5), "No pop-up")
+        XCTAssertEqual(popUp.label, "Not saved: under 10 seconds")
+        XCTAssertEqual(text(app, "practice.too-short"), "Not saved: under 10 seconds")
+        attachScreenshot(of: app, named: "Not saved, a tapped session")
+        XCTAssertTrue(popUp.waitForNonExistence(timeout: 8), "The pop-up stayed")
+        XCTAssertEqual(text(app, "practice.too-short"), "Not saved: under 10 seconds", "The line went too")
+        openHistory(app)
+        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A session under 10 s was kept")
     }
 
     /// MIDI-1: a silence pauses a MIDI session at its last note, and a longer one saves it 5 s after that note, with no

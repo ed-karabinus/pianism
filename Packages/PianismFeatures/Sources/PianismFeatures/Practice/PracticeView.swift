@@ -17,6 +17,10 @@ struct PracticeView: View {
     /// traps if the picker reads it after it's cleared.
     @State private var pickingEndOf: PracticeSession?
     @State private var stoppedAt = Date.distantPast
+    /// The pop-up saying a session wasn't saved, for 4 s (SES-1, MIDI-1), and which one it's for, so the next one
+    /// gets its own 4 s.
+    @State private var notSavedPopUp: NotSaved?
+    @State private var notSavedPopUpCount = 0
 
     @ScaledMetric(relativeTo: .largeTitle) private var timeSize = 76
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -36,6 +40,29 @@ struct PracticeView: View {
                 .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
         }
         .storageAlert(Text(storageErrorTitle, bundle: .module), isPresented: $model.isShowingStorageError)
+        // A piano's session often ends after a silence, with nobody looking, so the line under Start stays too.
+        .overlay(alignment: .top) {
+            if let notSavedPopUp, model.notSaved != nil {
+                Text(notSavedPopUp.message)
+                    .font(.callout.weight(.medium))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.top, 8)
+                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+                    .accessibilityIdentifier(AccessibilityID.practiceNotSavedPopUp)
+            }
+        }
+        .onChange(of: model.notSavedCount) { _, count in
+            withAnimation(.smooth) { notSavedPopUp = model.notSaved }
+            notSavedPopUpCount = count
+        }
+        .task(id: notSavedPopUpCount) {
+            guard notSavedPopUp != nil else { return }
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            withAnimation(.smooth) { notSavedPopUp = nil }
+        }
         .onAppear { model.refresh() }
         // The notification's "I stopped earlier" opens Practice with the end being picked (SES-3).
         .onChange(of: model.nudgeOpened, initial: true) { _, opened in
@@ -85,8 +112,8 @@ struct PracticeView: View {
             if let session = model.session, model.isAskingStillPracticing {
                 stillPracticingBanner(session)
             }
-            if model.session == nil, model.lastRunWasTooShort {
-                Text("Too short to save", bundle: .module)
+            if model.session == nil, let notSaved = model.notSaved {
+                Text(notSaved.message)
                     .font(.callout)
                     .foregroundStyle(.secondaryText)
                     .accessibilityIdentifier(AccessibilityID.practiceTooShort)
