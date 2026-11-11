@@ -23,6 +23,9 @@ struct TagStatsView: View {
         .overlay {
             if stats.isEmpty { empty }
         }
+        // iOS 26's soft edge fades past the bar onto the first header, which then failed the contrast audit; a hard
+        // edge stops at the bar.
+        .scrollEdgeEffectStyle(.hard, for: .top)
         // Above the list, not in it, so the empty state can't cover it. A bar, so the list blurs under it as it scrolls.
         // None inside a parent, whose kind is fixed.
         .safeAreaBar(edge: .top) {
@@ -82,10 +85,12 @@ struct TagStatsView: View {
             } header: {
                 // The user's own name for it, as typed.
                 Text(verbatim: tag.tag.name).textCase(nil)
+                    .foregroundStyle(.secondaryText)
                     .accessibilityIdentifier(AccessibilityID.pieceStatsPiece)
             } footer: {
                 if tag.hasPianoTime {
                     Text("From sessions your piano started in the last 30 days.", bundle: .module)
+                        .foregroundStyle(.secondaryText)
                 }
             }
         }
@@ -96,7 +101,7 @@ struct TagStatsView: View {
             }
         }
         .font(.footnote)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.secondaryText)
         .listRowBackground(Color.clear)
     }
 }

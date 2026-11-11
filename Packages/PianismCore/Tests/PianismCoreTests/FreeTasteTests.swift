@@ -20,8 +20,9 @@ struct FreeTasteTests {
         let deleted = try ended(.midi)
         for session in [saved, deleted, try ended(.timer), try ended(.manual)] { history.save(session) }
         try history.delete(id: deleted.id)
-        // One waiting, and one in both, as between saving to history and leaving the outbox.
-        for session in [try ended(.midi), saved, try ended(.timer)] { outbox.add(session) }
+        // One waiting, and one in both, as between saving to history and leaving the outbox. Two that aren't the
+        // piano's, so counting only those would come to 4, not 3.
+        for session in [try ended(.midi), saved, try ended(.timer), try ended(.manual)] { outbox.add(session) }
 
         #expect(try FreeTaste.used(history: history, outbox: outbox) == 3)
     }

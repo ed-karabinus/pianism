@@ -75,6 +75,9 @@ def main(packages):
     # The persistence tests check the schema against its CloudKit export, which lives outside the packages.
     (WORK / "docs").mkdir(exist_ok=True)
     subprocess.run(["rsync", "-a", "--delete", f"{ROOT}/docs/cloudkit/", f"{WORK}/docs/cloudkit/"], check=True)
+    # The purchases tests check the tests' StoreKit configuration, which lives with the UI tests.
+    (WORK / "AppUITests").mkdir(exist_ok=True)
+    subprocess.run(["rsync", "-a", f"{ROOT}/AppUITests/Pianism.storekit", f"{WORK}/AppUITests/"], check=True)
     counts = {"caught": 0, "survived": 0, "didn't compile": 0}
     survivors = []
     started = time.time()
