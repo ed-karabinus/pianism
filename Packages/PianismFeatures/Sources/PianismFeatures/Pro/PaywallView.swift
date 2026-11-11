@@ -17,6 +17,13 @@ struct PaywallView: View {
                     } icon: {
                         Image(systemName: "pianokeys")
                     }
+                    Label(
+                        LocalizedStringResource(
+                            "Time per piece and skill, in all and over the last 30 days.", bundle: .module),
+                        systemImage: "chart.bar")
+                    Label(
+                        LocalizedStringResource("Export every session as a spreadsheet file (CSV).", bundle: .module),
+                        systemImage: "square.and.arrow.up")
                 } header: {
                     Text("Included", bundle: .module)
                 } footer: {

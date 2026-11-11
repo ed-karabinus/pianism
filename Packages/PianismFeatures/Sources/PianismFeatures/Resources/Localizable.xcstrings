@@ -145,6 +145,9 @@
     "End" : {
 
     },
+    "Export every session as a spreadsheet file (CSV)." : {
+
+    },
     "Export sessions" : {
 
     },
@@ -458,6 +461,9 @@
 
     },
     "Time per piece and skill" : {
+
+    },
+    "Time per piece and skill, in all and over the last 30 days." : {
 
     },
     "Time your practice with one tap, tag what you worked on, and see your week build up." : {
