@@ -1262,11 +1262,11 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testWelcomeClosesForGood() throws {
         var app = launch(at: start, reset: true, welcome: true)
-        // PRO-2 (#53): it says auto-start is Pro, with the first 5 free, and only while Pianism is open.
+        // PRO-2 (#53): it says playing starts a session, only while Pianism is open, and that it's Pro after 5 free.
         let words = element(app, "welcome.words")
         XCTAssertTrue(words.waitForExistence(timeout: 10))
-        XCTAssertTrue(words.label.contains("while Pianism is open"), words.label)
-        XCTAssertTrue(words.label.contains("The first 5 are free, then it's part of Pro."), words.label)
+        XCTAssertTrue(words.label.contains("to start a session by playing while Pianism is open"), words.label)
+        XCTAssertTrue(words.label.contains("Your first 5 are free. After that, it's part of Pro."), words.label)
         tap(app, "welcome.close")
         XCTAssertTrue(element(app, "practice.start").waitForExistence(timeout: 5))
         XCTAssertFalse(element(app, "welcome.start").exists)
