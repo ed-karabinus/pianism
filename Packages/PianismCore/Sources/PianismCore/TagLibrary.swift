@@ -36,6 +36,5 @@ public protocol TagLibrary: Sendable {
 
     /// Puts a tag inside `parent`, or at the top level for `nil`. Its sessions aren't touched, and count toward the
     /// parent too (TAG-5, ADR 0013). Throws ``RecordFromNewerVersion`` for a tag a newer version wrote.
-    // periphery:ignore - stored before any screen uses it, so the CloudKit deploy has the field (ADR 0013)
     func setParent(id: Tag.ID, to parent: Tag.ID?) throws
 }

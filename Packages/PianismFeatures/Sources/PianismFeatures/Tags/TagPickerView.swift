@@ -1,8 +1,8 @@
 import PianismCore
 import SwiftUI
 
-/// Tags a session with pieces and skills, and adds, renames, archives and merges them, adds them inside others, and
-/// gives pieces details (TAG-1, TAG-2, TAG-3, TAG-4, TAG-5).
+/// Tags a session with pieces and skills, and adds, renames, archives and merges them, adds them inside others, moves
+/// them, and gives pieces details (TAG-1, TAG-2, TAG-3, TAG-4, TAG-5).
 struct TagPickerView: View {
     @Bindable var model: TagPickerModel
 
@@ -12,6 +12,7 @@ struct TagPickerView: View {
     @State private var newName = ""
     @State private var detailing: Tag?
     @State private var merging: Tag?
+    @State private var moving: Tag?
     @State private var addingInside: Tag?
     @State private var isAddingInside = false
     @State private var archiveBlocked: Tag?
@@ -68,6 +69,9 @@ struct TagPickerView: View {
         }
         .sheet(item: $merging) { tag in
             MergeTagView(tag: tag, model: model)
+        }
+        .sheet(item: $moving) { tag in
+            MoveTagView(tag: tag, model: model)
         }
         .storageAlert(Text("Couldn't change your tags", bundle: .module), isPresented: $model.isShowingError)
     }
@@ -208,6 +212,17 @@ struct TagPickerView: View {
                 .tint(.green)
                 .accessibilityLabel(Text("Add inside \(tag.name)", bundle: .module))
                 .accessibilityIdentifier(AccessibilityID.tagsAddInsideSwipe)
+            }
+            if model.canMove(tag) {
+                Button(
+                    LocalizedStringResource("Move", bundle: .module),
+                    systemImage: "arrow.up.and.down.and.arrow.left.and.right"
+                ) {
+                    moving = tag
+                }
+                .tint(.blue)
+                .accessibilityLabel(Text("Move \(tag.name)", bundle: .module))
+                .accessibilityIdentifier(AccessibilityID.tagsMove)
             }
         }
         .swipeActions(allowsFullSwipe: false) {

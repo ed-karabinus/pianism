@@ -1197,6 +1197,91 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(tagRow(app, "Suite").exists, "It was archived anyway")
     }
 
+    /// TAG-5: a skill moves inside Scales from a swipe right and shows under it, unfolded, and the session tagged with it
+    /// reads "Scales › Pedalling" without being changed. Moved back to the top level, it reads "Pedalling" again. A
+    /// move into a list that has its name, whatever the case, is refused with the reason (D4, Q1).
+    @MainActor
+    func testMovingASkillInsideScalesAndBack() throws {
+        // Given a running session tagged with a new top-level skill
+        let app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        tap(app, "practice.tags")
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("Pedalling")
+        tap(app, "tags.add-skill")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        let pedalling = tagRow(app, "Pedalling")
+        let scales = app.buttons.matching(identifier: "move.target").matching(NSPredicate(format: "label == 'Scales'"))
+            .firstMatch
+        let moveBar = app.navigationBars["Move “Pedalling”"]
+
+        // When it's moved inside Scales from a swipe right
+        revealSwipeActions(pedalling, fromLeadingEdge: true)
+        attachScreenshot(of: app, named: "Tag picker, a skill swiped right")
+        tap(app, "tags.move")
+        XCTAssertTrue(moveBar.waitForExistence(timeout: 5), "Move didn't open")
+        XCTAssertTrue(app.buttons["move.top-level"].isSelected, "Where it is isn't checked")
+        attachScreenshot(of: app, named: "Move, from the top level")
+        XCTAssertTrue(scales.waitForExistence(timeout: 5), "Scales isn't offered")
+        scales.tap()
+        XCTAssertTrue(moveBar.waitForNonExistence(timeout: 5), "Move didn't close")
+
+        // Then it's under an unfolded Scales, and the session reads with its parent
+        XCTAssertTrue(app.buttons["tags.add-inside"].waitForExistence(timeout: 5), "Scales didn't unfold")
+        XCTAssertTrue(pedalling.exists && pedalling[below: tagRow(app, "Scales").frame.maxY], "It isn't under Scales")
+        attachScreenshot(of: app, named: "Tag picker, moved inside Scales")
+        tap(app, "tags.done")
+        XCTAssertEqual(element(app, "practice.tags").value as? String, "Scales › Pedalling")
+
+        // When the picker opens again, unfolded at the chosen skill, and it's moved back to the top level
+        tap(app, "practice.tags")
+        revealSwipeActions(pedalling, fromLeadingEdge: true)
+        tap(app, "tags.move")
+        XCTAssertTrue(scales.waitForExistence(timeout: 5), "Move didn't open")
+        XCTAssertTrue(scales.isSelected, "Where it is isn't checked")
+        attachScreenshot(of: app, named: "Move, from inside Scales")
+        tap(app, "move.top-level")
+        XCTAssertTrue(moveBar.waitForNonExistence(timeout: 5), "Move didn't close")
+        tap(app, "tags.done")
+
+        // Then the session reads it alone again
+        XCTAssertEqual(element(app, "practice.tags").value as? String, "Pedalling")
+
+        // When "pedalling" is added inside Scales, and Pedalling is moved there
+        tap(app, "practice.tags")
+        revealSwipeActions(tagRow(app, "Scales"), fromLeadingEdge: true)
+        tap(app, "tags.add-inside-swipe")
+        let name = app.alerts.textFields.firstMatch
+        XCTAssertTrue(name.waitForExistence(timeout: 5), "Add Inside didn't ask")
+        name.tap()
+        name.typeText("pedalling")
+        let add = app.alerts.buttons["Add"]
+        XCTAssertTrue(
+            add.wait(for: \.isEnabled, toEqual: true, timeout: 5), "The top-level name blocked it inside Scales")
+        add.tap()
+        XCTAssertTrue(tagRow(app, "pedalling").waitForExistence(timeout: 5), "It isn't under Scales")
+        revealSwipeActions(pedalling, fromLeadingEdge: true)
+        tap(app, "tags.move")
+        XCTAssertTrue(scales.waitForExistence(timeout: 5), "Move didn't open")
+        scales.tap()
+
+        // Then the move is refused with the reason, and it stays at the top level
+        let refused = app.alerts["A skill named “Pedalling” is already inside “Scales”. Rename one first."]
+        XCTAssertTrue(refused.waitForExistence(timeout: 5), "The clash wasn't refused")
+        attachScreenshot(of: app, named: "Move, refused for a name inside Scales")
+        refused.buttons.firstMatch.tap()
+        XCTAssertTrue(app.buttons["move.top-level"].isSelected, "It moved anyway")
+
+        // When the place it's in is chosen
+        tap(app, "move.top-level")
+
+        // Then the sheet closes, and it's still at the top level
+        XCTAssertTrue(moveBar.waitForNonExistence(timeout: 5), "Move didn't close")
+        XCTAssertTrue(pedalling.exists, "It left the top level")
+    }
+
     /// SYN-1: a piece iCloud brings from another device shows in the open tag picker, with no relaunch. A Debug
     /// switch saves it through a second store on the same file, as an iCloud import does, 25 seconds after
     /// launch, which leaves a slow CI iPad time to open the picker first. The picker is checked without it first,

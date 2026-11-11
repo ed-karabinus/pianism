@@ -25,6 +25,15 @@
     "A piano connects to one device at a time, so disconnect it from any other first." : {
 
     },
+    "A piece can't sit inside one with the same name. Rename one first." : {
+      "comment" : "Why a piece or skill can't be moved"
+    },
+    "A piece named “%@” is already at the top level. Rename one first." : {
+      "comment" : "Why a piece or skill can't be moved"
+    },
+    "A piece named “%@” is already inside “%@”. Rename one first." : {
+      "comment" : "Why a piece or skill can't be moved"
+    },
     "A session counts toward each of its tags." : {
 
     },
@@ -33,6 +42,15 @@
     },
     "A session with several skills counts fully toward each." : {
 
+    },
+    "A skill can't sit inside one with the same name. Rename one first." : {
+      "comment" : "Why a piece or skill can't be moved"
+    },
+    "A skill named “%@” is already at the top level. Rename one first." : {
+      "comment" : "Why a piece or skill can't be moved"
+    },
+    "A skill named “%@” is already inside “%@”. Rename one first." : {
+      "comment" : "Why a piece or skill can't be moved"
     },
     "A target tempo is a whole number from %lld to %lld." : {
 
@@ -208,6 +226,12 @@
     "Included" : {
 
     },
+    "Inside a piece" : {
+
+    },
+    "Inside a skill" : {
+
+    },
     "It's listed on more than one day. All its rows go." : {
 
     },
@@ -245,6 +269,15 @@
 
     },
     "Minutes" : {
+
+    },
+    "Move" : {
+
+    },
+    "Move %@" : {
+
+    },
+    "Move “%@”" : {
 
     },
     "Name" : {
@@ -512,6 +545,9 @@
 
     },
     "Today" : {
+
+    },
+    "Top level" : {
 
     },
     "Total" : {

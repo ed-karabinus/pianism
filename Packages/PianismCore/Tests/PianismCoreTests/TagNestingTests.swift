@@ -174,6 +174,19 @@ struct TagNestingTests {
         #expect(merged.map(index.name(of:)) == "Scales › D minor")
     }
 
+    @Test("TAG-5, ADR 0013: a tag's link is read as the tag it stands for, never through a stale link of its own")
+    func linkReadsTheTagItStandsFor() {
+        // Given S inside P, M, with a link of its own, merged into S, and a tag the index doesn't know with a link
+        let stale = tag("m", parent: "x", mergedInto: "s")
+        let unknown = tag("new", parent: "p")
+        let index = TagIndex([tag("p"), tag("s", parent: "p"), tag("x"), stale])
+
+        // When their links are read, M as the library holds it
+        // Then M's is S's, and the unknown tag has none
+        #expect(index.link(stale)?.id == "p")
+        #expect(index.link(unknown) == nil)
+    }
+
     @Test(
         "TAG-5, ADR 0013: an archived parent reads unarchived while any child is unarchived, and archived again once none is"
     )
