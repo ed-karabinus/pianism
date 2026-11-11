@@ -17,7 +17,6 @@ public struct Tag: Sendable, Hashable, Identifiable {
     public internal(set) var mergedInto: Tag.ID?
     /// The tag this one sits inside, as stored, or `nil` at the top level (TAG-5, ADR 0013). Sync can deliver a
     /// link no device would write, so it's never trusted without the rules of ADR 0013.
-    // periphery:ignore - stored before any screen uses it, so the CloudKit deploy has the field (ADR 0013)
     public internal(set) var parentID: Tag.ID?
     /// Decides which tag survives when two devices merged a pair in opposite directions (ADR 0004).
     public let createdAt: Date
@@ -71,9 +70,10 @@ public enum BuiltInSkill: String, CaseIterable, Sendable {
     case improvisation = "skill.improvisation"
 }
 
-/// Tags by ID, with each merged tag standing for the tag it was merged into (ADR 0004).
+/// Tags by ID, with each merged tag standing for the tag it was merged into (ADR 0004), and each tag inside at most
+/// one other, whatever links sync delivered (ADR 0013).
 public struct TagIndex: Sendable {
-    private let resolved: [Tag.ID: Tag]
+    private var resolved: [Tag.ID: Tag]
 
     /// Follows each tag's merges to the end. Two devices merging a pair in opposite directions make a
     /// cycle; every tag in it then stands for the one created first, ties broken by ID, so all devices
@@ -98,6 +98,14 @@ public struct TagIndex: Sendable {
             }
             return current
         }
+        // One device archived a parent while another added a child inside it. It reads as unarchived, so an
+        // archived tag never has anything live inside it (D1), as stored again once the child is archived too: a
+        // read, not a write (ADR 0013). A merged tag's own link is never read: its key holds the kept tag, so it can't
+        // keep a parent live by itself.
+        let live = Set(resolved.values.filter { !$0.isArchived }.compactMap { parent(of: $0)?.id })
+        for (id, tag) in resolved where live.contains(tag.id) {
+            resolved[id]?.isArchived = false
+        }
     }
 
     /// The tag `id` stands for, or `nil` if it isn't known, such as a tag that hasn't synced yet.
@@ -109,5 +117,42 @@ public struct TagIndex: Sendable {
     public func tags(for ids: [Tag.ID]) -> [Tag] {
         var seen = Set<Tag.ID>()
         return ids.compactMap { resolved[$0] }.filter { seen.insert($0.id).inserted }
+    }
+
+    /// The tags a session tagged `ids` counts toward: its tags, then their parents, each once, so two children of
+    /// one parent count once toward it (TAG-5).
+    func counted(for ids: [Tag.ID]) -> [Tag] {
+        let tags = tags(for: ids)
+        var seen = Set<Tag.ID>()
+        return (tags + tags.compactMap(parent(of:))).filter { seen.insert($0.id).inserted }
+    }
+
+    /// The tag that `tag`, one of this index's, sits inside, or `nil` at the top level (ADR 0013). It looks one link
+    /// further and never asks for the parent's own parent: that recursion never ends on a ring three devices can make,
+    /// T inside P, P inside G and G inside T, which this reads as three top-level tags.
+    func parent(of tag: Tag) -> Tag? {
+        // A tag from outside the index, such as a merged one from the library, reads as the tag it stands for, never
+        // through its own stale link.
+        guard let tag = resolved[tag.id], let parent = link(tag) else { return nil }
+        guard let grandparent = link(parent) else { return parent }
+        // Each names the other: the one created first is the parent, ties broken by ID, as for opposite merges, so
+        // every device agrees. Any other grandparent would make a second level, so `tag` shows at the top level until
+        // its parent moves out, and its stored link puts it back inside then.
+        guard grandparent.id == tag.id else { return nil }
+        return (parent.createdAt, parent.id) < (tag.createdAt, tag.id) ? parent : nil  // mutate:ignore - IDs never tie
+    }
+
+    /// How a tag of this index reads in a list of a session's tags: "Parent › child", or its own name at the top level
+    /// (D5).
+    func name(of tag: Tag) -> String {
+        parent(of: tag).map { "\($0.name) › \(tag.name)" } ?? tag.name
+    }
+
+    /// The tag `tag`'s stored parent stands for, through merges, unless it's unknown here (not synced yet), `tag`
+    /// itself (a parent merged into its own child) or of the other kind (ADR 0013).
+    private func link(_ tag: Tag) -> Tag? {
+        guard let parent = tag.parentID.flatMap({ resolved[$0] }), parent.id != tag.id, parent.kind == tag.kind
+        else { return nil }
+        return parent
     }
 }

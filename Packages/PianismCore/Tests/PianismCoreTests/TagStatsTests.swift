@@ -189,6 +189,33 @@ struct TagStatsTests {
         #expect(stats.map(\.recent) == times)
     }
 
+    @Test(
+        "HIS-4, TAG-5: a parent's time includes its children's, once per session, and each child keeps its own"
+    )
+    func parentsIncludeChildrenOnce() throws {
+        // Given two skills inside Scales, a session with both, and one with a child and Scales itself
+        let calendar = try losAngeles()
+        let start = try date(2026, 11, 20, 18, 0, in: calendar)
+        let dMinor = PianismCore.Tag(
+            id: "d-minor", kind: .skill, name: "D minor", isArchived: false, parentID: "scales")
+        let gMajor = PianismCore.Tag(
+            id: "g-major", kind: .skill, name: "G major", isArchived: false, parentID: "scales")
+        let sessions = [
+            try session(at: start, minutes: 20, tags: ["d-minor", "g-major"]),
+            try session(at: start + 3_600, minutes: 10, tags: ["g-major", "scales"]),
+        ]
+
+        // When the skills' stats are counted
+        let stats = TagStats.of(
+            .skill, in: PracticeDay.group(sessions, in: calendar), tags: TagIndex([scales, dMinor, gMajor]),
+            today: start, calendar: calendar)
+
+        // Then Scales has each session once, and each child its own sessions
+        #expect(stats.map(\.tag.id) == ["g-major", "scales", "d-minor"])
+        let minutes: [TimeInterval] = [30, 30, 20]
+        #expect(stats.map(\.total) == minutes.map { $0 * 60 })
+    }
+
     private func losAngeles() throws -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try #require(TimeZone(identifier: "America/Los_Angeles"))

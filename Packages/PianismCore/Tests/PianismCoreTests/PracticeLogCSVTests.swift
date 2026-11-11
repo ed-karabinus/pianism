@@ -86,6 +86,25 @@ struct PracticeLogCSVTests {
         #expect(try fields(of: csv([session], tags: index))[5] == "Scales; Nocturne")
     }
 
+    @Test("EXP-1, TAG-5: a tag inside another is one label, \"Parent › child\", and the parent reads as itself")
+    func nestedTagNames() throws {
+        // Given a session tagged with a skill inside Scales, and with Scales itself
+        let index = TagIndex([
+            Tag(id: BuiltInSkill.scales.rawValue, kind: .skill, name: "Scales", isArchived: false, isReadOnly: true),
+            Tag(
+                id: "d-minor", kind: .skill, name: "D minor", isArchived: false, parentID: BuiltInSkill.scales.rawValue),
+        ])
+        var session = PracticeSession(startedAt: start, timeZone: losAngeles)
+        try session.setTags(["d-minor", BuiltInSkill.scales.rawValue])
+        try session.stop(at: start + 60)
+
+        // When it's exported
+        let row = try fields(of: csv([session], tags: index))
+
+        // Then the tags column names the child with its parent, and the parent alone
+        #expect(row[5] == "Scales › D minor; Scales")
+    }
+
     @Test(
         "EXP-1: text is as typed, quoted when it holds a comma, quote or line break, with quotes doubled",
         arguments: [
