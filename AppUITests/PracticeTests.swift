@@ -1550,11 +1550,14 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(times.count, 2, "The piece's times are wrong")
         XCTAssertFalse(app.descendants(matching: .any)["Playing"].exists, "A timed session showed a piano's split")
         try audit(app, "Time per piece and skill")
-        // And the title is in the bar, level with the back button, not a large title under the bar's edge
-        let title = app.navigationBars.staticTexts["Time per piece and skill"]
-        let back = app.navigationBars.buttons.element(boundBy: 0)
-        XCTAssertLessThan(
-            abs(title.frame.midY - back.frame.midY), back.frame.height / 2, "The title isn't in the bar")
+        // And on iPhone the title is in the bar, level with the back button, not a large title under the bar's edge. An
+        // iPad's title was always in the bar, a row below the back button, which sits beside the tabs.
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            let title = app.navigationBars.staticTexts["Time per piece and skill"]
+            let back = app.navigationBars.buttons.element(boundBy: 0)
+            XCTAssertLessThan(
+                abs(title.frame.midY - back.frame.midY), back.frame.height / 2, "The title isn't in the bar")
+        }
         attachScreenshot(of: app, named: "Time per piece and skill")
 
         // When the switch shows skills
