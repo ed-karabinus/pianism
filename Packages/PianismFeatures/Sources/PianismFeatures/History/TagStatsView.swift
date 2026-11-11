@@ -33,6 +33,8 @@ struct TagStatsView: View {
             .padding([.horizontal, .bottom])
         }
         .navigationTitle(Text("Time per piece and skill", bundle: .module))
+        // In the bar, as on iPad: an iPhone's large title sat under the hard top edge above, which blurred it.
+        .toolbarTitleDisplayMode(.inline)
     }
 
     @ViewBuilder private var empty: some View {
