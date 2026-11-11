@@ -175,6 +175,9 @@
     "Expanded" : {
 
     },
+    "Export every session as a spreadsheet file (CSV)." : {
+
+    },
     "Export sessions" : {
 
     },
@@ -269,6 +272,12 @@
 
     },
     "None" : {
+
+    },
+    "Not saved: under 10 seconds" : {
+
+    },
+    "Not saved: under a minute of playing" : {
 
     },
     "Note" : {
@@ -496,13 +505,13 @@
     "Time per piece and skill" : {
 
     },
+    "Time per piece and skill, in all and over the last 30 days." : {
+
+    },
     "Time your practice with one tap, tag what you worked on, and see your week build up." : {
 
     },
     "Today" : {
-
-    },
-    "Too short to save" : {
 
     },
     "Total" : {

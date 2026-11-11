@@ -13,7 +13,10 @@ public enum PracticeLogCSV {
     /// were merged into.
     public static func file(_ sessions: [PracticeSession], tags index: TagIndex) -> Data {
         let ended = sessions.compactMap { session in session.endedAt.map { (session, $0) } }
-            .sorted { ($0.0.startedAt, $0.0.id.uuidString) < ($1.0.startedAt, $1.0.id.uuidString) }
+            // Every session's ID differs, so two rows never compare equal, and `<=` would sort them the same.
+            .sorted {
+                ($0.0.startedAt, $0.0.id.uuidString) < ($1.0.startedAt, $1.0.id.uuidString)  // mutate:ignore - no ties
+            }
         let rows = [header] + ended.map { session, end in row(session, end: end, tags: index) }
         let text = rows.map { $0.map(field).joined(separator: ",") + "\r\n" }.joined()
         return Data(("\u{FEFF}" + text).utf8)

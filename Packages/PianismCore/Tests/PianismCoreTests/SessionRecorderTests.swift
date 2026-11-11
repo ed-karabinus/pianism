@@ -157,7 +157,7 @@ struct SessionRecorderTests {
     }
 
     @Test(
-        "SES-1: a session with under 10 s of practice, pauses left out, is dropped quietly; 10 s is kept",
+        "SES-1: a session with under 10 s of practice, pauses left out, is dropped; 10 s is kept",
         arguments: [(practice: 9.0, paused: 0.0, kept: false), (10, 0, true), (5, 25, false)])
     func archiveDropsShortSession(practice: TimeInterval, paused: TimeInterval, kept: Bool) throws {
         let history = InMemorySessionHistory()
