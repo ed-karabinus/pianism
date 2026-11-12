@@ -176,6 +176,36 @@ struct TagPickerModelTests {
         #expect(practice.session?.tagIDs == [nocturne.id])
     }
 
+    @Test(
+        "TAG-1, #132 (the owner's pick 2026-11-11): an archived tag a newer version wrote is found but can't be chosen, with no error, and one already on the session can still be taken off"
+    )
+    func archivedTagFromANewerVersionCantBeChosen() throws {
+        // Given an archived piece a newer version wrote, and a session
+        let newer = PianismCore.Tag(id: "newer", kind: .piece, name: "Étude", isArchived: true, isReadOnly: true)
+        let library = InMemoryTagLibrary([ballade, newer])
+        let model = TagPickerModel(practice: practice, library: library)
+
+        // When it's searched for and tapped
+        model.query = "étu"
+        #expect(model.shown(.piece) == [newer])
+        #expect(!model.canPick(newer))
+        model.toggle(newer)
+
+        // Then nothing changes, and no error shows
+        #expect(practice.session?.tagIDs == [])
+        #expect(library.tags().first { $0.id == newer.id }?.isArchived == true)
+        #expect(!model.isShowingError)
+
+        // Given the session already has it, as from a device on the newer version
+        practice.setTags([newer.id])
+        let tagged = TagPickerModel(practice: practice, library: library)
+
+        // When it's tapped, then it comes off
+        #expect(tagged.canPick(newer))
+        tagged.toggle(newer)
+        #expect(practice.session?.tagIDs == [])
+    }
+
     @Test("TAG-1: part of a name finds archived tags too, after unarchived ones, but never a merged tag's old name")
     func searchFindsArchivedTags() {
         let opus = PianismCore.Tag(id: "opus", kind: .piece, name: "Nocturne Op. 9", isArchived: false)

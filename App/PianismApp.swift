@@ -131,6 +131,10 @@ struct PianismApp: App {
             if let count = environment["PIANISM_UNSHOWABLE_SESSIONS"].flatMap(Int.init) {
                 try? historyStore.addUnshowableSessions(count)
             }
+            // And an archived piece a newer version wrote with PIANISM_NEWER_ARCHIVED_PIECE, its name (#132).
+            if let name = environment["PIANISM_NEWER_ARCHIVED_PIECE"] {
+                try? historyStore.addArchivedNewerPiece(named: name)
+            }
             // The App Store screenshots fill the app with sample practice with PIANISM_SHOWCASE=1 (#56).
             if environment["PIANISM_SHOWCASE"] == "1" {
                 Showcase.seed(into: historyStore, running: store, clock: clock)

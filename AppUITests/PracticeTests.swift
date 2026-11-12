@@ -949,6 +949,38 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "History, tagged and untagged")
     }
 
+    /// TAG-1, #132: an archived piece a newer version wrote is found by part of its name, but dimmed with the reason,
+    /// and tapping it neither tags the session nor shows an error (the owner's pick 2026-11-11).
+    @MainActor
+    func testAnArchivedPieceFromANewerVersionCantBeChosen() throws {
+        // Given an archived piece a newer version wrote, and a running session
+        let app = launch(at: start, reset: true, newerArchivedPiece: "Étude in E")
+        tap(app, "practice.start")
+        tap(app, "practice.tags")
+
+        // When part of its name is searched for
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("tude")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+
+        // Then it's found, dimmed, with the reason
+        let row = app.buttons.matching(identifier: "tags.tag")
+            .matching(NSPredicate(format: "label BEGINSWITH 'Étude in E'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "Part of its name didn't find it")
+        XCTAssertFalse(row.isEnabled, "It can be chosen")
+        XCTAssertTrue(row.label.contains("Archived by a newer version of Pianism. Update to use it."), row.label)
+        attachScreenshot(of: app, named: "Tag picker, archived by a newer version")
+
+        // When it's tapped, then nothing is tagged and no error shows
+        row.tap()
+        XCTAssertFalse(app.alerts.firstMatch.waitForExistence(timeout: 2), "An error showed")
+        XCTAssertFalse(row.isSelected, "It was chosen")
+        tap(app, "tags.done")
+        XCTAssertEqual(element(app, "practice.tags").value as? String, "Untagged")
+    }
+
     /// TAG-1: part of an archived piece's name finds it, marked Archived, above the button that would add a
     /// near-duplicate.
     @MainActor
@@ -2551,7 +2583,8 @@ final class PracticeTests: UITestCase {
         textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
         midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil, intent: String? = nil,
         reminderMinute: Int? = nil, welcome: Bool = false, realStore: Bool = false, restoreFinds: Bool = false,
-        buying: String? = nil, noOffer: Bool = false, autoLogged: Int? = nil, clearDebugData: Bool = false
+        buying: String? = nil, noOffer: Bool = false, autoLogged: Int? = nil, clearDebugData: Bool = false,
+        newerArchivedPiece: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -2620,6 +2653,7 @@ final class PracticeTests: UITestCase {
         if let midiNotes {
             app.launchEnvironment["PIANISM_MIDI_NOTES"] = midiNotes
         }
+        app.launchEnvironment["PIANISM_NEWER_ARCHIVED_PIECE"] = newerArchivedPiece
         if let midiPiano {
             app.launchEnvironment["PIANISM_MIDI_PIANO"] = midiPiano
         }

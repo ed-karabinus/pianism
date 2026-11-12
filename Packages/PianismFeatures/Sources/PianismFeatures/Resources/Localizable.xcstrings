@@ -91,6 +91,9 @@
     "Archived" : {
 
     },
+    "Archived by a newer version of Pianism. Update to use it." : {
+      "comment" : "Why an archived piece or skill can't be chosen"
+    },
     "Arpeggios" : {
       "comment" : "A built-in skill"
     },
