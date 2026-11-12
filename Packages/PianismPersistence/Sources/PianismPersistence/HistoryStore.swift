@@ -125,6 +125,19 @@ public final class HistoryStore: Sendable {
             try context.save()
         }
 
+        /// Debug only: adds an archived piece named `name` as a newer version might write it, which this one can read
+        /// but not change, so end-to-end tests can see the tag picker refuse it (#132).
+        public func addArchivedNewerPiece(named name: String) throws {
+            let context = ModelContext(try container())
+            let record = TagRecord()
+            record.id = UUID().uuidString.lowercased()
+            record.name = name
+            record.isArchived = true
+            record.version = Self.recordVersion + 1
+            context.insert(record)
+            try context.save()
+        }
+
         /// Debug only: creates the current schema's record types and fields in the Development environment of
         /// `cloudKitContainer`, from a scratch store, ready to check and deploy (SYN-1, ADR 0008). It needs
         /// an iCloud account, so the owner runs it on a device signed into iCloud (ADR 0008, step 3).
