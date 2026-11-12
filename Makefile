@@ -75,6 +75,7 @@ test-app: ## Build the app once, then run its end-to-end tests on each simulator
 		echo "== End-to-end tests on $$device"; \
 		rm -rf $(RESULTS)/app-$$device.xcresult; \
 		destination="$$(scripts/simulator-destination.sh $$device $(IOS))" || exit 1; \
+		half=""; $(if $(HALF),half="$$(scripts/ui-test-half.sh $(HALF))" || exit 1;) \
 		udid="$${destination##*id=}"; \
 		xcrun simctl bootstatus "$$udid" -b >/dev/null && xcrun simctl install "$$udid" "$$app" && \
 			xcrun simctl shutdown "$$udid" && xcrun simctl bootstatus "$$udid" -b >/dev/null && \
@@ -83,7 +84,7 @@ test-app: ## Build the app once, then run its end-to-end tests on each simulator
 			-resultBundlePath $(RESULTS)/app-$$device.xcresult -collect-test-diagnostics never \
 			-retry-tests-on-failure -test-iterations 2 \
 			-test-timeouts-enabled YES -default-test-execution-time-allowance 900 $(XCODE_FLAGS) \
-			$(if $(HALF),$$(scripts/ui-test-half.sh $(HALF))); \
+			$$half; \
 		status=$$?; \
 		xcrun simctl shutdown "$$udid"; \
 		[ $$status -eq 0 ] || exit 1; \

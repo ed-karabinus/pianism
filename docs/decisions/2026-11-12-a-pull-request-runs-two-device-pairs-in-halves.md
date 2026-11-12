@@ -9,7 +9,7 @@ end-to-end jobs, and 11 checks. The nightly and manual runs still take all four 
 
 **Why:** each pull request's four whole jobs took 60 to 96 minutes and held four of GitHub Free's five macOS slots, so
 a second pull request's run queued behind the first. Crosswise, each pull request still covers both devices and both
-iOS versions, and alternating covers all four pairs across any two pull requests. A pair a pull request skips is tested
+iOS versions, and an even and an odd pull request together cover all four pairs. A pair a pull request skips is tested
 by that night's run at the latest.
 
 This changes the reason given in the 2026-10-21 row of [`../decisions.md`](../decisions.md), "PRs already run the full
