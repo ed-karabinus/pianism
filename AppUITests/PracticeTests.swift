@@ -2435,7 +2435,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         openHistory(app)
         XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5), "No session in History")
-        try audit(app, "History")
+        try audit(app, "History", stallsOnIPadIOS26: true)
         openSettings(app)
         // Contrast only noted: the system draws these forms' grey headers, footers and values (#165).
         try audit(app, "Settings", contrast: false, stallsOnIPadIOS26: true)
@@ -2511,7 +2511,9 @@ final class PracticeTests: UITestCase {
         if stallsOnIPadIOS26, UIDevice.current.userInterfaceIdiom == .pad {
             if #unavailable(iOS 27) {
                 // The audit of the settings forms stalled on an iPad with iOS 26 (#136): the piano sheet in two of
-                // five CI runs, and Settings once since. Never on another simulator, and a stalled test isn't
+                // five CI runs, and Settings once since. History's stalled too, twice in a row on #240's CI
+                // (2026-11-12), with nothing new on the screen, and never locally (4 runs), so it's the same stall:
+                // every List screen has had it, Practice never. Never on another simulator, and a stalled test isn't
                 // retried, so there the other three simulators cover these screens.
                 XCTContext.runActivity(named: "\(name), not audited: the audit stalls on an iPad with iOS 26") { _ in }
                 return
