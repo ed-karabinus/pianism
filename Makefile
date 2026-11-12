@@ -17,6 +17,8 @@ NO_WARNINGS := scripts/fail-on-warnings.sh
 DEVICES     ?= iPhone iPad
 # The iOS version to test on, such as 26 or 27.0; empty means the newest installed.
 IOS         ?=
+# Half of the end-to-end tests to run, 1 or 2 (`scripts/ui-test-half.sh`); empty means all of them.
+HALF        ?=
 
 .PHONY: help test test-core test-features test-adapters test-app build evidence screenshots lint unused mutate format clean
 
@@ -80,7 +82,8 @@ test-app: ## Build the app once, then run its end-to-end tests on each simulator
 		xcodebuild test-without-building -project $(PROJECT) -scheme $(SCHEME) -destination "$$destination" \
 			-resultBundlePath $(RESULTS)/app-$$device.xcresult -collect-test-diagnostics never \
 			-retry-tests-on-failure -test-iterations 2 \
-			-test-timeouts-enabled YES -default-test-execution-time-allowance 900 $(XCODE_FLAGS); \
+			-test-timeouts-enabled YES -default-test-execution-time-allowance 900 $(XCODE_FLAGS) \
+			$(if $(HALF),$$(scripts/ui-test-half.sh $(HALF))); \
 		status=$$?; \
 		xcrun simctl shutdown "$$udid"; \
 		[ $$status -eq 0 ] || exit 1; \

@@ -57,6 +57,7 @@ jobs:
   # A pull request that changes only Markdown files at the top level, in docs/ or in .claude/ skips the Mac jobs too,
   # as nothing built or tested reads those. Markdown anywhere else (say in App/, which Xcode copies into the app) runs
   # in full. The files come from the tested merge commit itself, with both names of a renamed file.
+  # It also picks the end-to-end jobs (`e2e`).
   passed:
     name: Look for an earlier pass or a docs-only change
     runs-on: ubuntu-latest
@@ -66,6 +67,7 @@ jobs:
       contents: read
     outputs:
       skip: ${{ steps.find.outputs.skip }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -86,6 +88,23 @@ jobs:
             echo "Earlier passing runs on $SHA: $n. Changed files that aren't docs: ${other:-unknown}"
           fi
           echo "skip=$( { [ "$n" -gt 0 ] || [ "$other" -eq 0 ]; } && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      # A pull request runs two of the four devices and iOS versions, each split in two halves: an iPhone on iOS 27
+      # and an iPad on 26 for an even number, the other two for an odd one (the owner's picks, 2026-11-12). Nightly and
+      # manual runs take all four whole, plus a standard iPhone on 27.0: 27.1 runs only on the near-iPad-sized Duo.
+      - id: matrix
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            phone=$(( PR % 2 == 0 ? 27 : 26 ))
+            matrix=$(jq -nc --argjson p "$phone" \
+              '[{device: "iPhone", ios: $p}, {device: "iPad", ios: (53 - $p)}] | [.[] | .half = (1, 2)] | {include: .}')
+          else
+            matrix='{"include":[{"device":"iPhone","ios":26},{"device":"iPhone","ios":27},{"device":"iPad","ios":26},'
+            matrix="$matrix"'{"device":"iPad","ios":27},{"device":"iPhone","ios":"27.0"}]}'
+          fi
+          echo "End-to-end jobs: $matrix"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   # Periphery reads the compiler's index, so it needs an Xcode build (ADR 0005).
   unused:
@@ -123,30 +142,27 @@ jobs:
       - name: Release build
         run: make build QUIET=
 
-  # One job per device and iOS version, in parallel (`make test-app` builds, boots the simulator, then
-  # tests). iOS 26 is the oldest the app supports. Only GitHub's `xcode-27` image, a preview, has
-  # iOS 27, and the versions differ: an iOS 26 iPad hid a search field that iOS 27 shows. Booting in
-  # the background during the build didn't help: on these 3-core runners it slowed the build as much
-  # as it saved. The scheme has XCTest capture screenshots, not video: these runners have no hardware
-  # video encoder, and while recording an iPad's screen the simulator's renderer grew to 3.7 GB of
-  # their 7 GB and XCTest lost track of the app. This repository is public, so the runners cost
-  # nothing; GitHub Free runs at most 5 macOS jobs at once, so of a pull request's 6, one waits a minute or
-  # two for a short one to finish. The time limit allows for the `xcode-27` image's iPad, whose passing
-  # jobs took 81 to 90 minutes by 2026-11-12, as the suite grew, plus a few retried tests and one hung
-  # test's allowance (#136): at 90 minutes, a retry or two stopped it just short of the end.
+  # One job per device, iOS version and half, as `passed` picks them, in parallel (`make test-app` builds, boots the
+  # simulator, then tests). Two pairs in halves should take a pull request's run from 60 to 78 minutes to about 45, by
+  # #242's test times (2026-11-12), and free GitHub Free's macOS slots sooner. iOS 26 is the oldest the app supports.
+  # Only GitHub's `xcode-27` image, a preview, has iOS 27, and the versions differ: an iOS 26 iPad hid a search field
+  # that iOS 27 shows. Booting in the background during the build didn't help: on these 3-core runners it slowed the
+  # build as much as it saved. The scheme has XCTest capture screenshots, not video: these runners have no hardware
+  # video encoder, and while recording an iPad's screen the simulator's renderer grew to 3.7 GB of their 7 GB and XCTest
+  # lost track of the app. This repository is public, so the runners cost nothing; GitHub Free runs at most 5 macOS jobs
+  # at once, so of a pull request's 6, one waits a minute or two for a short one to finish. The time limit allows for a
+  # nightly run's whole iPad job on the `xcode-27` image, whose passing jobs took 81 to 90 minutes by 2026-11-12, as the
+  # suite grew, plus a few retried tests and one hung test's allowance (#136): at 90 minutes, a retry or two stopped it
+  # just short of the end.
   e2e:
-    name: End-to-end tests (${{ matrix.device }}, iOS ${{ matrix.ios }})
+    name: End-to-end tests (${{ matrix.device }}, iOS ${{ matrix.ios }}${{ matrix.half && format(', half {0}', matrix.half) || '' }})
     needs: [core, lint, passed]
     if: github.event_name != 'push' && needs.passed.outputs.skip != 'true'
     runs-on: ${{ matrix.ios == 26 && 'macos-26' || 'xcode-27' }}
     timeout-minutes: 120
     strategy:
       fail-fast: false
-      matrix:
-        device: [iPhone, iPad]
-        ios: [26, 27]
-        # Nightly and manual runs add a standard iPhone on 27.0: 27.1 runs only on the near-iPad-sized Duo.
-        include: ${{ github.event_name != 'pull_request' && fromJSON('[{"device":"iPhone","ios":"27.0"}]') || fromJSON('[]') }}
+      matrix: ${{ fromJSON(needs.passed.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v5
       - name: Select the newest stable Xcode
@@ -156,7 +172,7 @@ jobs:
         # (`UITestCase.skipUnlessSoaking`), which a pull request's run skips until they've passed nightly for a week.
         env:
           TEST_RUNNER_PIANISM_SOAKING: ${{ github.event_name != 'pull_request' && '1' || '' }}
-        run: make test-app DEVICES=${{ matrix.device }} IOS=${{ matrix.ios }} QUIET=
+        run: make test-app DEVICES=${{ matrix.device }} IOS=${{ matrix.ios }} HALF=${{ matrix.half }} QUIET=
       - name: Export screenshots
         if: always()
         run: make evidence DEVICES=${{ matrix.device }}
@@ -164,14 +180,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: screenshots-${{ matrix.device }}-iOS${{ matrix.ios }}
+          name: screenshots-${{ matrix.device }}-iOS${{ matrix.ios }}${{ matrix.half && format('-half{0}', matrix.half) || '' }}
           path: build/evidence
           retention-days: 14
       - name: Upload test results
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: app-xcresult-${{ matrix.device }}-iOS${{ matrix.ios }}
+          name: app-xcresult-${{ matrix.device }}-iOS${{ matrix.ios }}${{ matrix.half && format('-half{0}', matrix.half) || '' }}
           path: build/results/*.xcresult
           retention-days: 7
 
@@ -183,5 +199,5 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Every device and iOS version passed, here or in an earlier run of this commit, or only docs changed
+      - name: Every end-to-end job passed, here or in an earlier run of this commit, or only docs changed
         run: test "${{ needs.e2e.result }}" = success || test "${{ needs.passed.outputs.skip }}" = true
