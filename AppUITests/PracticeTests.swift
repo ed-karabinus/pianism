@@ -1229,6 +1229,51 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(tagRow(app, "Suite").exists, "It was archived anyway")
     }
 
+    /// HIS-2, TAG-5: in the week's "By piece and skill", Scales holds the time with a skill inside it, folded at first;
+    /// unfolded, the skill shows under it by its own name, with its own time (the owner's pick 2026-11-11).
+    @MainActor
+    func testTheWeekUnfoldsWhatsInsideAPiece() throws {
+        // Given a 25-minute session tagged with a skill added inside Scales
+        var app = launch(at: start, reset: true)
+        tap(app, "practice.start")
+        tap(app, "practice.tags")
+        revealSwipeActions(tagRow(app, "Scales"), fromLeadingEdge: true)
+        tap(app, "tags.add-inside-swipe")
+        let name = app.alerts.textFields.firstMatch
+        XCTAssertTrue(name.waitForExistence(timeout: 5), "Add Inside didn't ask")
+        name.tap()
+        name.typeText("Arpeggios")
+        app.alerts.buttons["Add"].tap()
+        tap(app, "tags.done")
+        XCTAssertEqual(element(app, "practice.tags").value as? String, "Scales › Arpeggios")
+        kill(app)
+        app = launch(at: start + 25 * 60)
+        tap(app, "practice.stop")
+
+        // When the week's breakdown opens
+        openHistory(app)
+        tap(app, "history.week-by-tag")
+
+        // Then Scales has the session's time, and the skill inside it isn't listed yet. By label: a fold's arrow carries
+        // its row's identifier too.
+        let tagRows = app.descendants(matching: .any).matching(identifier: "history.week-tag")
+        let scales = tagRows.matching(NSPredicate(format: "label == 'Scales, Skill'")).firstMatch
+        let arpeggios = tagRows.matching(NSPredicate(format: "label == 'Arpeggios, Skill'")).firstMatch
+        XCTAssertTrue(scales.waitForExistence(timeout: 5), "Scales isn't listed")
+        XCTAssertEqual(scales.value as? String, "25 minutes")
+        XCTAssertFalse(arpeggios.exists, "What's inside Scales showed before it unfolded")
+        attachScreenshot(of: app, named: "History, this week by tag, folded")
+
+        // When Scales unfolds
+        scales.tap()
+
+        // Then the skill shows under it, by its own name, with its own time
+        XCTAssertTrue(arpeggios.waitForExistence(timeout: 5), "Scales didn't unfold")
+        XCTAssertEqual(arpeggios.value as? String, "25 minutes")
+        XCTAssertGreaterThan(arpeggios.frame.minY, scales.frame.maxY - 1, "It isn't under Scales")
+        attachScreenshot(of: app, named: "History, this week by tag, Scales unfolded")
+    }
+
     /// TAG-5: a skill moves inside Scales from a swipe right and shows under it, unfolded, and the session tagged with it
     /// reads "Scales › Pedalling" without being changed. Moved back to the top level, it reads "Pedalling" again. A
     /// move into a list that has its name, whatever the case, is refused with the reason (D4, Q1).
@@ -2299,6 +2344,61 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(pianos.waitForNonExistence(timeout: 10), "Practice still names the piano that went")
     }
 
+    /// MIDI-2: with no piano connected, Practice offers to reconnect the Bluetooth piano paired last, as iOS doesn't after
+    /// it restarts. Reconnect opens Apple's pairing screen, and Done closes it. Connect a piano offers it too, until it's
+    /// forgotten there (device check P5, the owner's picks 2026-11-11).
+    @MainActor
+    func testPracticeOffersToReconnectTheBluetoothPiano() {
+        // Given a Bluetooth piano paired in Pianism, now switched off
+        let app = launch(at: start, reset: true, bluetoothPiano: "CA59 Bluetooth")
+
+        // Then Practice says so, with Reconnect
+        XCTAssertEqual(text(app, "practice.piano-missing"), "CA59 Bluetooth isn't connected")
+        XCTAssertFalse(element(app, "practice.pianos").exists, "It reads as connected")
+        attachScreenshot(of: app, named: "Practice, the Bluetooth piano gone")
+
+        // When Reconnect is tapped, then Apple's pairing screen opens, and Done closes it
+        tap(app, "practice.reconnect")
+        XCTAssertTrue(app.navigationBars["Bluetooth"].waitForExistence(timeout: 10), "The pairing screen didn't open")
+        attachScreenshot(of: app, named: "Reconnecting from Practice")
+        tap(app, "pairing.done")
+        XCTAssertTrue(app.navigationBars["Bluetooth"].waitForNonExistence(timeout: 5), "Done didn't close it")
+
+        // When Connect a piano opens, then it offers Reconnect too
+        openSettings(app)
+        tap(app, "settings.pianos")
+        XCTAssertEqual(text(app, "pianos.missing"), "CA59 Bluetooth isn't connected")
+        XCTAssertTrue(app.buttons["pianos.reconnect"].exists, "Connect a piano has no Reconnect")
+        attachScreenshot(of: app, named: "Connect a piano, the Bluetooth piano gone")
+
+        // When it's forgotten, then neither screen offers it
+        tap(app, "pianos.forget")
+        XCTAssertTrue(app.staticTexts["No piano connected"].waitForExistence(timeout: 5), "It wasn't forgotten")
+        XCTAssertFalse(element(app, "pianos.missing").exists)
+        openPractice(app)
+        XCTAssertTrue(element(app, "practice.start").waitForExistence(timeout: 5))
+        XCTAssertFalse(element(app, "practice.piano-missing").exists, "Practice still offers it")
+    }
+
+    /// MIDI-2: Reconnect's pairing screen closes by itself once the piano is back, and Practice says it's connected
+    /// (the owner's picks 2026-11-11).
+    @MainActor
+    func testReconnectClosesOnceThePianoIsBack() {
+        // Given the Bluetooth piano paired in Pianism, switched off, coming back 10 s after launch
+        let app = launch(
+            at: start, reset: true, midiPiano: "CA59 Bluetooth", bluetoothPiano: "CA59 Bluetooth",
+            midiPianoArrives: 10)
+
+        // When Reconnect opens Apple's pairing screen
+        tap(app, "practice.reconnect")
+        XCTAssertTrue(app.navigationBars["Bluetooth"].waitForExistence(timeout: 5), "The pairing screen didn't open")
+
+        // Then it closes by itself as the piano connects, and Practice says so
+        XCTAssertTrue(app.navigationBars["Bluetooth"].waitForNonExistence(timeout: 20), "It didn't close by itself")
+        XCTAssertEqual(text(app, "practice.pianos"), "CA59 Bluetooth connected")
+        XCTAssertFalse(element(app, "practice.piano-missing").exists)
+    }
+
     /// MIDI-2: Apple's pairing screen crashed the app on opening on iOS 27.0, found on a device by check P4.
     @MainActor
     func testPairingABluetoothPianoOpensApplesScreen() {
@@ -2584,7 +2684,7 @@ final class PracticeTests: UITestCase {
         midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil, intent: String? = nil,
         reminderMinute: Int? = nil, welcome: Bool = false, realStore: Bool = false, restoreFinds: Bool = false,
         buying: String? = nil, noOffer: Bool = false, autoLogged: Int? = nil, clearDebugData: Bool = false,
-        newerArchivedPiece: String? = nil
+        bluetoothPiano: String? = nil, midiPianoArrives: Int? = nil, newerArchivedPiece: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -2603,6 +2703,10 @@ final class PracticeTests: UITestCase {
             app.launchArguments += [
                 "-remindsDaily", "YES", "-dailyReminderMinute", "<integer>\(reminderMinute)</integer>",
             ]
+        }
+        // The piano paired last on Apple's screen, which a simulator can't pair.
+        if let bluetoothPiano {
+            app.launchArguments += ["-bluetoothPiano", bluetoothPiano]
         }
         if let now {
             app.launchEnvironment["PIANISM_NOW"] = String(now)
@@ -2656,6 +2760,7 @@ final class PracticeTests: UITestCase {
         app.launchEnvironment["PIANISM_NEWER_ARCHIVED_PIECE"] = newerArchivedPiece
         if let midiPiano {
             app.launchEnvironment["PIANISM_MIDI_PIANO"] = midiPiano
+            app.launchEnvironment["PIANISM_MIDI_PIANO_ARRIVES"] = midiPianoArrives.map(String.init)
         }
         if let autoLogged {
             app.launchEnvironment["PIANISM_AUTO_LOGGED"] = String(autoLogged)

@@ -11,6 +11,7 @@ struct PracticeView: View {
     let edit: (UUID) -> Void
 
     @State private var isPickingTags = false
+    @State private var isReconnecting = false
     /// The session as it was when "I stopped earlier" was tapped, while its end is picked, and the end picked so
     /// far (SES-3). Keyed by the whole session, so a pause, a resume or a session stopped another way goes back
     /// to the question rather than keeping an end from before. The date isn't optional: a binding unwrapping one
@@ -33,6 +34,11 @@ struct PracticeView: View {
             content()
             content(compactTime: true)
             ScrollView { content(compactTime: true).frame(maxWidth: .infinity) }
+        }
+        .sheet(isPresented: $isReconnecting) { reconnecting }
+        // Closes Apple's screen once the piano is back, so tapping it there is the last step.
+        .onChange(of: model.connectedPianos.isEmpty) { _, isEmpty in
+            if !isEmpty { isReconnecting = false }
         }
         .sheet(isPresented: $isPickingTags) {
             // Tagging stores the session, so its failure shows over the picker, which covers this screen.
@@ -74,6 +80,22 @@ struct PracticeView: View {
             }
             model.nudgeOpened = nil
         }
+    }
+
+    /// Apple's pairing screen, opened by Reconnect, which a Mac can't show.
+    @ViewBuilder
+    private var reconnecting: some View {
+        #if os(iOS)
+            NavigationStack {
+                PairingScreen(practice: model)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(role: .confirm) { isReconnecting = false }
+                                .accessibilityIdentifier(AccessibilityID.pairingDone)
+                        }
+                    }
+            }
+        #endif
     }
 
     /// Everything on Practice, spread to fill the screen when it fits. With `compactTime`, the time is half its
@@ -143,6 +165,25 @@ struct PracticeView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondaryText)
                     .accessibilityIdentifier(AccessibilityID.practicePianos)
+            } else if let piano = model.missingBluetoothPiano {
+                // iOS doesn't reconnect a Bluetooth piano after it restarts, so a piano's notes would start nothing
+                // until it's paired again (device check P5, the owner's picks 2026-11-11).
+                VStack(spacing: 0) {
+                    Text("\(piano) isn't connected", bundle: .module)
+                        .foregroundStyle(.secondaryText)
+                        .accessibilityIdentifier(AccessibilityID.practicePianoMissing)
+                    #if os(iOS)
+                        // Footnote-sized, so it's given a target big enough to hit.
+                        Button {
+                            isReconnecting = true
+                        } label: {
+                            Text("Reconnect", bundle: .module).frame(minWidth: 44, minHeight: 44).contentShape(.rect)
+                        }
+                        .accessibilityIdentifier(AccessibilityID.practiceReconnect)
+                    #endif
+                }
+                .font(.footnote)
+                .multilineTextAlignment(.center)
             }
             // The free piano sessions, without Pro: how many are left, then where Pro is, never a pop-up (PRO-2, D6).
             if let left = model.freePianoSessionsLeft {

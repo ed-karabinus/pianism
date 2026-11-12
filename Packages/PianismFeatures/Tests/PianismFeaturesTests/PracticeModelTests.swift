@@ -1675,6 +1675,49 @@ struct PracticeModelTests {
         #expect(model.pauseChoices == [15, 30, 45, 60])
     }
 
+    @Test(
+        "MIDI-2 (the owner's picks 2026-11-11): a piano that shows up while Apple's pairing screen is open is offered for reconnecting whenever no piano is connected, across a relaunch, until it's forgotten"
+    )
+    func aPianoPairedInPianismIsOfferedForReconnecting() {
+        // Given a USB piano connected before Apple's pairing screen opens, and one paired there
+        let model = makeModel()
+        model.connectedPianos = ["MIDI KEYBOARD"]
+        model.isPairing = true
+        model.connectedPianos = ["MIDI KEYBOARD", "CA59 Bluetooth"]
+        model.isPairing = false
+
+        // When both go, as the piano switches off
+        model.connectedPianos = []
+
+        // Then only the one paired there is offered, after a relaunch too
+        #expect(model.missingBluetoothPiano == "CA59 Bluetooth")
+        let relaunched = makeModel()
+        #expect(relaunched.missingBluetoothPiano == "CA59 Bluetooth")
+
+        // When any piano connects, such as the same one over USB, then nothing is offered
+        relaunched.connectedPianos = ["MIDI KEYBOARD"]
+        #expect(relaunched.missingBluetoothPiano == nil)
+
+        // When it's forgotten, then nothing is offered with no piano either, after a relaunch too
+        relaunched.connectedPianos = []
+        relaunched.forgetBluetoothPiano()
+        #expect(relaunched.missingBluetoothPiano == nil)
+        #expect(makeModel().missingBluetoothPiano == nil)
+    }
+
+    @Test("MIDI-2: a piano that shows up with Apple's pairing screen closed, as by USB, isn't offered for reconnecting")
+    func aPianoConnectedElsewhereIsntOffered() {
+        // Given a piano that connects and goes with the pairing screen closed
+        let model = makeModel()
+        model.connectedPianos = ["MIDI KEYBOARD"]
+
+        // When it goes
+        model.connectedPianos = []
+
+        // Then nothing is offered
+        #expect(model.missingBluetoothPiano == nil)
+    }
+
     /// A model over `store`, with the app's nudge and cap.
     private func makeModel(over store: any RunningSessionStore = InMemoryRunningSessionStore()) -> PracticeModel {
         PracticeModel(

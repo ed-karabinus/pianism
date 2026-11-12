@@ -278,9 +278,17 @@ struct PianismApp: App {
                     }
                 }
             }
-            // They show a piano as connected with PIANISM_MIDI_PIANO, its name, which Release builds ignore too.
+            // They show a piano as connected with PIANISM_MIDI_PIANO, its name, which Release builds ignore too, and
+            // with PIANISM_MIDI_PIANO_ARRIVES, that many seconds after launch, as a piano being paired does.
             if let piano = environment["PIANISM_MIDI_PIANO"] {
-                practice.connectedPianos = [piano]
+                if let arrives = environment["PIANISM_MIDI_PIANO_ARRIVES"].flatMap(Int.init) {
+                    Task {
+                        try? await Task.sleep(for: .seconds(arrives))
+                        practice.connectedPianos = [piano]
+                    }
+                } else {
+                    practice.connectedPianos = [piano]
+                }
             }
             // They change the session as the widget's and the Live Activity's buttons do, with
             // PIANISM_INTENT=start|pause|resume|stop, which performs that intent here, as neither can be tapped on a

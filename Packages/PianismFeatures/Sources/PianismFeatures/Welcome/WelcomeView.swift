@@ -68,7 +68,7 @@ struct WelcomeView: View {
             .controlSize(.large)
             .accessibilityIdentifier(AccessibilityID.welcomeStart)
             NavigationLink {
-                ConnectPianoView(pianos: practice.connectedPianos)
+                ConnectPianoView(practice: practice)
             } label: {
                 Text("Connect a piano", bundle: .module)
             }
