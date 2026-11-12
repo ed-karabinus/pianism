@@ -2312,6 +2312,61 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(pianos.waitForNonExistence(timeout: 10), "Practice still names the piano that went")
     }
 
+    /// MIDI-2: with no piano connected, Practice offers to reconnect the Bluetooth piano paired last, as iOS doesn't after
+    /// it restarts. Reconnect opens Apple's pairing screen, and Done closes it. Connect a piano offers it too, until it's
+    /// forgotten there (device check P5, the owner's picks 2026-11-11).
+    @MainActor
+    func testPracticeOffersToReconnectTheBluetoothPiano() {
+        // Given a Bluetooth piano paired in Pianism, now switched off
+        let app = launch(at: start, reset: true, bluetoothPiano: "CA59 Bluetooth")
+
+        // Then Practice says so, with Reconnect
+        XCTAssertEqual(text(app, "practice.piano-missing"), "CA59 Bluetooth isn't connected")
+        XCTAssertFalse(element(app, "practice.pianos").exists, "It reads as connected")
+        attachScreenshot(of: app, named: "Practice, the Bluetooth piano gone")
+
+        // When Reconnect is tapped, then Apple's pairing screen opens, and Done closes it
+        tap(app, "practice.reconnect")
+        XCTAssertTrue(app.navigationBars["Bluetooth"].waitForExistence(timeout: 10), "The pairing screen didn't open")
+        attachScreenshot(of: app, named: "Reconnecting from Practice")
+        tap(app, "pairing.done")
+        XCTAssertTrue(app.navigationBars["Bluetooth"].waitForNonExistence(timeout: 5), "Done didn't close it")
+
+        // When Connect a piano opens, then it offers Reconnect too
+        openSettings(app)
+        tap(app, "settings.pianos")
+        XCTAssertEqual(text(app, "pianos.missing"), "CA59 Bluetooth isn't connected")
+        XCTAssertTrue(app.buttons["pianos.reconnect"].exists, "Connect a piano has no Reconnect")
+        attachScreenshot(of: app, named: "Connect a piano, the Bluetooth piano gone")
+
+        // When it's forgotten, then neither screen offers it
+        tap(app, "pianos.forget")
+        XCTAssertTrue(app.staticTexts["No piano connected"].waitForExistence(timeout: 5), "It wasn't forgotten")
+        XCTAssertFalse(element(app, "pianos.missing").exists)
+        openPractice(app)
+        XCTAssertTrue(element(app, "practice.start").waitForExistence(timeout: 5))
+        XCTAssertFalse(element(app, "practice.piano-missing").exists, "Practice still offers it")
+    }
+
+    /// MIDI-2: Reconnect's pairing screen closes by itself once the piano is back, and Practice says it's connected
+    /// (the owner's picks 2026-11-11).
+    @MainActor
+    func testReconnectClosesOnceThePianoIsBack() {
+        // Given the Bluetooth piano paired in Pianism, switched off, coming back 10 s after launch
+        let app = launch(
+            at: start, reset: true, midiPiano: "CA59 Bluetooth", bluetoothPiano: "CA59 Bluetooth",
+            midiPianoArrives: 10)
+
+        // When Reconnect opens Apple's pairing screen
+        tap(app, "practice.reconnect")
+        XCTAssertTrue(app.navigationBars["Bluetooth"].waitForExistence(timeout: 5), "The pairing screen didn't open")
+
+        // Then it closes by itself as the piano connects, and Practice says so
+        XCTAssertTrue(app.navigationBars["Bluetooth"].waitForNonExistence(timeout: 20), "It didn't close by itself")
+        XCTAssertEqual(text(app, "practice.pianos"), "CA59 Bluetooth connected")
+        XCTAssertFalse(element(app, "practice.piano-missing").exists)
+    }
+
     /// MIDI-2: Apple's pairing screen crashed the app on opening on iOS 27.0, found on a device by check P4.
     @MainActor
     func testPairingABluetoothPianoOpensApplesScreen() {
@@ -2596,7 +2651,8 @@ final class PracticeTests: UITestCase {
         textSize: String? = nil, syncArrivesSeconds: Int? = nil, midiNotes: String? = nil, midiPauseSeconds: Int? = nil,
         midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil, intent: String? = nil,
         reminderMinute: Int? = nil, welcome: Bool = false, realStore: Bool = false, restoreFinds: Bool = false,
-        buying: String? = nil, noOffer: Bool = false, autoLogged: Int? = nil, clearDebugData: Bool = false
+        buying: String? = nil, noOffer: Bool = false, autoLogged: Int? = nil, clearDebugData: Bool = false,
+        bluetoothPiano: String? = nil, midiPianoArrives: Int? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -2615,6 +2671,10 @@ final class PracticeTests: UITestCase {
             app.launchArguments += [
                 "-remindsDaily", "YES", "-dailyReminderMinute", "<integer>\(reminderMinute)</integer>",
             ]
+        }
+        // The piano paired last on Apple's screen, which a simulator can't pair.
+        if let bluetoothPiano {
+            app.launchArguments += ["-bluetoothPiano", bluetoothPiano]
         }
         if let now {
             app.launchEnvironment["PIANISM_NOW"] = String(now)
@@ -2667,6 +2727,7 @@ final class PracticeTests: UITestCase {
         }
         if let midiPiano {
             app.launchEnvironment["PIANISM_MIDI_PIANO"] = midiPiano
+            app.launchEnvironment["PIANISM_MIDI_PIANO_ARRIVES"] = midiPianoArrives.map(String.init)
         }
         if let autoLogged {
             app.launchEnvironment["PIANISM_AUTO_LOGGED"] = String(autoLogged)

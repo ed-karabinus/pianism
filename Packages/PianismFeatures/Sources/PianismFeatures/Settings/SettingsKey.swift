@@ -31,4 +31,6 @@ enum SettingsKey {
     static let midiPauseAfter = "midiPauseAfter"
     /// The silence that ends and saves a MIDI session, in seconds (MIDI-1).
     static let midiSaveAfter = "midiSaveAfter"
+    /// The name of the piano that last showed up while Apple's pairing screen was open, until it's forgotten (MIDI-2).
+    static let bluetoothPiano = "bluetoothPiano"
 }

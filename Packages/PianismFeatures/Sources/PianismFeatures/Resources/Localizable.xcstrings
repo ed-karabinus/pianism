@@ -4,6 +4,9 @@
     "%@ connected" : {
       "comment" : "The pianos Pianism hears, by the names the system gives them"
     },
+    "%@ isn't connected" : {
+      "comment" : "The Bluetooth piano paired last, by the name the system gave it, when no piano is connected"
+    },
     "%@, %@" : {
 
     },
@@ -201,6 +204,9 @@
     },
     "Find or add a piece or skill" : {
 
+    },
+    "Forget This Piano" : {
+      "comment" : "Stops offering to reconnect the Bluetooth piano paired last"
     },
     "From sessions your piano started in the last 30 days." : {
 
@@ -411,6 +417,9 @@
     },
     "Ready to practice" : {
 
+    },
+    "Reconnect" : {
+      "comment" : "Opens Apple's screen to pair the Bluetooth piano again"
     },
     "Remind me with a notification" : {
 
