@@ -42,7 +42,7 @@ final class PracticeTests: UITestCase {
         // The clock is fixed, so it had no practice: under 10 s, it isn't saved (SES-1).
         XCTAssertFalse(app.staticTexts["practice.last-session"].exists, "A session under 10 s was kept")
         openHistory(app)
-        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A session under 10 s was kept")
+        XCTAssertTrue(element(app, "history.empty").appears(within: 5), "A session under 10 s was kept")
     }
 
     /// NFR-10: on the real clock, the shown time advances second by second while a session runs and holds
@@ -54,7 +54,7 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
 
         let time = app.staticTexts["practice.elapsed"]
-        XCTAssertTrue(time.waitForExistence(timeout: 5), "No practice time")
+        XCTAssertTrue(time.appears(within: 5), "No practice time")
         let started = elapsed(app)
         let moved = expectation(
             for: NSPredicate(format: "value != %@", started ?? ""), evaluatedWith: time)
@@ -74,20 +74,20 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testThreeNotesStartASessionAndAShortStopDiscardsIt() throws {
         let app = launch(at: start, reset: true, midiNotes: "0,0,0", midiPiano: "MIDI KEYBOARD")
-        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
+        XCTAssertTrue(app.buttons["practice.stop"].appears(within: 10), "The notes didn't start a session")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
         XCTAssertEqual(text(app, "practice.pianos"), "MIDI KEYBOARD connected")  // MIDI-2
         attachScreenshot(of: app, named: "A MIDI session, with the piano connected")
 
         tap(app, "practice.stop")
 
-        XCTAssertTrue(app.staticTexts["practice.too-short"].waitForExistence(timeout: 5), "It didn't say so")
+        XCTAssertTrue(app.staticTexts["practice.too-short"].appears(within: 5), "It didn't say so")
         XCTAssertEqual(text(app, "practice.too-short"), "Not saved: under a minute of playing")
         XCTAssertEqual(text(app, "practice.not-saved-pop-up"), "Not saved: under a minute of playing")
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
         attachScreenshot(of: app, named: "Not saved, a piano's session")
         openHistory(app)
-        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A MIDI session under 1 min was kept")
+        XCTAssertTrue(element(app, "history.empty").appears(within: 5), "A MIDI session under 1 min was kept")
     }
 
     /// SES-1: a tapped session stopped under 10 s isn't saved, which a pop-up says for 4 s and a line under Start
@@ -97,21 +97,21 @@ final class PracticeTests: UITestCase {
         // Given a session started by tapping
         let app = launch(at: start, reset: true)
         tap(app, "practice.start")
-        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 5), "Start didn't start")
+        XCTAssertTrue(app.buttons["practice.stop"].appears(within: 5), "Start didn't start")
 
         // When it's stopped at once
         tap(app, "practice.stop")
 
         // Then a pop-up and the line say it wasn't saved, and the pop-up goes after a few seconds
         let popUp = app.staticTexts["practice.not-saved-pop-up"]
-        XCTAssertTrue(popUp.waitForExistence(timeout: 5), "No pop-up")
+        XCTAssertTrue(popUp.appears(within: 5), "No pop-up")
         XCTAssertEqual(popUp.label, "Not saved: under 10 seconds")
         XCTAssertEqual(text(app, "practice.too-short"), "Not saved: under 10 seconds")
         attachScreenshot(of: app, named: "Not saved, a tapped session")
-        XCTAssertTrue(popUp.waitForNonExistence(timeout: 8), "The pop-up stayed")
+        XCTAssertTrue(popUp.disappears(within: 8), "The pop-up stayed")
         XCTAssertEqual(text(app, "practice.too-short"), "Not saved: under 10 seconds", "The line went too")
         openHistory(app)
-        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "A session under 10 s was kept")
+        XCTAssertTrue(element(app, "history.empty").appears(within: 5), "A session under 10 s was kept")
     }
 
     /// MIDI-1: a silence pauses a MIDI session at its last note, and a longer one saves it 5 s after that note, with no
@@ -121,7 +121,7 @@ final class PracticeTests: UITestCase {
         let app = launch(
             at: nil, reset: true, midiNotes: "0.5,0.8,1.1,2.5,4", midiPauseSeconds: 10, midiSaveSeconds: 20,
             midiMinimumSeconds: 2)
-        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
+        XCTAssertTrue(app.buttons["practice.stop"].appears(within: 10), "The notes didn't start a session")
 
         let paused = app.staticTexts["practice.status"].wait(
             for: \.label, toEqual: "Paused at your last note", timeout: 30)
@@ -129,7 +129,7 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "Paused at your last note")
 
         // Played from the first note to the last, 3.5 s; the 5 s after the last note were a pause.
-        XCTAssertTrue(app.staticTexts["practice.last-session"].waitForExistence(timeout: 90), "It didn't save itself")
+        XCTAssertTrue(app.staticTexts["practice.last-session"].appears(within: 90), "It didn't save itself")
         XCTAssertEqual(text(app, "practice.last-session"), "Last session: 0:03")
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
         openHistory(app)
@@ -141,7 +141,7 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testAKillWhileAwayKeepsTheLastNote() throws {
         var app = launch(at: start, reset: true, midiNotes: "0,0,0")
-        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
+        XCTAssertTrue(app.buttons["practice.stop"].appears(within: 10), "The notes didn't start a session")
         kill(app)
         // A note 30 s in changes nothing stored until the app leaves the screen.
         app = launch(at: start + 30, midiNotes: "0")
@@ -163,7 +163,7 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testAMIDISessionLeftForTenMinutesEndsAtItsLastNote() throws {
         var app = launch(at: start, reset: true, midiNotes: "0,0,0")
-        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
+        XCTAssertTrue(app.buttons["practice.stop"].appears(within: 10), "The notes didn't start a session")
         for seconds in [30, 61] {
             goHome()
             kill(app)
@@ -176,11 +176,11 @@ final class PracticeTests: UITestCase {
         app = launch(at: start + 61 + 15 * 60)
 
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
-        XCTAssertTrue(app.staticTexts["practice.last-session"].waitForExistence(timeout: 5), "No last session")
+        XCTAssertTrue(app.staticTexts["practice.last-session"].appears(within: 5), "No last session")
         XCTAssertEqual(text(app, "practice.last-session"), "Last session: 1:01")
         openHistory(app)
         let session = element(app, "history.session")
-        XCTAssertTrue(session.waitForExistence(timeout: 5), "History doesn't have it")
+        XCTAssertTrue(session.appears(within: 5), "History doesn't have it")
         XCTAssertEqual(session.value as? String, "1 minute, 1 second")
     }
 
@@ -203,33 +203,33 @@ final class PracticeTests: UITestCase {
         }
         let todayRow = match("identifier == 'history.session' AND value == '20 minutes'")
         let yesterdayRow = match("identifier == 'history.session' AND value == '10 minutes'")
-        XCTAssertTrue(todayRow.waitForExistence(timeout: 5), "No row with today's minutes")
+        XCTAssertTrue(todayRow.appears(within: 5), "No row with today's minutes")
         XCTAssertEqual(element(app, "history.week").value as? String, "30 minutes")
         XCTAssertTrue(match("identifier == 'history.day' AND label == 'Today' AND value == '20 minutes'").exists)
         // On a small screen the week can push the second day off, and a list doesn't build rows off screen.
-        if !yesterdayRow.waitForExistence(timeout: 2) { app.swipeUp() }
-        XCTAssertTrue(yesterdayRow.waitForExistence(timeout: 5), "No row with yesterday's minutes")
+        if !yesterdayRow.appears(within: 2) { app.swipeUp() }
+        XCTAssertTrue(yesterdayRow.appears(within: 5), "No row with yesterday's minutes")
         XCTAssertTrue(match("identifier == 'history.day' AND label == 'Yesterday' AND value == '10 minutes'").exists)
         attachScreenshot(of: app, named: "History, a session across midnight")
 
         todayRow.tap()
-        XCTAssertTrue(app.navigationBars["Edit session"].waitForExistence(timeout: 5), "The editor didn't open")
+        XCTAssertTrue(app.navigationBars["Edit session"].appears(within: 5), "The editor didn't open")
         XCTAssertTrue(match("label == 'Practice time' AND value == '30 minutes'").exists, "It isn't all of the time")
-        XCTAssertTrue(element(app, "editor.spans-days").waitForExistence(timeout: 5), "The editor doesn't say why")
+        XCTAssertTrue(element(app, "editor.spans-days").appears(within: 5), "The editor doesn't say why")
         attachScreenshot(of: app, named: "Editor, a session across midnight")
         tap(app, "editor.cancel")
-        XCTAssertTrue(app.navigationBars["Edit session"].waitForNonExistence(timeout: 5), "Cancel asked to discard")
+        XCTAssertTrue(app.navigationBars["Edit session"].disappears(within: 5), "Cancel asked to discard")
 
         revealSwipeActions(yesterdayRow)
         tap(app, "history.delete")
-        XCTAssertTrue(app.staticTexts["It's listed on two days. Both go."].waitForExistence(timeout: 5), "No note")
+        XCTAssertTrue(app.staticTexts["It's listed on two days. Both go."].appears(within: 5), "No note")
         confirmDelete(app)
-        XCTAssertTrue(yesterdayRow.waitForNonExistence(timeout: 5), "Yesterday's row is still there")
+        XCTAssertTrue(yesterdayRow.disappears(within: 5), "Yesterday's row is still there")
         XCTAssertFalse(todayRow.exists, "Today's row is still there")
         tap(app, "history.undo")
-        XCTAssertTrue(todayRow.waitForExistence(timeout: 5), "Undo didn't bring today's row back")
-        if !yesterdayRow.waitForExistence(timeout: 2) { app.swipeUp() }
-        XCTAssertTrue(yesterdayRow.waitForExistence(timeout: 5), "Undo didn't bring yesterday's row back")
+        XCTAssertTrue(todayRow.appears(within: 5), "Undo didn't bring today's row back")
+        if !yesterdayRow.appears(within: 2) { app.swipeUp() }
+        XCTAssertTrue(yesterdayRow.appears(within: 5), "Undo didn't bring yesterday's row back")
     }
 
     /// SES-6: killed while running and while paused, the session comes back with the right time,
@@ -272,14 +272,14 @@ final class PracticeTests: UITestCase {
         app = launch(at: start + 9 * 60 * 60)
         assertStoppedAtTheCap(app)
         tap(app, "practice.capped-edit")
-        XCTAssertTrue(app.navigationBars["Edit session"].waitForExistence(timeout: 5), "The editor didn't open")
+        XCTAssertTrue(app.navigationBars["Edit session"].appears(within: 5), "The editor didn't open")
         attachScreenshot(of: app, named: "Editing the session the cap stopped")
         tap(app, "editor.cancel")
-        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["History"].appears(within: 5))
         XCTAssertEqual(element(app, "history.session").value as? String, "4 hours")
 
         openPractice(app)
-        XCTAssertTrue(app.staticTexts["practice.last-session"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["practice.last-session"].appears(within: 5))
         XCTAssertEqual(text(app, "practice.last-session"), "Last session: 4:00:00")
         XCTAssertFalse(app.staticTexts["practice.capped"].exists, "Edit should hide the banner")
     }
@@ -304,7 +304,7 @@ final class PracticeTests: UITestCase {
         kill(app)
 
         app = launch(at: start + 35 * 60)
-        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 5), "It didn't ask")
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].appears(within: 5), "It didn't ask")
         kill(app)
 
         app = launch(at: start + 3 * 60 * 60)
@@ -335,7 +335,7 @@ final class PracticeTests: UITestCase {
 
         app = launch(at: start + 60, midiNotes: "0")
 
-        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "One note didn't start a session")
+        XCTAssertTrue(app.buttons["practice.stop"].appears(within: 10), "One note didn't start a session")
         openSettings(app)
         XCTAssertEqual(chosen(app, "settings.pauseAfter"), "30 seconds")
         XCTAssertEqual(chosen(app, "settings.saveAfter"), "5 minutes")
@@ -352,7 +352,7 @@ final class PracticeTests: UITestCase {
         kill(app)
 
         app = launch(at: start + 95 * 60)
-        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 5), "It didn't ask")
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].appears(within: 5), "It didn't ask")
         kill(app)
 
         app = launch(at: start + 9 * 60 * 60)
@@ -403,7 +403,7 @@ final class PracticeTests: UITestCase {
         let app = launch(at: nil, reset: true, capSeconds: 12)
         tap(app, "practice.start")
 
-        XCTAssertTrue(app.staticTexts["practice.capped"].waitForExistence(timeout: 30), "It didn't stop at the cap")
+        XCTAssertTrue(app.staticTexts["practice.capped"].appears(within: 30), "It didn't stop at the cap")
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
         XCTAssertEqual(
             text(app, "practice.capped"),
@@ -421,15 +421,15 @@ final class PracticeTests: UITestCase {
         kill(app)
 
         app = launch(at: start + 95 * 60)
-        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 5), "It didn't ask")
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].appears(within: 5), "It didn't ask")
         attachScreenshot(of: app, named: "Still practicing?")
         XCTAssertEqual(app.buttons["practice.stopped-earlier"].label, "I stopped earlier")
         tap(app, "practice.stopped-earlier")
-        XCTAssertTrue(app.datePickers["practice.stopped-at"].waitForExistence(timeout: 5), "No end to pick")
+        XCTAssertTrue(app.datePickers["practice.stopped-at"].appears(within: 5), "No end to pick")
         XCTAssertEqual(app.buttons["practice.stop-at"].label, "Stop at this time")
         XCTAssertEqual(app.buttons["practice.still-practicing-yes"].label, "Still practicing")
         tap(app, "practice.still-practicing-yes")
-        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].disappears(within: 5))
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
         kill(app)
 
@@ -446,7 +446,7 @@ final class PracticeTests: UITestCase {
         kill(app)
 
         app = launch(at: start + 95 * 60)
-        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 5), "It didn't ask")
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].appears(within: 5), "It didn't ask")
         tap(app, "practice.pause")
         tap(app, "practice.resume")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
@@ -461,7 +461,7 @@ final class PracticeTests: UITestCase {
     func testRemindMeKeepsTheAnswersSideBySide() throws {
         let app = launch(at: nil, reset: true, nudgeSeconds: 3, offerNudges: true)
         tap(app, "practice.start")
-        XCTAssertTrue(app.buttons["practice.remind-me"].waitForExistence(timeout: 20), "It didn't offer it")
+        XCTAssertTrue(app.buttons["practice.remind-me"].appears(within: 20), "It didn't offer it")
         XCTAssertEqual(
             app.buttons["practice.still-practicing-yes"].frame.minY, app.buttons["practice.stopped-earlier"].frame.minY,
             accuracy: 1, "The answers stacked")
@@ -475,24 +475,24 @@ final class PracticeTests: UITestCase {
         openSettings(app)
         let reminder = app.switches["settings.daily-reminder"]
         // Below the fold on a shorter screen, as the overlap warning is.
-        if !reminder.waitForExistence(timeout: 2) { app.swipeUp() }
-        XCTAssertTrue(reminder.waitForExistence(timeout: 5), "No daily reminder in Settings")
+        if !reminder.appears(within: 2) { app.swipeUp() }
+        XCTAssertTrue(reminder.appears(within: 5), "No daily reminder in Settings")
         XCTAssertEqual(reminder.value as? String, "0", "The daily reminder isn't off by default")
         XCTAssertFalse(element(app, "settings.daily-reminder-time").exists, "A time shows with the reminder off")
 
         setNotificationSwitch(app, "settings.daily-reminder", on: true)
-        XCTAssertTrue(element(app, "settings.daily-reminder-time").waitForExistence(timeout: 5), "No time")
+        XCTAssertTrue(element(app, "settings.daily-reminder-time").appears(within: 5), "No time")
         attachScreenshot(of: app, named: "Daily reminder, on")
 
         app.terminate()
         app = launch(at: nil, reset: false)
         openSettings(app)
         let kept = app.switches["settings.daily-reminder"]
-        if !kept.waitForExistence(timeout: 2) { app.swipeUp() }
-        XCTAssertTrue(kept.waitForExistence(timeout: 5))
+        if !kept.appears(within: 2) { app.swipeUp() }
+        XCTAssertTrue(kept.appears(within: 5))
         XCTAssertTrue(
             app.switches.matching(NSPredicate(format: "identifier == 'settings.daily-reminder' AND value == '1'"))
-                .firstMatch.waitForExistence(timeout: 5), "The daily reminder wasn't kept")
+                .firstMatch.appears(within: 5), "The daily reminder wasn't kept")
     }
 
     /// SET-1: tapping the daily reminder opens Practice, though the app was left on Settings. On the real clock, as the
@@ -502,7 +502,7 @@ final class PracticeTests: UITestCase {
         // Permission first, as the system asks once per install, and a banner needs it.
         var app = launch(at: nil, reset: true)
         openSettings(app)
-        if !app.switches["settings.daily-reminder"].waitForExistence(timeout: 2) { app.swipeUp() }
+        if !app.switches["settings.daily-reminder"].appears(within: 2) { app.swipeUp() }
         setNotificationSwitch(app, "settings.daily-reminder", on: true)
         app.terminate()
 
@@ -516,10 +516,10 @@ final class PracticeTests: UITestCase {
 
         let reminder = springboard.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS 'Your piano'")).firstMatch
-        XCTAssertTrue(reminder.waitForExistence(timeout: 180), "No reminder")
+        XCTAssertTrue(reminder.appears(within: 180), "No reminder")
         reminder.tap()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15), "The reminder didn't open the app")
-        XCTAssertTrue(app.buttons["practice.start"].waitForExistence(timeout: 10), "It didn't open Practice")
+        XCTAssertTrue(app.buttons["practice.start"].appears(within: 10), "It didn't open Practice")
         XCTAssertFalse(app.navigationBars["Settings"].exists, "It stayed on Settings")
     }
 
@@ -530,7 +530,7 @@ final class PracticeTests: UITestCase {
         let app = launch(at: nil, reset: true, nudgeSeconds: 20)
         openSettings(app)
         let toggle = app.switches["settings.notifications"]
-        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "No switch in Settings")
+        XCTAssertTrue(toggle.appears(within: 5), "No switch in Settings")
         func set(_ on: Bool) { setNotificationSwitch(app, "settings.notifications", on: on) }
         set(true)
         attachScreenshot(of: app, named: "Notify me when I'm away, on")
@@ -539,7 +539,7 @@ final class PracticeTests: UITestCase {
         openPractice(app)
         tap(app, "practice.start")
         goHome()
-        XCTAssertFalse(notification.waitForExistence(timeout: 30), "It notified with the switch off")
+        XCTAssertFalse(notification.appears(within: 30), "It notified with the switch off")
         app.activate()
         tap(app, "practice.stop")
 
@@ -561,16 +561,16 @@ final class PracticeTests: UITestCase {
         // Live Activity started alongside (2026-11-01), and had under a second to spare on a Mac with 10 s.
         let app = launch(at: nil, reset: true, nudgeSeconds: 20)
         tap(app, "practice.start")
-        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 30), "It didn't ask")
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].appears(within: 30), "It didn't ask")
         // The system asks once per install, so a retry on the same simulator finds the notification allowed.
         let remind = app.buttons["practice.remind-me"]
-        if remind.waitForExistence(timeout: 3) {
+        if remind.appears(within: 3) {
             attachScreenshot(of: app, named: "Still practicing? with Remind me")
             remind.tap()
             let allow = springboard.alerts.buttons["Allow"]
-            XCTAssertTrue(allow.waitForExistence(timeout: 10), "The system didn't ask")
+            XCTAssertTrue(allow.appears(within: 10), "The system didn't ask")
             allow.tap()
-            XCTAssertTrue(remind.waitForNonExistence(timeout: 5), "It offered the notification again")
+            XCTAssertTrue(remind.disappears(within: 5), "It offered the notification again")
         }
         tap(app, "practice.still-practicing-yes")
 
@@ -578,21 +578,21 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.start")
         tap(app, "practice.pause")
         goHome()
-        XCTAssertFalse(notification.waitForExistence(timeout: 30), "It nudged a paused session")
+        XCTAssertFalse(notification.appears(within: 30), "It nudged a paused session")
         app.activate()
         tap(app, "practice.resume")
         answerNotification(with: "Still practicing")
         app.activate()
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
         XCTAssertFalse(
-            app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 3), "The answer was lost")
+            app.staticTexts["practice.still-practicing"].appears(within: 3), "The answer was lost")
 
         tap(app, "practice.stop")
         tap(app, "practice.start")
         // Left on History, so the notification has to bring Practice back.
         openHistory(app)
         answerNotification(with: "I stopped earlier")
-        XCTAssertTrue(app.datePickers["practice.stopped-at"].waitForExistence(timeout: 10), "No end to pick")
+        XCTAssertTrue(app.datePickers["practice.stopped-at"].appears(within: 10), "No end to pick")
         attachScreenshot(of: app, named: "Opened from the notification's I stopped earlier")
         tap(app, "practice.stop-at")
         XCTAssertEqual(text(app, "practice.status"), "Ready to practice")
@@ -603,10 +603,10 @@ final class PracticeTests: UITestCase {
         Thread.sleep(forTimeInterval: 22)
         openPractice(app)
         XCTAssertTrue(
-            app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 3), "It didn't ask on Practice")
+            app.staticTexts["practice.still-practicing"].appears(within: 3), "It didn't ask on Practice")
         // A new banner asks the system again, which says it's allowed.
         XCTAssertFalse(
-            app.buttons["practice.remind-me"].waitForExistence(timeout: 3), "It offered the notification again")
+            app.buttons["practice.remind-me"].appears(within: 3), "It offered the notification again")
     }
 
     /// SES-3: "I stopped earlier" shows wheels at the current time, which go back to when practice really
@@ -621,7 +621,7 @@ final class PracticeTests: UITestCase {
         app = launch(at: start + 2 * 60 * 60 + 40 * 60 + 45)
         tap(app, "practice.stopped-earlier")
         let picker = app.datePickers["practice.stopped-at"]
-        XCTAssertTrue(picker.waitForExistence(timeout: 5), "No end to pick")
+        XCTAssertTrue(picker.appears(within: 5), "No end to pick")
         // Date, hour, minute, AM or PM: from 2 h 40 min in, back to 2 h 10 min. This assumes the wheel order of
         // English and a time zone a whole number of hours from UTC, as on CI and the Mac. adjust can stop a row
         // short, so it tries again until the wheel shows the minute.
@@ -646,7 +646,7 @@ final class PracticeTests: UITestCase {
 
         app = launch(at: start + 95 * 60, textSize: "AccessibilityXXXL")
         tap(app, "practice.stopped-earlier")
-        XCTAssertTrue(app.datePickers["practice.stopped-at"].waitForExistence(timeout: 5), "No end to pick")
+        XCTAssertTrue(app.datePickers["practice.stopped-at"].appears(within: 5), "No end to pick")
         attachScreenshot(of: app, named: "I stopped earlier, largest text")
         XCTAssertTrue(app.buttons["practice.stop-at"].exists)
         XCTAssertTrue(app.buttons["practice.still-practicing-yes"].exists)
@@ -679,8 +679,8 @@ final class PracticeTests: UITestCase {
         let app = launch(at: nil, reset: true, nudgeSeconds: 3, capSeconds: 45)
         tap(app, "practice.start")
 
-        XCTAssertTrue(app.staticTexts["practice.still-practicing"].waitForExistence(timeout: 30), "It didn't ask")
-        XCTAssertTrue(app.staticTexts["practice.capped"].waitForExistence(timeout: 90), "It didn't stop at the cap")
+        XCTAssertTrue(app.staticTexts["practice.still-practicing"].appears(within: 30), "It didn't ask")
+        XCTAssertTrue(app.staticTexts["practice.capped"].appears(within: 90), "It didn't stop at the cap")
     }
 
     /// HIS-1, HIS-2: a finished session appears under Today with its time, and the day and the week show their totals.
@@ -695,13 +695,13 @@ final class PracticeTests: UITestCase {
 
         app = launch(at: start + 25 * 60 + 3)
         openHistory(app)
-        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "history.empty").appears(within: 5))
         attachScreenshot(of: app, named: "History, empty")
         openPractice(app)
         tap(app, "practice.stop")
         openHistory(app)
         let day = element(app, "history.day")
-        XCTAssertTrue(day.waitForExistence(timeout: 5))
+        XCTAssertTrue(day.appears(within: 5))
         XCTAssertEqual(day.label, "Today")
         XCTAssertEqual(day.value as? String, "25 minutes, 3 seconds")
         // HIS-2: this week so far is this one session.
@@ -716,18 +716,18 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "History, one session")
         // Its start and end fall at different seconds, which a time picked on the wheels would change.
         session.tap()
-        XCTAssertTrue(app.navigationBars["Edit session"].waitForExistence(timeout: 5), "The editor didn't open")
+        XCTAssertTrue(app.navigationBars["Edit session"].appears(within: 5), "The editor didn't open")
         setEndMinute(app, to: nil, title: "Edit session")
         tap(app, "editor.cancel")
         let editor = app.navigationBars["Edit session"]
-        XCTAssertTrue(editor.waitForNonExistence(timeout: 5), "Cancel asked to discard a change")
+        XCTAssertTrue(editor.disappears(within: 5), "Cancel asked to discard a change")
         XCTAssertEqual(session.value as? String, "25 minutes, 3 seconds")
         kill(app)
 
         app = launch(at: start + 60 * 60)
         openHistory(app)
         let relaunched = element(app, "history.day")
-        XCTAssertTrue(relaunched.waitForExistence(timeout: 5))
+        XCTAssertTrue(relaunched.appears(within: 5))
         XCTAssertEqual(relaunched.value as? String, "25 minutes, 3 seconds")
     }
 
@@ -751,7 +751,7 @@ final class PracticeTests: UITestCase {
         func setGoal(_ identifier: String, _ choice: String) {
             openSettings(app)
             // Below the fold on a shorter screen.
-            if !element(app, identifier).waitForExistence(timeout: 2) { app.swipeUp() }
+            if !element(app, identifier).appears(within: 2) { app.swipeUp() }
             choose(app, identifier, choice)
             attachScreenshot(of: app, named: "Settings, \(choice)")
             openHistory(app)
@@ -799,7 +799,7 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start + 2 * week + 60 * 60)
         openHistory(app)
         let shown = element(app, "history.week")
-        XCTAssertTrue(shown.waitForExistence(timeout: 5))
+        XCTAssertTrue(shown.appears(within: 5))
         XCTAssertEqual("\(shown.label): \(shown.value ?? "")", "This week: 5 minutes")
         XCTAssertFalse(app.buttons["history.week-later"].isEnabled)
         tap(app, "history.week-earlier")
@@ -825,7 +825,7 @@ final class PracticeTests: UITestCase {
         let day = Date(timeIntervalSince1970: start).formatted(.dateTime.weekday(.wide))
         element(app, "history.week-chart").descendants(matching: .any)[day].tap()
         if !wasShown {
-            XCTAssertTrue(session.waitForExistence(timeout: 5))
+            XCTAssertTrue(session.appears(within: 5))
             XCTAssertTrue(session.wait(for: \.isHittable, toEqual: true, timeout: 5), "The tap didn't show \(day)")
         }
         attachScreenshot(of: app, named: "History, a tapped day")
@@ -844,7 +844,7 @@ final class PracticeTests: UITestCase {
         let chart = element(app, "history.week-chart")
         /// Below the fold on an iPhone at this size: the tap scrolls the bar into view first.
         func tapBar(_ date: TimeInterval) {
-            XCTAssertTrue(chart.waitForExistence(timeout: 5))
+            XCTAssertTrue(chart.appears(within: 5))
             let weekday = Date(timeIntervalSince1970: date).formatted(.dateTime.weekday(.wide))
             chart.descendants(matching: .any)[weekday].tap()
         }
@@ -891,11 +891,11 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(element(app, "practice.tags").value as? String, "Untagged")
         tap(app, "practice.tags")
         let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertTrue(search.appears(within: 5))
         search.tap()
         search.typeText("Ballade No. 1")
         tap(app, "tags.add-piece")
-        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5), "Adding should put the keyboard away")
+        XCTAssertTrue(app.keyboards.firstMatch.disappears(within: 5), "Adding should put the keyboard away")
         XCTAssertTrue(app.buttons["Ballade No. 1"].isSelected)
         tap(app, "Scales")
         XCTAssertTrue(app.buttons["Scales"].wait(for: \.isSelected, toEqual: true, timeout: 5))
@@ -916,13 +916,13 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         openHistory(app)
         // HIS-2: the week's time with each tag is a tap away, so the sessions stay on screen.
-        XCTAssertTrue(element(app, "history.week").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "history.week").appears(within: 5))
         let tagRows = app.descendants(matching: .any).matching(identifier: "history.week-tag")
         XCTAssertEqual(tagRows.count, 0)
         XCTAssertTrue(element(app, "history.session").isHittable, "The week pushed the sessions off the screen")
         tap(app, "history.week-by-tag")
         // The tagged session counts toward both of its tags, each marked as a piece or a skill.
-        XCTAssertTrue(tagRows.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(tagRows.firstMatch.appears(within: 5))
         func shownRows() -> [String] {
             (0..<tagRows.count).map {
                 "\(tagRows.element(boundBy: $0).label): \(tagRows.element(boundBy: $0).value ?? "")"
@@ -937,11 +937,11 @@ final class PracticeTests: UITestCase {
         kill(app)
         app = launch(at: start + 27 * 60)
         openHistory(app)
-        XCTAssertTrue(tagRows.firstMatch.waitForExistence(timeout: 5), "The breakdown closed after a relaunch")
+        XCTAssertTrue(tagRows.firstMatch.appears(within: 5), "The breakdown closed after a relaunch")
         XCTAssertEqual(shownRows(), expected)
         // Open, it pushes the sessions further down.
         app.swipeUp()
-        XCTAssertTrue(element(app, "history.day").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "history.day").appears(within: 5))
         let sessions = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertEqual(sessions.count, 2)
         XCTAssertEqual(sessions.matching(NSPredicate(format: "label ENDSWITH 'Ballade No. 1, Scales'")).count, 1)
@@ -960,22 +960,22 @@ final class PracticeTests: UITestCase {
 
         // When part of its name is searched for
         let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertTrue(search.appears(within: 5))
         search.tap()
         search.typeText("tude")
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.appears(within: 5))
 
         // Then it's found, dimmed, with the reason
         let row = app.buttons.matching(identifier: "tags.tag")
             .matching(NSPredicate(format: "label BEGINSWITH 'Étude in E'")).firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 5), "Part of its name didn't find it")
+        XCTAssertTrue(row.appears(within: 5), "Part of its name didn't find it")
         XCTAssertFalse(row.isEnabled, "It can be chosen")
         XCTAssertTrue(row.label.contains("Archived by a newer version of Pianism. Update to use it."), row.label)
         attachScreenshot(of: app, named: "Tag picker, archived by a newer version")
 
         // When it's tapped, then nothing is tagged and no error shows
         row.tap()
-        XCTAssertFalse(app.alerts.firstMatch.waitForExistence(timeout: 2), "An error showed")
+        XCTAssertFalse(app.alerts.firstMatch.appears(within: 2), "An error showed")
         XCTAssertFalse(row.isSelected, "It was chosen")
         tap(app, "tags.done")
         XCTAssertEqual(element(app, "practice.tags").value as? String, "Untagged")
@@ -989,18 +989,18 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.start")
         tap(app, "practice.tags")
         let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertTrue(search.appears(within: 5))
         search.tap()
         search.typeText("Ballade No. 1")
         tap(app, "tags.add-piece")
         // Untagged, so archiving takes it off the list.
-        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.disappears(within: 5))
         tap(app, "Ballade No. 1")
         XCTAssertTrue(
             app.buttons["Ballade No. 1"].wait(for: \.isSelected, toEqual: false, timeout: 5), "It stayed tagged")
         revealSwipeActions(app.buttons["Ballade No. 1"])
         tap(app, "Archive")
-        XCTAssertTrue(app.buttons["Ballade No. 1"].waitForNonExistence(timeout: 5), "Archiving didn't hide it")
+        XCTAssertTrue(app.buttons["Ballade No. 1"].disappears(within: 5), "Archiving didn't hide it")
 
         search.tap()
         search.typeText("Ballade")
@@ -1008,7 +1008,7 @@ final class PracticeTests: UITestCase {
             NSPredicate(format: "label BEGINSWITH 'Ballade No. 1' AND label CONTAINS 'Archived'")
         )
         .firstMatch
-        XCTAssertTrue(archived.waitForExistence(timeout: 5), "Part of its name didn't find it")
+        XCTAssertTrue(archived.appears(within: 5), "Part of its name didn't find it")
         XCTAssertLessThan(archived.frame.midY, element(app, "tags.add-piece").frame.midY, "It wasn't above Add")
         attachScreenshot(of: app, named: "Tag picker, archived piece found")
     }
@@ -1021,12 +1021,12 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.start")
         tap(app, "practice.tags")
         let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertTrue(search.appears(within: 5))
         for name in ["Ballade", "Ballade No. 1"] {
             search.tap()
             search.typeText(name)
             tap(app, "tags.add-piece")
-            XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+            XCTAssertTrue(app.keyboards.firstMatch.disappears(within: 5))
         }
         revealSwipeActions(app.buttons["Ballade"])
         attachScreenshot(of: app, named: "Tag picker, piece swiped")
@@ -1034,12 +1034,12 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "Merge, choosing the piece to keep")
         // By ID: the picker under the sheet has a button with the same name.
         let target = app.buttons["merge.target"]
-        XCTAssertTrue(target.waitForExistence(timeout: 5), "Merge didn't open")
+        XCTAssertTrue(target.appears(within: 5), "Merge didn't open")
         XCTAssertEqual(target.label, "Ballade No. 1")
         target.tap()
-        XCTAssertTrue(app.buttons["Ballade"].waitForNonExistence(timeout: 5), "The merged piece is still offered")
+        XCTAssertTrue(app.buttons["Ballade"].disappears(within: 5), "The merged piece is still offered")
         let mergedRow = app.staticTexts["Merged into Ballade No. 1"]
-        XCTAssertTrue(mergedRow.waitForExistence(timeout: 5), "The merge can't be undone")
+        XCTAssertTrue(mergedRow.appears(within: 5), "The merge can't be undone")
         attachScreenshot(of: app, named: "Tag picker, piece merged")
         tap(app, "tags.done")
         XCTAssertEqual(element(app, "practice.tags").value as? String, "Ballade No. 1")
@@ -1051,7 +1051,7 @@ final class PracticeTests: UITestCase {
         openHistory(app)
         tap(app, "history.week-by-tag")
         let tagRows = app.descendants(matching: .any).matching(identifier: "history.week-tag")
-        XCTAssertTrue(tagRows.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(tagRows.firstMatch.appears(within: 5))
         XCTAssertEqual(tagRows.count, 1, "It counted toward more than the kept piece")
         XCTAssertEqual(tagRows.firstMatch.value as? String, "25 minutes")
         let session = element(app, "history.session")
@@ -1062,16 +1062,16 @@ final class PracticeTests: UITestCase {
         session.tap()
         tap(app, "editor.tags")
         tap(app, "tags.undo-merge")
-        XCTAssertTrue(app.buttons["Ballade"].waitForExistence(timeout: 5), "Undo didn't bring it back")
+        XCTAssertTrue(app.buttons["Ballade"].appears(within: 5), "Undo didn't bring it back")
         XCTAssertTrue(app.buttons["Ballade"].isSelected, "The session lost its tag")
         XCTAssertFalse(mergedRow.exists, "It's still listed as merged")
         attachScreenshot(of: app, named: "Tag picker, merge undone")
         tap(app, "tags.done")
         tap(app, "editor.cancel")
-        XCTAssertTrue(app.buttons["editor.cancel"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["editor.cancel"].disappears(within: 5))
         let bothTags = app.descendants(matching: .any).matching(identifier: "history.session")
             .matching(NSPredicate(format: "label ENDSWITH 'Ballade, Ballade No. 1'"))
-        XCTAssertTrue(bothTags.firstMatch.waitForExistence(timeout: 5), session.label)
+        XCTAssertTrue(bothTags.firstMatch.appears(within: 5), session.label)
         XCTAssertEqual(tagRows.count, 2, "Each tag should count the session again")
         attachScreenshot(of: app, named: "History, merge undone")
     }
@@ -1084,7 +1084,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.start")
         tap(app, "practice.tags")
         let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertTrue(search.appears(within: 5))
         search.tap()
         search.typeText("Ballade No. 1")
         tap(app, "tags.add-piece")
@@ -1093,7 +1093,7 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "Tag picker, piece swiped")
         tap(app, "tags.details")
         let composer = app.textFields["details.composer"]
-        XCTAssertTrue(composer.waitForExistence(timeout: 5), "The details didn't open")
+        XCTAssertTrue(composer.appears(within: 5), "The details didn't open")
         composer.tap()
         composer.typeText("Chopin")
         let tempo = app.textFields["details.tempo"]
@@ -1106,20 +1106,20 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(save.wait(for: \.isEnabled, toEqual: true, timeout: 5), "72 couldn't be saved")
         attachScreenshot(of: app, named: "Piece details")
         save.tap()
-        XCTAssertTrue(composer.waitForNonExistence(timeout: 5), "The details didn't close")
+        XCTAssertTrue(composer.disappears(within: 5), "The details didn't close")
         let withDetails = NSPredicate(format: "label BEGINSWITH 'Ballade No. 1' AND label CONTAINS 'Chopin, 72 BPM'")
         var ballade = app.buttons.matching(withDetails).firstMatch
-        XCTAssertTrue(ballade.waitForExistence(timeout: 5), "No details under the name")
+        XCTAssertTrue(ballade.appears(within: 5), "No details under the name")
         attachScreenshot(of: app, named: "Tag picker, piece with details")
         kill(app)
 
         app = launch(at: start + 60)
         tap(app, "practice.tags")
         ballade = app.buttons.matching(withDetails).firstMatch
-        XCTAssertTrue(ballade.waitForExistence(timeout: 5), "No details after a relaunch")
+        XCTAssertTrue(ballade.appears(within: 5), "No details after a relaunch")
         revealSwipeActions(ballade)
         tap(app, "tags.details")
-        XCTAssertTrue(app.textFields["details.composer"].waitForExistence(timeout: 5), "The details didn't open")
+        XCTAssertTrue(app.textFields["details.composer"].appears(within: 5), "The details didn't open")
         XCTAssertEqual(app.textFields["details.composer"].value as? String, "Chopin")
         XCTAssertEqual(app.textFields["details.tempo"].value as? String, "72")
     }
@@ -1134,13 +1134,13 @@ final class PracticeTests: UITestCase {
         var app = launch(at: start, reset: true)
         tap(app, "practice.start")
         tap(app, "practice.tags")
-        XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.searchFields.firstMatch.appears(within: 5))
 
         // When "D minor" is added inside Scales from a swipe right
         revealSwipeActions(tagRow(app, "Scales"), fromLeadingEdge: true)
         attachScreenshot(of: app, named: "Tag picker, Scales swiped right")
         tap(app, "tags.add-inside-swipe")
-        XCTAssertTrue(app.alerts["New skill inside Scales"].waitForExistence(timeout: 5), "Add Inside didn't ask")
+        XCTAssertTrue(app.alerts["New skill inside Scales"].appears(within: 5), "Add Inside didn't ask")
         let name = app.alerts.textFields.firstMatch
         name.tap()
         name.typeText("D minor")
@@ -1149,13 +1149,13 @@ final class PracticeTests: UITestCase {
 
         // Then it tags the session, inside an open Scales
         let dMinor = tagRow(app, "D minor")
-        XCTAssertTrue(dMinor.waitForExistence(timeout: 5), "It isn't under Scales")
+        XCTAssertTrue(dMinor.appears(within: 5), "It isn't under Scales")
         XCTAssertTrue(dMinor.isSelected, "It didn't tag the session")
 
         // When the row ending Scales adds "d minor", then "G major", which is then untagged. Add is checked on just
         // before the last letter, so its turning off is down to the name already inside, not an empty field.
         tap(app, "tags.add-inside")
-        XCTAssertTrue(name.waitForExistence(timeout: 5), "The row didn't ask")
+        XCTAssertTrue(name.appears(within: 5), "The row didn't ask")
         name.tap()
         name.typeText("d mino")
         let add = app.alerts.buttons["Add"]
@@ -1165,7 +1165,7 @@ final class PracticeTests: UITestCase {
         name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 7) + "G major")
         add.tap()
         let gMajor = tagRow(app, "G major")
-        XCTAssertTrue(gMajor.waitForExistence(timeout: 5), "The second skill isn't under Scales")
+        XCTAssertTrue(gMajor.appears(within: 5), "The second skill isn't under Scales")
         attachScreenshot(of: app, named: "Tag picker, two skills inside Scales")
         gMajor.tap()
         XCTAssertTrue(gMajor.wait(for: \.isSelected, toEqual: false, timeout: 5), "It stayed tagged")
@@ -1183,14 +1183,14 @@ final class PracticeTests: UITestCase {
 
         // Then its row names the skill with its parent too
         let session = element(app, "history.session")
-        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        XCTAssertTrue(session.appears(within: 5))
         XCTAssertTrue(session.label.hasSuffix(", Scales › D minor"), session.label)
         attachScreenshot(of: app, named: "History, tagged inside Scales")
 
         // When its tags open, D minor is untagged and Scales's name is tapped
         session.tap()
         tap(app, "editor.tags")
-        XCTAssertTrue(dMinor.waitForExistence(timeout: 5), "Scales opened folded with a skill inside it chosen")
+        XCTAssertTrue(dMinor.appears(within: 5), "Scales opened folded with a skill inside it chosen")
         dMinor.tap()
         XCTAssertTrue(dMinor.wait(for: \.isSelected, toEqual: false, timeout: 5), "It stayed tagged")
         let scales = tagRow(app, "Scales")
@@ -1200,7 +1200,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(scales.wait(for: \.isSelected, toEqual: true, timeout: 5), "Scales isn't tagged")
         tap(app, "tags.done")
         tap(app, "editor.tags")
-        XCTAssertTrue(scales.waitForExistence(timeout: 5))
+        XCTAssertTrue(scales.appears(within: 5))
         XCTAssertTrue(scales.isSelected, "Scales lost its tag")
         XCTAssertFalse(dMinor.exists, "Scales opened unfolded")
         attachScreenshot(of: app, named: "Tag picker, Scales folded")
@@ -1210,20 +1210,20 @@ final class PracticeTests: UITestCase {
         search.tap()
         search.typeText("Suite")
         tap(app, "tags.add-piece")
-        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.disappears(within: 5))
         revealSwipeActions(tagRow(app, "Suite"), fromLeadingEdge: true)
         tap(app, "tags.add-inside-swipe")
-        XCTAssertTrue(app.alerts["New piece inside Suite"].waitForExistence(timeout: 5), "Add Inside didn't ask")
+        XCTAssertTrue(app.alerts["New piece inside Suite"].appears(within: 5), "Add Inside didn't ask")
         name.tap()
         name.typeText("Prelude")
         app.alerts.buttons["Add"].tap()
-        XCTAssertTrue(tagRow(app, "Prelude").waitForExistence(timeout: 5), "It isn't under Suite")
+        XCTAssertTrue(tagRow(app, "Prelude").appears(within: 5), "It isn't under Suite")
         revealSwipeActions(tagRow(app, "Suite"))
         tap(app, "Archive")
 
         // Then it says what's inside goes first, and the piece stays
         let blocked = app.alerts["Archive the 1 piece inside “Suite” first."]
-        XCTAssertTrue(blocked.waitForExistence(timeout: 5), "Archiving wasn't blocked")
+        XCTAssertTrue(blocked.appears(within: 5), "Archiving wasn't blocked")
         attachScreenshot(of: app, named: "Tag picker, archive blocked")
         blocked.buttons.firstMatch.tap()
         XCTAssertTrue(tagRow(app, "Suite").exists, "It was archived anyway")
@@ -1240,7 +1240,7 @@ final class PracticeTests: UITestCase {
         revealSwipeActions(tagRow(app, "Scales"), fromLeadingEdge: true)
         tap(app, "tags.add-inside-swipe")
         let name = app.alerts.textFields.firstMatch
-        XCTAssertTrue(name.waitForExistence(timeout: 5), "Add Inside didn't ask")
+        XCTAssertTrue(name.appears(within: 5), "Add Inside didn't ask")
         name.tap()
         name.typeText("Arpeggios")
         app.alerts.buttons["Add"].tap()
@@ -1259,7 +1259,7 @@ final class PracticeTests: UITestCase {
         let tagRows = app.descendants(matching: .any).matching(identifier: "history.week-tag")
         let scales = tagRows.matching(NSPredicate(format: "label == 'Scales, Skill'")).firstMatch
         let arpeggios = tagRows.matching(NSPredicate(format: "label == 'Arpeggios, Skill'")).firstMatch
-        XCTAssertTrue(scales.waitForExistence(timeout: 5), "Scales isn't listed")
+        XCTAssertTrue(scales.appears(within: 5), "Scales isn't listed")
         XCTAssertEqual(scales.value as? String, "25 minutes")
         XCTAssertFalse(arpeggios.exists, "What's inside Scales showed before it unfolded")
         attachScreenshot(of: app, named: "History, this week by tag, folded")
@@ -1268,7 +1268,7 @@ final class PracticeTests: UITestCase {
         scales.tap()
 
         // Then the skill shows under it, by its own name, with its own time
-        XCTAssertTrue(arpeggios.waitForExistence(timeout: 5), "Scales didn't unfold")
+        XCTAssertTrue(arpeggios.appears(within: 5), "Scales didn't unfold")
         XCTAssertEqual(arpeggios.value as? String, "25 minutes")
         XCTAssertGreaterThan(arpeggios.frame.minY, scales.frame.maxY - 1, "It isn't under Scales")
         attachScreenshot(of: app, named: "History, this week by tag, Scales unfolded")
@@ -1284,11 +1284,11 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.start")
         tap(app, "practice.tags")
         let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertTrue(search.appears(within: 5))
         search.tap()
         search.typeText("Pedalling")
         tap(app, "tags.add-skill")
-        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.disappears(within: 5))
         let pedalling = tagRow(app, "Pedalling")
         let scales = app.buttons.matching(identifier: "move.target").matching(NSPredicate(format: "label == 'Scales'"))
             .firstMatch
@@ -1298,15 +1298,15 @@ final class PracticeTests: UITestCase {
         revealSwipeActions(pedalling, fromLeadingEdge: true)
         attachScreenshot(of: app, named: "Tag picker, a skill swiped right")
         tap(app, "tags.move")
-        XCTAssertTrue(moveBar.waitForExistence(timeout: 5), "Move didn't open")
+        XCTAssertTrue(moveBar.appears(within: 5), "Move didn't open")
         XCTAssertTrue(app.buttons["move.top-level"].isSelected, "Where it is isn't checked")
         attachScreenshot(of: app, named: "Move, from the top level")
-        XCTAssertTrue(scales.waitForExistence(timeout: 5), "Scales isn't offered")
+        XCTAssertTrue(scales.appears(within: 5), "Scales isn't offered")
         scales.tap()
-        XCTAssertTrue(moveBar.waitForNonExistence(timeout: 5), "Move didn't close")
+        XCTAssertTrue(moveBar.disappears(within: 5), "Move didn't close")
 
         // Then it's under an unfolded Scales, and the session reads with its parent
-        XCTAssertTrue(app.buttons["tags.add-inside"].waitForExistence(timeout: 5), "Scales didn't unfold")
+        XCTAssertTrue(app.buttons["tags.add-inside"].appears(within: 5), "Scales didn't unfold")
         XCTAssertTrue(pedalling.exists && pedalling[below: tagRow(app, "Scales").frame.maxY], "It isn't under Scales")
         attachScreenshot(of: app, named: "Tag picker, moved inside Scales")
         tap(app, "tags.done")
@@ -1316,11 +1316,11 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.tags")
         revealSwipeActions(pedalling, fromLeadingEdge: true)
         tap(app, "tags.move")
-        XCTAssertTrue(scales.waitForExistence(timeout: 5), "Move didn't open")
+        XCTAssertTrue(scales.appears(within: 5), "Move didn't open")
         XCTAssertTrue(scales.isSelected, "Where it is isn't checked")
         attachScreenshot(of: app, named: "Move, from inside Scales")
         tap(app, "move.top-level")
-        XCTAssertTrue(moveBar.waitForNonExistence(timeout: 5), "Move didn't close")
+        XCTAssertTrue(moveBar.disappears(within: 5), "Move didn't close")
         tap(app, "tags.done")
 
         // Then the session reads it alone again
@@ -1331,22 +1331,22 @@ final class PracticeTests: UITestCase {
         revealSwipeActions(tagRow(app, "Scales"), fromLeadingEdge: true)
         tap(app, "tags.add-inside-swipe")
         let name = app.alerts.textFields.firstMatch
-        XCTAssertTrue(name.waitForExistence(timeout: 5), "Add Inside didn't ask")
+        XCTAssertTrue(name.appears(within: 5), "Add Inside didn't ask")
         name.tap()
         name.typeText("pedalling")
         let add = app.alerts.buttons["Add"]
         XCTAssertTrue(
             add.wait(for: \.isEnabled, toEqual: true, timeout: 5), "The top-level name blocked it inside Scales")
         add.tap()
-        XCTAssertTrue(tagRow(app, "pedalling").waitForExistence(timeout: 5), "It isn't under Scales")
+        XCTAssertTrue(tagRow(app, "pedalling").appears(within: 5), "It isn't under Scales")
         revealSwipeActions(pedalling, fromLeadingEdge: true)
         tap(app, "tags.move")
-        XCTAssertTrue(scales.waitForExistence(timeout: 5), "Move didn't open")
+        XCTAssertTrue(scales.appears(within: 5), "Move didn't open")
         scales.tap()
 
         // Then the move is refused with the reason, and it stays at the top level
         let refused = app.alerts["A skill named “Pedalling” is already inside “Scales”. Rename one first."]
-        XCTAssertTrue(refused.waitForExistence(timeout: 5), "The clash wasn't refused")
+        XCTAssertTrue(refused.appears(within: 5), "The clash wasn't refused")
         attachScreenshot(of: app, named: "Move, refused for a name inside Scales")
         refused.buttons.firstMatch.tap()
         XCTAssertTrue(app.buttons["move.top-level"].isSelected, "It moved anyway")
@@ -1355,7 +1355,7 @@ final class PracticeTests: UITestCase {
         tap(app, "move.top-level")
 
         // Then the sheet closes, and it's still at the top level
-        XCTAssertTrue(moveBar.waitForNonExistence(timeout: 5), "Move didn't close")
+        XCTAssertTrue(moveBar.disappears(within: 5), "Move didn't close")
         XCTAssertTrue(pedalling.exists, "It left the top level")
     }
 
@@ -1368,9 +1368,9 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true, syncArrivesSeconds: 25)
         tap(app, "practice.start")
         tap(app, "practice.tags")
-        XCTAssertTrue(app.buttons["tags.done"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["tags.done"].appears(within: 5))
         XCTAssertFalse(app.buttons["Synced piece"].exists, "The piece arrived before the picker opened")
-        XCTAssertTrue(app.buttons["Synced piece"].waitForExistence(timeout: 45), "The piece didn't show")
+        XCTAssertTrue(app.buttons["Synced piece"].appears(within: 45), "The piece didn't show")
     }
 
     /// SYN-1: a session iCloud brings from another device, tagged with a piece that came before it, shows in the
@@ -1383,7 +1383,7 @@ final class PracticeTests: UITestCase {
         let synced = app.descendants(matching: .any).matching(identifier: "history.session")
             .matching(NSPredicate(format: "label CONTAINS 'Synced piece'")).firstMatch
         XCTAssertFalse(synced.exists, "The session arrived before History opened")
-        XCTAssertTrue(synced.waitForExistence(timeout: 60), "The session didn't show")
+        XCTAssertTrue(synced.appears(within: 60), "The session didn't show")
         attachScreenshot(of: app, named: "History, with a session from another device")
     }
 
@@ -1398,7 +1398,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         openHistory(app)
         let session = element(app, "history.session")
-        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        XCTAssertTrue(session.appears(within: 5))
         session.tap()
         let note = element(app, "editor.note")
         note.tap()
@@ -1409,11 +1409,11 @@ final class PracticeTests: UITestCase {
         notify_post("com.edkarabinus.Pianism.delete-elsewhere")
         wait(for: [deleted], timeout: 30)
         tap(app, "editor.save")
-        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5), "Saving didn't say it failed")
+        XCTAssertTrue(app.alerts.firstMatch.appears(within: 5), "Saving didn't say it failed")
         XCTAssertTrue(app.alerts.staticTexts["This session was deleted on another device."].exists, "It didn't say why")
         attachScreenshot(of: app, named: "Saving a session deleted on another device")
         app.alerts.buttons.firstMatch.tap()
-        XCTAssertTrue(element(app, "editor.refusal").waitForExistence(timeout: 5), "The editor didn't stay open")
+        XCTAssertTrue(element(app, "editor.refusal").appears(within: 5), "The editor didn't stay open")
         attachScreenshot(of: app, named: "After OK")
         XCTAssertFalse(app.buttons["editor.save"].isEnabled, "Save is still offered")
         XCTAssertEqual(element(app, "editor.note").value as? String, "Coda", "What was typed is gone")
@@ -1431,7 +1431,7 @@ final class PracticeTests: UITestCase {
         tap(app, "practice.stop")
         openHistory(app)
         let session = element(app, "history.session")
-        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        XCTAssertTrue(session.appears(within: 5))
         XCTAssertTrue(session.label.hasSuffix("Untagged"), session.label)
 
         session.tap()
@@ -1445,10 +1445,10 @@ final class PracticeTests: UITestCase {
         note.typeText("Coda, slowly")
         attachScreenshot(of: app, named: "Edit session")
         tap(app, "editor.save")
-        XCTAssertTrue(app.buttons["editor.save"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["editor.save"].disappears(within: 5))
         let tagged = app.descendants(matching: .any).matching(identifier: "history.session")
             .matching(NSPredicate(format: "label ENDSWITH 'Scales'"))
-        XCTAssertTrue(tagged.firstMatch.waitForExistence(timeout: 5), session.label)
+        XCTAssertTrue(tagged.firstMatch.appears(within: 5), session.label)
         XCTAssertEqual(tagged.firstMatch.value as? String, "20 minutes")
         attachScreenshot(of: app, named: "History, edited")
         kill(app)
@@ -1456,12 +1456,12 @@ final class PracticeTests: UITestCase {
         app = launch(at: start + 60 * 60)
         openHistory(app)
         let relaunched = element(app, "history.session")
-        XCTAssertTrue(relaunched.waitForExistence(timeout: 5))
+        XCTAssertTrue(relaunched.appears(within: 5))
         XCTAssertTrue(relaunched.label.hasSuffix("Scales"), relaunched.label)
         XCTAssertEqual(relaunched.value as? String, "20 minutes")
         relaunched.tap()
         let savedNote = element(app, "editor.note")
-        XCTAssertTrue(savedNote.waitForExistence(timeout: 5))
+        XCTAssertTrue(savedNote.appears(within: 5))
         XCTAssertEqual(savedNote.value as? String, "Coda, slowly")
     }
 
@@ -1472,13 +1472,13 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true)
         openHistory(app)
         tap(app, "history.add")
-        XCTAssertTrue(app.navigationBars["Add session"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Add session"].appears(within: 5))
         attachScreenshot(of: app, named: "Add session")
 
         tap(app, "editor.save")
-        XCTAssertTrue(app.buttons["editor.save"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["editor.save"].disappears(within: 5))
         let session = element(app, "history.session")
-        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        XCTAssertTrue(session.appears(within: 5))
         XCTAssertEqual(session.value as? String, "30 minutes")
         attachScreenshot(of: app, named: "History, added")
     }
@@ -1491,36 +1491,36 @@ final class PracticeTests: UITestCase {
         openHistory(app)
         let editor = app.navigationBars["Add session"]
         tap(app, "history.add")
-        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        XCTAssertTrue(editor.appears(within: 5))
         tap(app, "editor.cancel")
-        XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(editor.disappears(within: 5))
 
         tap(app, "history.add")
         let note = element(app, "editor.note")
-        XCTAssertTrue(note.waitForExistence(timeout: 5))
+        XCTAssertTrue(note.appears(within: 5))
         note.tap()
         note.typeText("Scales, slowly")
         // Drags the editor by its title to the bottom of the screen, which closes a sheet that allows it.
         editor.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
             .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1)))
-        XCTAssertFalse(editor.waitForNonExistence(timeout: 3), "The editor was swiped away with a change")
+        XCTAssertFalse(editor.disappears(within: 3), "The editor was swiped away with a change")
         tap(app, "editor.cancel")
         let discard = app.buttons["Discard"]
-        XCTAssertTrue(discard.waitForExistence(timeout: 5))
+        XCTAssertTrue(discard.appears(within: 5))
         attachScreenshot(of: app, named: "Discard changes")
         discard.tap()
-        XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
-        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
+        XCTAssertTrue(editor.disappears(within: 5))
+        XCTAssertTrue(element(app, "history.empty").appears(within: 5))
     }
 
     /// ONB-1: the first launch with no practice says what Pianism does, and Start closes it and starts a session.
     @MainActor
     func testWelcomeStartsTheFirstSession() throws {
         let app = launch(at: start, reset: true, welcome: true)
-        XCTAssertTrue(element(app, "welcome.start").waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, "welcome.start").appears(within: 10))
         attachScreenshot(of: app, named: "Welcome")
         tap(app, "welcome.start")
-        XCTAssertTrue(element(app, "practice.stop").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "practice.stop").appears(within: 5))
         XCTAssertFalse(element(app, "welcome.start").exists)
     }
 
@@ -1530,13 +1530,13 @@ final class PracticeTests: UITestCase {
     func testClearingDebugDataKeepsSettingsAndTheRunningSession() throws {
         // Given sample history and its running session, and a setting changed: sharing usage turned off
         var app = launch(at: start, reset: true, showcase: true)
-        XCTAssertTrue(element(app, "practice.stop").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "practice.stop").appears(within: 5))
         let sharing = sharingSwitch(in: app)
         let off = app.switches.matching(NSPredicate(format: "identifier == 'settings.shares-usage' AND value == '0'"))
             .firstMatch
         sharing.tap()
-        if !off.waitForExistence(timeout: 3) { sharing.switches.firstMatch.tap() }
-        XCTAssertTrue(off.waitForExistence(timeout: 5), "The switch didn't turn off")
+        if !off.appears(within: 3) { sharing.switches.firstMatch.tap() }
+        XCTAssertTrue(off.appears(within: 5), "The switch didn't turn off")
         kill(app)
 
         // When it opens again with Debug's data cleared
@@ -1545,9 +1545,9 @@ final class PracticeTests: UITestCase {
         // Then the setting stays, the session still runs, and the history is empty
         XCTAssertEqual(sharingSwitch(in: app).value as? String, "0", "The settings were cleared")
         openPractice(app)
-        XCTAssertTrue(element(app, "practice.stop").waitForExistence(timeout: 10), "The running session was cleared")
+        XCTAssertTrue(element(app, "practice.stop").appears(within: 10), "The running session was cleared")
         openHistory(app)
-        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "Debug's history was kept")
+        XCTAssertTrue(element(app, "history.empty").appears(within: 5), "Debug's history was kept")
     }
 
     /// ONB-1: the welcome closes without starting anything, and it shows once.
@@ -1556,16 +1556,16 @@ final class PracticeTests: UITestCase {
         var app = launch(at: start, reset: true, welcome: true)
         // PRO-2 (#53): it says playing starts a session, only while Pianism is open, and that it's Pro after 5 free.
         let words = element(app, "welcome.words")
-        XCTAssertTrue(words.waitForExistence(timeout: 10))
+        XCTAssertTrue(words.appears(within: 10))
         XCTAssertTrue(words.label.contains("to start a session by playing while Pianism is open"), words.label)
         XCTAssertTrue(words.label.contains("Your first 5 are free. After that, it's part of Pro."), words.label)
         tap(app, "welcome.close")
-        XCTAssertTrue(element(app, "practice.start").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "practice.start").appears(within: 5))
         XCTAssertFalse(element(app, "welcome.start").exists)
         kill(app)
 
         app = launch(at: start + 60, welcome: true)
-        XCTAssertTrue(element(app, "practice.start").waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, "practice.start").appears(within: 10))
         XCTAssertFalse(element(app, "welcome.start").exists)
     }
 
@@ -1576,7 +1576,7 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true, textSize: "AccessibilityXXXL", welcome: true)
         let startButton = element(app, "welcome.start")
         let connect = element(app, "welcome.connect")
-        XCTAssertTrue(startButton.waitForExistence(timeout: 10))
+        XCTAssertTrue(startButton.appears(within: 10))
         attachScreenshot(of: app, named: "Welcome, largest text")
         app.swipeUp()
         app.swipeUp()
@@ -1584,7 +1584,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(startButton.isHittable)
         XCTAssertLessThanOrEqual(element(app, "welcome.words").frame.maxY, startButton.frame.minY)
         connect.tap()
-        XCTAssertTrue(app.navigationBars["Connect a piano"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Connect a piano"].appears(within: 5))
     }
 
     /// EXP-1: without Pro, Export opens the Pro screen; after buying, it opens the share sheet with the file.
@@ -1594,9 +1594,9 @@ final class PracticeTests: UITestCase {
         openSettings(app)
         proRow("settings.export", in: app).tap()
         let buy = app.buttons["paywall.buy"]
-        XCTAssertTrue(buy.waitForExistence(timeout: 5), "The locked row didn't open the Pro screen")
+        XCTAssertTrue(buy.appears(within: 5), "The locked row didn't open the Pro screen")
         buy.tap()
-        XCTAssertTrue(app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 10), "Buying didn't unlock Pro")
+        XCTAssertTrue(app.staticTexts["paywall.unlocked"].appears(within: 10), "Buying didn't unlock Pro")
         app.buttons["paywall.close"].tap()
 
         proRow("settings.export", in: app).tap()
@@ -1604,7 +1604,7 @@ final class PracticeTests: UITestCase {
         // for the sheet only as a fallback, as it's private and could change.
         let title = app.staticTexts["Pianism sessions"]
         let sheet = app.otherElements["ActivityListView"]
-        XCTAssertTrue(title.waitForExistence(timeout: 10) || sheet.exists, "The share sheet didn't open")
+        XCTAssertTrue(title.appears(within: 10) || sheet.exists, "The share sheet didn't open")
         attachScreenshot(of: app, named: "Export, share sheet")
     }
 
@@ -1633,18 +1633,18 @@ final class PracticeTests: UITestCase {
         openSettings(app)
         attachScreenshot(of: app, named: "Settings, Pro not unlocked")
         proRow("settings.restore", in: app).tap()
-        XCTAssertTrue(proRow("settings.pro", in: app).waitForExistence(timeout: 10), "Restoring didn't unlock Pro")
+        XCTAssertTrue(proRow("settings.pro", in: app).appears(within: 10), "Restoring didn't unlock Pro")
         attachScreenshot(of: app, named: "Settings, Pro unlocked")
         kill(app)
 
         app = launch(at: start)
         openSettings(app)
         let pro = proRow("settings.pro", in: app)
-        XCTAssertTrue(pro.waitForExistence(timeout: 5), "Pro went away when the store said nothing")
+        XCTAssertTrue(pro.appears(within: 5), "Pro went away when the store said nothing")
 
         notify_post("com.edkarabinus.Pianism.pro-refunded")
-        XCTAssertTrue(pro.waitForNonExistence(timeout: 10), "A refund left Pro on")
-        XCTAssertTrue(proRow("settings.restore", in: app).waitForExistence(timeout: 5), "No way to restore after one")
+        XCTAssertTrue(pro.disappears(within: 10), "A refund left Pro on")
+        XCTAssertTrue(proRow("settings.restore", in: app).appears(within: 5), "No way to restore after one")
     }
 
     /// PRO-1: a restore that finds nothing says so, and leaves the button there to try again.
@@ -1654,7 +1654,7 @@ final class PracticeTests: UITestCase {
         openSettings(app)
         let restore = proRow("settings.restore", in: app)
         restore.tap()
-        XCTAssertTrue(proRow("settings.restore-notice", in: app).waitForExistence(timeout: 10), "It said nothing")
+        XCTAssertTrue(proRow("settings.restore-notice", in: app).appears(within: 10), "It said nothing")
         XCTAssertEqual(app.staticTexts["settings.restore-notice"].label, "No purchase found.")
         attachScreenshot(of: app, named: "Settings, no purchase found")
         XCTAssertTrue(restore.exists, "The button should still be there")
@@ -1683,11 +1683,11 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true, realStore: true)
         openSettings(app)
         let pro = proRow("settings.pro", in: app)
-        XCTAssertTrue(pro.waitForExistence(timeout: 30), "A purchase didn't unlock Pro")
+        XCTAssertTrue(pro.appears(within: 30), "A purchase didn't unlock Pro")
 
         let transaction = try XCTUnwrap(session.allTransactions().first)
         try session.refundTransaction(identifier: transaction.identifier)
-        XCTAssertTrue(pro.waitForNonExistence(timeout: 60), "A refund didn't reach the app")
+        XCTAssertTrue(pro.disappears(within: 60), "A refund didn't reach the app")
     }
 
     /// PRO-1, through real StoreKit: the restore call itself, finding nothing, with no account to sign in to.
@@ -1697,7 +1697,7 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true, realStore: true)
         openSettings(app)
         proRow("settings.restore", in: app).tap()
-        XCTAssertTrue(proRow("settings.restore-notice", in: app).waitForExistence(timeout: 30), "It said nothing")
+        XCTAssertTrue(proRow("settings.restore-notice", in: app).appears(within: 30), "It said nothing")
         XCTAssertEqual(app.staticTexts["settings.restore-notice"].label, "No purchase found.")
     }
 
@@ -1707,7 +1707,7 @@ final class PracticeTests: UITestCase {
         openSettings(app)
         proRow("settings.show-pro", in: app).tap()
         let close = app.buttons["paywall.close"]
-        XCTAssertTrue(close.waitForExistence(timeout: 5), "The Pro screen didn't open")
+        XCTAssertTrue(close.appears(within: 5), "The Pro screen didn't open")
         return close
     }
 
@@ -1716,11 +1716,11 @@ final class PracticeTests: UITestCase {
     @MainActor
     func testThePaywallShowsOnlyWhenAProFeatureIsTapped() throws {
         let app = launch(at: start, reset: true)
-        XCTAssertTrue(element(app, "practice.start").waitForExistence(timeout: 10))
-        XCTAssertFalse(app.buttons["paywall.close"].waitForExistence(timeout: 3), "It opened at launch")
+        XCTAssertTrue(element(app, "practice.start").appears(within: 10))
+        XCTAssertFalse(app.buttons["paywall.close"].appears(within: 3), "It opened at launch")
         let close = openPaywall(app)
         let buy = app.buttons["paywall.buy"]
-        XCTAssertTrue(buy.waitForExistence(timeout: 5), "No price")
+        XCTAssertTrue(buy.appears(within: 5), "No price")
         XCTAssertEqual(buy.label, "Unlock Pro for $14.99")
         XCTAssertTrue(app.staticTexts["One purchase, no subscription."].exists)
         let included = app.staticTexts["Piano sessions start, pause and save themselves while Pianism is open."]
@@ -1731,7 +1731,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(app.buttons["paywall.restore"].exists, "No Restore")
         try audit(app, "Pro screen", contrast: false, stallsOnIPadIOS26: true, overASheet: true)
         close.tap()
-        XCTAssertTrue(close.waitForNonExistence(timeout: 5), "Close didn't close it")
+        XCTAssertTrue(close.disappears(within: 5), "Close didn't close it")
         XCTAssertTrue(app.navigationBars["Settings"].exists)
     }
 
@@ -1743,7 +1743,7 @@ final class PracticeTests: UITestCase {
         executionTimeAllowance = 5 * 60  // a stalled audit then costs 5 min, not the default 15
         var app = launch(at: nil, reset: true, midiPiano: "MIDI KEYBOARD", autoLogged: 4)
         let left = app.staticTexts["practice.free-left"]
-        XCTAssertTrue(left.waitForExistence(timeout: 10), "Practice doesn't say how many are left")
+        XCTAssertTrue(left.appears(within: 10), "Practice doesn't say how many are left")
         XCTAssertEqual(left.label, "1 free piano session left")
 
         // The 5th plays about 1.5 s, pauses after 2 s of silence and saves after 4. The 6th's notes come at 14 s.
@@ -1753,7 +1753,7 @@ final class PracticeTests: UITestCase {
         let launched = Date.now
         // The 5th is over by about 7 s, often before the launch ends, so its saving shows it started.
         let used = app.staticTexts["practice.free-used"]
-        XCTAssertTrue(used.waitForExistence(timeout: 15), "The 5th didn't start and save, or Practice didn't say so")
+        XCTAssertTrue(used.appears(within: 15), "The 5th didn't start and save, or Practice didn't say so")
         XCTAssertTrue(app.staticTexts["practice.last-session"].exists, "No last session")
         XCTAssertEqual(used.label, "Sessions that start themselves are part of Pro.")
         attachScreenshot(of: app, named: "Free piano sessions used")
@@ -1772,13 +1772,13 @@ final class PracticeTests: UITestCase {
 
         tap(app, "practice.show-pro")
         let close = app.buttons["paywall.close"]
-        XCTAssertTrue(close.waitForExistence(timeout: 5), "The link didn't open the Pro screen")
+        XCTAssertTrue(close.appears(within: 5), "The link didn't open the Pro screen")
         close.tap()
-        XCTAssertTrue(close.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(close.disappears(within: 5))
         tap(app, "practice.start")
         XCTAssertEqual(text(app, "practice.status"), "Practicing", "Start didn't start a session")
         openHistory(app)
-        XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5), "History lost its sessions")
+        XCTAssertTrue(element(app, "history.session").appears(within: 5), "History lost its sessions")
     }
 
     /// HIS-4, D7: without Pro, History's Time per piece and skill opens the Pro screen, with no numbers. Once Pro is
@@ -1795,31 +1795,31 @@ final class PracticeTests: UITestCase {
         openHistory(app)
         tap(app, "history.piece-stats")
         let buy = app.buttons["paywall.buy"]
-        XCTAssertTrue(buy.waitForExistence(timeout: 5), "The locked row didn't open the Pro screen")
+        XCTAssertTrue(buy.appears(within: 5), "The locked row didn't open the Pro screen")
         XCTAssertFalse(app.staticTexts["Last 30 days"].exists, "Stats showed without Pro")
         buy.tap()
-        XCTAssertTrue(app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 10), "Buying didn't unlock Pro")
+        XCTAssertTrue(app.staticTexts["paywall.unlocked"].appears(within: 10), "Buying didn't unlock Pro")
         app.buttons["paywall.close"].tap()
 
         // Given nothing tagged yet, when the switch goes to Skills over "No pieces yet"
         tap(app, "history.piece-stats")
-        XCTAssertTrue(app.staticTexts["No pieces yet"].waitForExistence(timeout: 5), "Pieces weren't empty")
+        XCTAssertTrue(app.staticTexts["No pieces yet"].appears(within: 5), "Pieces weren't empty")
         let skills = app.segmentedControls["piece-stats.kind"].buttons["Skills"]
         skills.tap()
         // Then Skills shows, empty too
-        XCTAssertTrue(app.staticTexts["No skills yet"].waitForExistence(timeout: 5), "The switch didn't work")
+        XCTAssertTrue(app.staticTexts["No skills yet"].appears(within: 5), "The switch didn't work")
         attachScreenshot(of: app, named: "Time per piece and skill, no skills")
 
         // Given the session from another device, tagged with a piece and a skill
         app.navigationBars.buttons.element(boundBy: 0).tap()
         let synced = app.descendants(matching: .any).matching(identifier: "history.session")
             .matching(NSPredicate(format: "label CONTAINS 'Synced piece'")).firstMatch
-        XCTAssertTrue(synced.waitForExistence(timeout: 60), "The session from another device didn't arrive")
+        XCTAssertTrue(synced.appears(within: 60), "The session from another device didn't arrive")
         // When the stats open again
         tap(app, "history.piece-stats")
         // Then the piece has its 30 minutes, on Pieces as before
         let tag = element(app, "piece-stats.piece")
-        XCTAssertTrue(tag.waitForExistence(timeout: 5), "No piece is listed")
+        XCTAssertTrue(tag.appears(within: 5), "No piece is listed")
         XCTAssertEqual(tag.label, "Synced piece")
         let times = app.descendants(matching: .any).matching(
             NSPredicate(format: "label IN {'Total', 'Last 30 days'} AND value == '30 minutes'"))
@@ -1845,11 +1845,11 @@ final class PracticeTests: UITestCase {
 
         // When Scales's "1 inside" row opens
         let inside = element(app, "piece-stats.inside")
-        XCTAssertTrue(inside.waitForExistence(timeout: 5), "No inside row")
+        XCTAssertTrue(inside.appears(within: 5), "No inside row")
         XCTAssertEqual(inside.label, "1 inside")
         inside.tap()
         // Then a screen titled Scales lists the skill with its own 30 minutes, with no switch
-        XCTAssertTrue(app.navigationBars["Scales"].waitForExistence(timeout: 5), "The skills inside didn't open")
+        XCTAssertTrue(app.navigationBars["Scales"].appears(within: 5), "The skills inside didn't open")
         XCTAssertTrue(tag.wait(for: \.label, toEqual: "Synced skill", timeout: 5), "The skill inside isn't listed")
         XCTAssertEqual(times.count, 2, "The skill's times are wrong")
         XCTAssertFalse(app.segmentedControls["piece-stats.kind"].exists, "The switch showed inside Scales")
@@ -1862,13 +1862,13 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true)
         let close = openPaywall(app)
         let buy = app.buttons["paywall.buy"]
-        XCTAssertTrue(buy.waitForExistence(timeout: 5))
+        XCTAssertTrue(buy.appears(within: 5))
         buy.tap()
-        XCTAssertTrue(app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 10), "Buying didn't unlock Pro")
+        XCTAssertTrue(app.staticTexts["paywall.unlocked"].appears(within: 10), "Buying didn't unlock Pro")
         XCTAssertFalse(app.buttons["paywall.restore"].exists, "Restore is still offered")
         attachScreenshot(of: app, named: "Pro screen, unlocked")
         close.tap()
-        XCTAssertTrue(proRow("settings.pro", in: app).waitForExistence(timeout: 5), "Settings doesn't say so")
+        XCTAssertTrue(proRow("settings.pro", in: app).appears(within: 5), "Settings doesn't say so")
     }
 
     /// PRO-3: a purchase waiting for approval, as with Ask to Buy, says so, and the approval unlocks Pro in the open
@@ -1878,15 +1878,15 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true, buying: "pending")
         _ = openPaywall(app)
         let buy = app.buttons["paywall.buy"]
-        XCTAssertTrue(buy.waitForExistence(timeout: 5))
+        XCTAssertTrue(buy.appears(within: 5))
         buy.tap()
         let notice = app.staticTexts["paywall.notice"]
-        XCTAssertTrue(notice.waitForExistence(timeout: 10), "It said nothing")
+        XCTAssertTrue(notice.appears(within: 10), "It said nothing")
         XCTAssertEqual(notice.label, "Waiting for approval. Pro unlocks once it's approved.")
         attachScreenshot(of: app, named: "Pro screen, waiting for approval")
         notify_post("com.edkarabinus.Pianism.pro-approved")
         XCTAssertTrue(
-            app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 10), "The approval didn't unlock Pro")
+            app.staticTexts["paywall.unlocked"].appears(within: 10), "The approval didn't unlock Pro")
     }
 
     /// PRO-3: with the App Store out of reach, the Pro screen shows no price rather than a made-up one, and Try Again,
@@ -1896,15 +1896,15 @@ final class PracticeTests: UITestCase {
     func testTheProScreenWithoutTheAppStore() throws {
         let app = launch(at: start, reset: true, noOffer: true)
         let close = openPaywall(app)
-        XCTAssertTrue(app.buttons["paywall.retry"].waitForExistence(timeout: 5), "No way to try again")
+        XCTAssertTrue(app.buttons["paywall.retry"].appears(within: 5), "No way to try again")
         XCTAssertTrue(app.staticTexts["The price isn't available right now."].exists)
         XCTAssertFalse(app.buttons["paywall.buy"].exists, "A price showed with no store")
         attachScreenshot(of: app, named: "Pro screen, no App Store")
         app.buttons["paywall.retry"].tap()
-        XCTAssertTrue(app.buttons["paywall.retry"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["paywall.retry"].appears(within: 5))
         XCTAssertTrue(app.buttons["paywall.restore"].isEnabled)
         close.tap()
-        XCTAssertTrue(close.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(close.disappears(within: 5))
     }
 
     /// PRO-3, through real StoreKit: the store's price, and a purchase from the Pro screen.
@@ -1914,11 +1914,11 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true, realStore: true)
         _ = openPaywall(app)
         let buy = app.buttons["paywall.buy"]
-        XCTAssertTrue(buy.waitForExistence(timeout: 30), "The store's price didn't load")
+        XCTAssertTrue(buy.appears(within: 30), "The store's price didn't load")
         XCTAssertEqual(buy.label, "Unlock Pro for $14.99")
         buy.tap()
         XCTAssertTrue(
-            app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 30), "The purchase didn't unlock Pro")
+            app.staticTexts["paywall.unlocked"].appears(within: 30), "The purchase didn't unlock Pro")
     }
 
     /// PRO-3, through real StoreKit: Ask to Buy says it's waiting, and the approval unlocks Pro in the open Pro screen.
@@ -1930,13 +1930,13 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true, realStore: true)
         _ = openPaywall(app)
         let buy = app.buttons["paywall.buy"]
-        XCTAssertTrue(buy.waitForExistence(timeout: 30), "The store's price didn't load")
+        XCTAssertTrue(buy.appears(within: 30), "The store's price didn't load")
         buy.tap()
-        XCTAssertTrue(app.staticTexts["paywall.notice"].waitForExistence(timeout: 30), "It didn't say it's waiting")
+        XCTAssertTrue(app.staticTexts["paywall.notice"].appears(within: 30), "It didn't say it's waiting")
         let pending = try XCTUnwrap(session.allTransactions().first, "No transaction waits for approval")
         try session.approveAskToBuyTransaction(identifier: pending.identifier)
         XCTAssertTrue(
-            app.staticTexts["paywall.unlocked"].waitForExistence(timeout: 60), "The approval didn't unlock Pro")
+            app.staticTexts["paywall.unlocked"].appears(within: 60), "The approval didn't unlock Pro")
     }
 
     /// ADR 0011: sharing anonymous usage is on until it's turned off in Settings, and stays as it was left. Debug builds
@@ -1952,8 +1952,8 @@ final class PracticeTests: UITestCase {
         // As the overlap warning's switch: it sometimes takes the tap only on its own control, and waiting first means
         // a tap that took but hadn't shown yet isn't undone.
         sharing.tap()
-        if !off.waitForExistence(timeout: 3) { sharing.switches.firstMatch.tap() }
-        XCTAssertTrue(off.waitForExistence(timeout: 5), "The switch didn't turn off")
+        if !off.appears(within: 3) { sharing.switches.firstMatch.tap() }
+        XCTAssertTrue(off.appears(within: 5), "The switch didn't turn off")
         kill(app)
 
         app = launch(at: start + 60)
@@ -1976,15 +1976,15 @@ final class PracticeTests: UITestCase {
         openHistory(app)
         tap(app, "history.add")
         // The added session ends where the practiced one starts, so it warns only once it ends 20 minutes in.
-        XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "editor.note").appears(within: 5))
         XCTAssertFalse(element(app, "editor.overlap").exists, "The added session overlaps before any change")
         setEndMinute(app, to: "20", title: "Add session")
-        XCTAssertTrue(element(app, "editor.overlap").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "editor.overlap").appears(within: 5))
         attachScreenshot(of: app, named: "Add session, overlapping")
         tap(app, "editor.overlap-off")
-        XCTAssertTrue(element(app, "editor.overlap").waitForNonExistence(timeout: 5))
+        XCTAssertTrue(element(app, "editor.overlap").disappears(within: 5))
         tap(app, "editor.save")
-        XCTAssertTrue(app.buttons["editor.save"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["editor.save"].disappears(within: 5))
         XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "history.session").count, 2)
         kill(app)
 
@@ -1992,7 +1992,7 @@ final class PracticeTests: UITestCase {
         openHistory(app)
         tap(app, "history.add")
         // It now ends where the session added above starts, so ending at :45 shares 15 minutes with it.
-        XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "editor.note").appears(within: 5))
         setEndMinute(app, to: "45", title: "Add session")
         let practiceTime = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Practice time'"))
         XCTAssertEqual(practiceTime.firstMatch.value as? String, "45 minutes")
@@ -2001,27 +2001,27 @@ final class PracticeTests: UITestCase {
         // SET-1: Settings turns it back on, and the same session warns again.
         tap(app, "editor.cancel")
         let discard = app.buttons["Discard"]
-        XCTAssertTrue(discard.waitForExistence(timeout: 5), "Cancel didn't ask to discard the new session")
+        XCTAssertTrue(discard.appears(within: 5), "Cancel didn't ask to discard the new session")
         discard.tap()
-        XCTAssertTrue(app.buttons["editor.save"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["editor.save"].disappears(within: 5))
         openSettings(app)
         let warning = app.switches["settings.overlap-warning"]
         // Below the fold on a shorter screen, like iPhone Duo's, where a Form hasn't built the row yet.
-        if !warning.waitForExistence(timeout: 2) { app.swipeUp() }
-        XCTAssertTrue(warning.waitForExistence(timeout: 5), "No overlap warning in Settings")
+        if !warning.appears(within: 2) { app.swipeUp() }
+        XCTAssertTrue(warning.appears(within: 5), "No overlap warning in Settings")
         XCTAssertEqual(warning.value as? String, "0", "Settings shows the warning on after Don't Show Again")
         let on = app.switches.matching(NSPredicate(format: "identifier == 'settings.overlap-warning' AND value == '1'"))
             .firstMatch
         warning.tap()
         // A switch in a Form sometimes takes the tap only on its own control; waiting first means a tap that took
         // but hadn't shown yet isn't undone.
-        if !on.waitForExistence(timeout: 2) { warning.switches.firstMatch.tap() }
-        XCTAssertTrue(on.waitForExistence(timeout: 5), "The warning didn't turn back on")
+        if !on.appears(within: 2) { warning.switches.firstMatch.tap() }
+        XCTAssertTrue(on.appears(within: 5), "The warning didn't turn back on")
         openHistory(app)
         tap(app, "history.add")
-        XCTAssertTrue(element(app, "editor.note").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "editor.note").appears(within: 5))
         setEndMinute(app, to: "45", title: "Add session")
-        XCTAssertTrue(element(app, "editor.overlap").waitForExistence(timeout: 5), "The warning stayed off")
+        XCTAssertTrue(element(app, "editor.overlap").appears(within: 5), "The warning stayed off")
     }
 
     /// MIDI-2, SET-1: Settings says no piano is connected and opens how to connect one, with the tip for a piano that
@@ -2031,10 +2031,10 @@ final class PracticeTests: UITestCase {
         var app = launch(at: start, reset: true)
         openSettings(app)
         let pianos = app.buttons["settings.pianos"]
-        XCTAssertTrue(pianos.waitForExistence(timeout: 5), "No piano row in Settings")
+        XCTAssertTrue(pianos.appears(within: 5), "No piano row in Settings")
         XCTAssertEqual(pianos.label, "Connect a piano")
         pianos.tap()
-        XCTAssertTrue(app.buttons["pianos.pair"].waitForExistence(timeout: 5), "No way to pair a Bluetooth piano")
+        XCTAssertTrue(app.buttons["pianos.pair"].appears(within: 5), "No way to pair a Bluetooth piano")
         XCTAssertEqual(
             text(app, "pianos.replug"),
             "If your piano doesn't show up, unplug the cable at the piano's end and plug it back in.")
@@ -2044,7 +2044,7 @@ final class PracticeTests: UITestCase {
         app = launch(at: start, midiPiano: "MIDI KEYBOARD")
         XCTAssertEqual(text(app, "practice.pianos"), "MIDI KEYBOARD connected")
         openSettings(app)
-        XCTAssertTrue(app.buttons["settings.pianos"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings.pianos"].appears(within: 5))
         XCTAssertEqual(app.buttons["settings.pianos"].label, "MIDI KEYBOARD connected")
         attachScreenshot(of: app, named: "Settings, a piano connected")
     }
@@ -2065,28 +2065,28 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "Undo")
         tap(app, "history.undo")
         let session = element(app, "history.session")
-        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        XCTAssertTrue(session.appears(within: 5))
 
         session.tap()
         tap(app, "editor.delete")
-        XCTAssertTrue(app.staticTexts["Delete this session?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Delete this session?"].appears(within: 5))
         attachScreenshot(of: app, named: "Delete this session")
         confirmDelete(app)
-        XCTAssertTrue(session.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(session.disappears(within: 5))
         tap(app, "history.undo")
-        XCTAssertTrue(session.waitForExistence(timeout: 5))
+        XCTAssertTrue(session.appears(within: 5))
         kill(app)
 
         // The real 5 seconds.
         app = launch(at: start + 30 * 60)
         openHistory(app)
         deleteBySwipe(app)
-        XCTAssertTrue(app.buttons["history.undo"].waitForNonExistence(timeout: 15), "Undo outlasted its 5 seconds")
+        XCTAssertTrue(app.buttons["history.undo"].disappears(within: 15), "Undo outlasted its 5 seconds")
         kill(app)
 
         app = launch(at: start + 31 * 60)
         openHistory(app)
-        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "history.empty").appears(within: 5))
     }
 
     /// SES-5: a deletion is saved only when its undo ends, so a session deleted just before Pianism is killed
@@ -2110,7 +2110,7 @@ final class PracticeTests: UITestCase {
         app = launch(at: start + 51 * 60, undoSeconds: 60)
         openHistory(app)
         var sessions = app.descendants(matching: .any).matching(identifier: "history.session")
-        XCTAssertTrue(sessions.element(boundBy: 1).waitForExistence(timeout: 5), "A kill didn't keep the session")
+        XCTAssertTrue(sessions.element(boundBy: 1).appears(within: 5), "A kill didn't keep the session")
         deleteBySwipe(app)
         openPractice(app)
         kill(app)
@@ -2118,7 +2118,7 @@ final class PracticeTests: UITestCase {
         app = launch(at: start + 52 * 60, undoSeconds: 60)
         openHistory(app)
         sessions = app.descendants(matching: .any).matching(identifier: "history.session")
-        XCTAssertTrue(sessions.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(sessions.firstMatch.appears(within: 5))
         XCTAssertEqual(sessions.count, 1, "Leaving History didn't save the deletion")
         deleteBySwipe(app)
         goHome()
@@ -2126,7 +2126,7 @@ final class PracticeTests: UITestCase {
 
         app = launch(at: start + 53 * 60)
         openHistory(app)
-        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5), "Leaving the app didn't save it")
+        XCTAssertTrue(element(app, "history.empty").appears(within: 5), "Leaving the app didn't save it")
     }
 
     /// SYN-1: on a simulator signed out of iCloud, as every test simulator must be, History says its history isn't
@@ -2136,10 +2136,10 @@ final class PracticeTests: UITestCase {
     func testHistorySaysWhenICloudIsntSyncing() throws {
         var app = launch(at: start, reset: true)
         openHistory(app)
-        XCTAssertTrue(element(app, "history.empty").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "history.empty").appears(within: 5))
         let notice = element(app, "history.not-syncing")
         XCTAssertTrue(
-            notice.waitForExistence(timeout: 10),
+            notice.appears(within: 10),
             "No notice: is this simulator signed into iCloud? Test simulators must stay signed out (docs/device-checklist.md)."
         )
         XCTAssertTrue(
@@ -2156,9 +2156,9 @@ final class PracticeTests: UITestCase {
         app = launch(at: start + 60)
         tap(app, "practice.stop")
         openHistory(app)
-        XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "history.session").appears(within: 5))
         XCTAssertTrue(
-            element(app, "history.not-syncing").waitForExistence(timeout: 10), "The notice went once there was practice"
+            element(app, "history.not-syncing").appears(within: 10), "The notice went once there was practice"
         )
         attachScreenshot(of: app, named: "History, one session, not syncing")
     }
@@ -2170,7 +2170,7 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true, textSize: "AccessibilityXXXL")
         openHistory(app)
         let notice = element(app, "history.not-syncing")
-        XCTAssertTrue(notice.waitForExistence(timeout: 10), "No notice")
+        XCTAssertTrue(notice.appears(within: 10), "No notice")
         app.swipeUp()
         let tabBar = app.tabBars.firstMatch
         let screen = app.windows.firstMatch.frame
@@ -2186,7 +2186,7 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true, unshowableSessions: 2)
         openHistory(app)
         let notice = element(app, "history.unshowable")
-        XCTAssertTrue(notice.waitForExistence(timeout: 5), "It didn't count them")
+        XCTAssertTrue(notice.appears(within: 5), "It didn't count them")
         XCTAssertTrue(
             notice.label.contains("2 sessions couldn't be shown. Try updating Pianism."), "It said \(notice.label)")
         XCTAssertFalse(element(app, "history.empty").exists, "It said there's no practice")
@@ -2201,7 +2201,7 @@ final class PracticeTests: UITestCase {
         var app = launch(at: start, reset: true, breakHistory: true)
         // Nothing saved and nothing waiting: the whole screen says History couldn't load.
         openHistory(app)
-        XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "history.unavailable").appears(within: 5))
         XCTAssertFalse(element(app, "history.session").exists)
         openPractice(app)
         // Each stopped a minute after it started, in a later launch, so it's long enough to keep (SES-1).
@@ -2212,11 +2212,11 @@ final class PracticeTests: UITestCase {
             tap(app, "practice.stop")
         }
         XCTAssertFalse(app.alerts.firstMatch.exists)
-        XCTAssertTrue(app.buttons["practice.start"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["practice.start"].appears(within: 5))
         XCTAssertEqual(text(app, "practice.waiting"), "2 sessions waiting to be saved")
         attachScreenshot(of: app, named: "Practice, sessions waiting")
         openHistory(app)
-        XCTAssertTrue(element(app, "history.unavailable").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "history.unavailable").appears(within: 5))
         let notSavedYet = NSPredicate(format: "label CONTAINS 'not saved yet'")
         let waiting = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertEqual(waiting.count, 2)
@@ -2227,7 +2227,7 @@ final class PracticeTests: UITestCase {
         app = launch(at: start + 60 * 60)
         XCTAssertFalse(app.staticTexts["practice.waiting"].exists)
         openHistory(app)
-        XCTAssertTrue(element(app, "history.day").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "history.day").appears(within: 5))
         let saved = app.descendants(matching: .any).matching(identifier: "history.session")
         XCTAssertEqual(saved.count, 2)
         XCTAssertEqual(saved.matching(notSavedYet).count, 0)
@@ -2261,7 +2261,7 @@ final class PracticeTests: UITestCase {
         kill(app)
 
         app = launch(at: nil, midiNotes: "0,0,0")
-        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
+        XCTAssertTrue(app.buttons["practice.stop"].appears(within: 10), "The notes didn't start a session")
         goHome()
         XCTAssertTrue(activityShows(), "No activity for a MIDI session")
         app.activate()
@@ -2309,7 +2309,7 @@ final class PracticeTests: UITestCase {
     func testAPianoSessionsIslandStopsAtItsLastNote() throws {
         try skipWithoutAnIsland()
         let app = launch(at: nil, reset: true, midiNotes: "0,0,0")
-        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 10), "The notes didn't start a session")
+        XCTAssertTrue(app.buttons["practice.stop"].appears(within: 10), "The notes didn't start a session")
         goHome()
         XCTAssertTrue(activityShows(), "No activity on the Home Screen")
         let clock = liveActivities.firstMatch.staticTexts.firstMatch
@@ -2336,12 +2336,12 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(
             pianos.wait(for: \.label, toEqual: "Test piano connected", timeout: 10), "Practice says \(pianos.label)")
         piano.send([0x2090_3C40, 0x2090_3E40, 0x2090_4040])  // three notes in one packet
-        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 5), "The notes didn't start a session")
+        XCTAssertTrue(app.buttons["practice.stop"].appears(within: 5), "The notes didn't start a session")
         XCTAssertEqual(text(app, "practice.status"), "Practicing")
         attachScreenshot(of: app, named: "Practicing from a piano the system announced")
 
         piano.remove()
-        XCTAssertTrue(pianos.waitForNonExistence(timeout: 10), "Practice still names the piano that went")
+        XCTAssertTrue(pianos.disappears(within: 10), "Practice still names the piano that went")
     }
 
     /// MIDI-2: with no piano connected, Practice offers to reconnect the Bluetooth piano paired last, as iOS doesn't after
@@ -2359,10 +2359,10 @@ final class PracticeTests: UITestCase {
 
         // When Reconnect is tapped, then Apple's pairing screen opens, and Done closes it
         tap(app, "practice.reconnect")
-        XCTAssertTrue(app.navigationBars["Bluetooth"].waitForExistence(timeout: 10), "The pairing screen didn't open")
+        XCTAssertTrue(app.navigationBars["Bluetooth"].appears(within: 10), "The pairing screen didn't open")
         attachScreenshot(of: app, named: "Reconnecting from Practice")
         tap(app, "pairing.done")
-        XCTAssertTrue(app.navigationBars["Bluetooth"].waitForNonExistence(timeout: 5), "Done didn't close it")
+        XCTAssertTrue(app.navigationBars["Bluetooth"].disappears(within: 5), "Done didn't close it")
 
         // When Connect a piano opens, then it offers Reconnect too
         openSettings(app)
@@ -2373,10 +2373,10 @@ final class PracticeTests: UITestCase {
 
         // When it's forgotten, then neither screen offers it
         tap(app, "pianos.forget")
-        XCTAssertTrue(app.staticTexts["No piano connected"].waitForExistence(timeout: 5), "It wasn't forgotten")
+        XCTAssertTrue(app.staticTexts["No piano connected"].appears(within: 5), "It wasn't forgotten")
         XCTAssertFalse(element(app, "pianos.missing").exists)
         openPractice(app)
-        XCTAssertTrue(element(app, "practice.start").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "practice.start").appears(within: 5))
         XCTAssertFalse(element(app, "practice.piano-missing").exists, "Practice still offers it")
     }
 
@@ -2391,10 +2391,10 @@ final class PracticeTests: UITestCase {
 
         // When Reconnect opens Apple's pairing screen
         tap(app, "practice.reconnect")
-        XCTAssertTrue(app.navigationBars["Bluetooth"].waitForExistence(timeout: 5), "The pairing screen didn't open")
+        XCTAssertTrue(app.navigationBars["Bluetooth"].appears(within: 5), "The pairing screen didn't open")
 
         // Then it closes by itself as the piano connects, and Practice says so
-        XCTAssertTrue(app.navigationBars["Bluetooth"].waitForNonExistence(timeout: 20), "It didn't close by itself")
+        XCTAssertTrue(app.navigationBars["Bluetooth"].disappears(within: 20), "It didn't close by itself")
         XCTAssertEqual(text(app, "practice.pianos"), "CA59 Bluetooth connected")
         XCTAssertFalse(element(app, "practice.piano-missing").exists)
     }
@@ -2405,13 +2405,13 @@ final class PracticeTests: UITestCase {
         let app = launch(at: start, reset: true)
         openSettings(app)
         let pianos = app.buttons["settings.pianos"]
-        XCTAssertTrue(pianos.waitForExistence(timeout: 5), "No piano row in Settings")
+        XCTAssertTrue(pianos.appears(within: 5), "No piano row in Settings")
         pianos.tap()
         let pair = app.buttons["pianos.pair"]
-        XCTAssertTrue(pair.waitForExistence(timeout: 5), "Connect a piano didn't open")
+        XCTAssertTrue(pair.appears(within: 5), "Connect a piano didn't open")
         pair.tap()
         XCTAssertTrue(
-            app.navigationBars["Bluetooth"].waitForExistence(timeout: 10), "The pairing screen crashed or didn't open")
+            app.navigationBars["Bluetooth"].appears(within: 10), "The pairing screen crashed or didn't open")
         attachScreenshot(of: app, named: "Pairing a Bluetooth piano")
     }
 
@@ -2434,13 +2434,13 @@ final class PracticeTests: UITestCase {
         app = launch(at: start + 25 * 60)
         tap(app, "practice.stop")
         openHistory(app)
-        XCTAssertTrue(element(app, "history.session").waitForExistence(timeout: 5), "No session in History")
+        XCTAssertTrue(element(app, "history.session").appears(within: 5), "No session in History")
         try audit(app, "History", stallsOnIPadIOS26: true)
         openSettings(app)
         // Contrast only noted: the system draws these forms' grey headers, footers and values (#165).
         try audit(app, "Settings", contrast: false, stallsOnIPadIOS26: true)
         tap(app, "settings.pianos")
-        XCTAssertTrue(app.buttons["pianos.pair"].waitForExistence(timeout: 5), "Connect a piano didn't open")
+        XCTAssertTrue(app.buttons["pianos.pair"].appears(within: 5), "Connect a piano didn't open")
         try audit(app, "Connect a piano", contrast: false, stallsOnIPadIOS26: true)
     }
 
@@ -2459,7 +2459,7 @@ final class PracticeTests: UITestCase {
             let app = launch(
                 at: nil, reset: true, midiNotes: "0.5,0.8,1.1,2.5,4", midiPauseSeconds: 10, midiSaveSeconds: 60,
                 midiMinimumSeconds: 2)
-            XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 20), "No session from the notes")
+            XCTAssertTrue(app.buttons["practice.stop"].appears(within: 20), "No session from the notes")
             // Played from the first note to the last, 3.5 s. Apple documents currentSpeech() as the focused element's
             // speech, but it also reports an announcement while it's being said (the test fails without the line, tried
             // 2026-11-04). So it's asked often, and this stays nightly, should that change.
@@ -2574,7 +2574,7 @@ final class PracticeTests: UITestCase {
 
     @MainActor
     private func activityShows() -> Bool {
-        liveActivities.firstMatch.waitForExistence(timeout: activityWait)
+        liveActivities.firstMatch.appears(within: activityWait)
     }
 
     /// That no activity shows. An ending one takes a moment to go, and a lasting one can take `activityWait` to show,
@@ -2615,7 +2615,7 @@ final class PracticeTests: UITestCase {
     @MainActor
     private func answerNotification(with answer: String) {
         goHome()
-        XCTAssertTrue(notification.waitForExistence(timeout: 40), "No notification")
+        XCTAssertTrue(notification.appears(within: 40), "No notification")
         let button = springboard.buttons[answer]
         if UIDevice.current.userInterfaceIdiom == .pad {
             // iPad shows the buttons when the banner is pulled down slowly from its bottom edge and held, not on a
@@ -2626,12 +2626,12 @@ final class PracticeTests: UITestCase {
                 edge.press(
                     forDuration: 0.1, thenDragTo: edge.withOffset(CGVector(dx: 0, dy: 500)), withVelocity: .slow,
                     thenHoldForDuration: 2.5)
-                _ = button.waitForExistence(timeout: 3)
+                _ = button.appears(within: 3)
             }
         } else {
             notification.press(forDuration: 1.5)
         }
-        XCTAssertTrue(button.waitForExistence(timeout: 5), "No \(answer) button")
+        XCTAssertTrue(button.appears(within: 5), "No \(answer) button")
         button.tap()
     }
 
@@ -2639,7 +2639,7 @@ final class PracticeTests: UITestCase {
     /// second line makes its button taller, and that both are above the tab bar.
     @MainActor
     private func assertCommandsFit(_ app: XCUIApplication, beside identifier: String, at size: String) {
-        XCTAssertTrue(element(app, identifier).waitForExistence(timeout: 5), "No \(identifier) at \(size)")
+        XCTAssertTrue(element(app, identifier).appears(within: 5), "No \(identifier) at \(size)")
         let other = element(app, identifier).frame
         let stop = element(app, "practice.stop").frame
         if stop.minY < other.maxY {
@@ -2672,7 +2672,7 @@ final class PracticeTests: UITestCase {
         openSettings(app)
         // The last section, below the fold.
         let sharing = scrolledTo(app.switches["settings.shares-usage"], in: app)
-        XCTAssertTrue(sharing.waitForExistence(timeout: 5), "No switch for sharing usage in Settings")
+        XCTAssertTrue(sharing.appears(within: 5), "No switch for sharing usage in Settings")
         return sharing
     }
 
@@ -2780,14 +2780,14 @@ final class PracticeTests: UITestCase {
             app.launchEnvironment["PIANISM_INTENT"] = intent
         }
         app.launch()
-        XCTAssertTrue(app.staticTexts["practice.status"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["practice.status"].appears(within: 10))
         return app
     }
 
     @MainActor
     private func tap(_ app: XCUIApplication, _ identifier: String) {
         let button = app.buttons[identifier]
-        XCTAssertTrue(button.waitForExistence(timeout: 5), "No \(identifier) button")
+        XCTAssertTrue(button.appears(within: 5), "No \(identifier) button")
         button.tap()
     }
 
@@ -2798,8 +2798,8 @@ final class PracticeTests: UITestCase {
         let tab = app.buttons["History"].firstMatch
         let history = app.navigationBars["History"]
         tab.tap()
-        if !history.waitForExistence(timeout: 3) { tab.tap() }
-        XCTAssertTrue(history.waitForExistence(timeout: 5), "History didn't open")
+        if !history.appears(within: 3) { tab.tap() }
+        XCTAssertTrue(history.appears(within: 5), "History didn't open")
     }
 
     /// Turns a notification switch in Settings on or off, tapping Allow if the system asks. It asks once per install, so
@@ -2810,20 +2810,20 @@ final class PracticeTests: UITestCase {
         let wanted = app.switches.matching(
             NSPredicate(format: "identifier == %@ AND value == %@", identifier, on ? "1" : "0")
         ).firstMatch
-        guard !wanted.waitForExistence(timeout: 2) else { return }
+        guard !wanted.appears(within: 2) else { return }
         // The system asks after whichever tap turned the switch on.
         func allowIfAsked() {
             let allow = springboard.alerts.buttons["Allow"]
-            if on, allow.waitForExistence(timeout: 3) { allow.tap() }
+            if on, allow.appears(within: 3) { allow.tap() }
         }
         toggle.tap()
         allowIfAsked()
         // As with the overlap warning's switch, a tap in a Form sometimes lands only on its own control.
-        if !wanted.waitForExistence(timeout: 2) {
+        if !wanted.appears(within: 2) {
             toggle.switches.firstMatch.tap()
             allowIfAsked()
         }
-        XCTAssertTrue(wanted.waitForExistence(timeout: 5), "The switch didn't turn \(on ? "on" : "off")")
+        XCTAssertTrue(wanted.appears(within: 5), "The switch didn't turn \(on ? "on" : "off")")
     }
 
     /// Opens Settings, tapping again if the tab bar swallowed the tap, as with History.
@@ -2832,8 +2832,8 @@ final class PracticeTests: UITestCase {
         let tab = app.buttons["Settings"].firstMatch
         let settings = app.navigationBars["Settings"]
         tab.tap()
-        if !settings.waitForExistence(timeout: 3) { tab.tap() }
-        XCTAssertTrue(settings.waitForExistence(timeout: 5), "Settings didn't open")
+        if !settings.appears(within: 3) { tab.tap() }
+        XCTAssertTrue(settings.appears(within: 5), "Settings didn't open")
     }
 
     /// Opens Practice from History, tapping again if the tab bar swallowed the tap, as iOS 26's sometimes does
@@ -2843,8 +2843,8 @@ final class PracticeTests: UITestCase {
         let tab = app.buttons["Practice"].firstMatch
         let history = app.navigationBars["History"]
         tab.tap()
-        if !history.waitForNonExistence(timeout: 3) { tab.tap() }
-        XCTAssertTrue(app.staticTexts["practice.status"].waitForExistence(timeout: 5), "Practice didn't open")
+        if !history.disappears(within: 3) { tab.tap() }
+        XCTAssertTrue(app.staticTexts["practice.status"].appears(within: 5), "Practice didn't open")
     }
 
     /// Picks `choice` from the menu of the picker `identifier`, and checks the picker shows it.
@@ -2852,7 +2852,7 @@ final class PracticeTests: UITestCase {
     private func choose(_ app: XCUIApplication, _ identifier: String, _ choice: String) {
         tap(app, identifier)
         let item = app.buttons[choice].firstMatch
-        XCTAssertTrue(item.waitForExistence(timeout: 5), "\(identifier) doesn't offer \(choice)")
+        XCTAssertTrue(item.appears(within: 5), "\(identifier) doesn't offer \(choice)")
         item.tap()
         XCTAssertEqual(chosen(app, identifier), choice)
     }
@@ -2868,7 +2868,7 @@ final class PracticeTests: UITestCase {
     @MainActor
     private func confirmDelete(_ app: XCUIApplication) {
         let confirm = app.buttons["delete.confirm"].firstMatch
-        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "No delete.confirm button")
+        XCTAssertTrue(confirm.appears(within: 5), "No delete.confirm button")
         confirm.tap()
     }
 
@@ -2876,12 +2876,12 @@ final class PracticeTests: UITestCase {
     @MainActor
     private func deleteBySwipe(_ app: XCUIApplication) {
         let sessions = app.descendants(matching: .any).matching(identifier: "history.session")
-        XCTAssertTrue(sessions.firstMatch.waitForExistence(timeout: 5), "No session to delete")
+        XCTAssertTrue(sessions.firstMatch.appears(within: 5), "No session to delete")
         let count = sessions.count
         revealSwipeActions(sessions.firstMatch)
         tap(app, "history.delete")
         confirmDelete(app)
-        XCTAssertTrue(sessions.element(boundBy: count - 1).waitForNonExistence(timeout: 5))
+        XCTAssertTrue(sessions.element(boundBy: count - 1).disappears(within: 5))
     }
 
     /// The tag picker's row for the tag `name` reads as. A parent's fold can show its name twice, once as the
@@ -2896,7 +2896,7 @@ final class PracticeTests: UITestCase {
     /// simulator can read swipeLeft as a tap, which would open or toggle the row instead.
     @MainActor
     private func revealSwipeActions(_ row: XCUIElement, fromLeadingEdge: Bool = false) {
-        XCTAssertTrue(row.waitForExistence(timeout: 5), "No row to swipe")
+        XCTAssertTrue(row.appears(within: 5), "No row to swipe")
         row.coordinate(withNormalizedOffset: CGVector(dx: fromLeadingEdge ? 0.1 : 0.9, dy: 0.5))
             .press(forDuration: 0.1, thenDragTo: row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
     }
@@ -2907,13 +2907,13 @@ final class PracticeTests: UITestCase {
     private func setEndMinute(_ app: XCUIApplication, to minute: String?, title: String) {
         app.datePickers["editor.end"].buttons.matching(NSPredicate(format: "label CONTAINS ':'")).firstMatch.tap()
         let minutes = app.pickerWheels.element(boundBy: 1)
-        XCTAssertTrue(minutes.waitForExistence(timeout: 5), "The wheels didn't open")
+        XCTAssertTrue(minutes.appears(within: 5), "The wheels didn't open")
         if let minute { minutes.adjust(toPickerWheelValue: minute) }
         // Closes the wheels with a tap on the editor's title, which does nothing if the tap gets through.
         // Elsewhere a tap can land on the wheels or the Tags row, and the status bar doesn't reach the app.
         let frame = app.navigationBars.staticTexts[title].frame
         app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
-        XCTAssertTrue(app.buttons["PopoverDismissRegion"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["PopoverDismissRegion"].disappears(within: 5))
     }
 
     @MainActor

@@ -31,7 +31,7 @@ class UITestCase: XCTestCase {
         let start = Date.now
         for attempt in 1... {
             app.launch()
-            let reachable = app.windows.firstMatch.waitForExistence(timeout: 10)
+            let reachable = app.windows.firstMatch.appears(within: 10)
             XCTContext.runActivity(named: "Warm-up launch \(attempt): \(reachable ? "reached" : "not reached")") { _ in
             }
             _ = Self.kill(app)
@@ -122,5 +122,21 @@ class UITestCase: XCTestCase {
         let app = XCUIApplication()
         let tree = app.state == .runningForeground ? app.debugDescription : nil
         return (XCUIScreen.main.screenshot().pngRepresentation, tree)
+    }
+}
+
+extension XCUIElement {
+    /// Whether the element is there, or appears within `timeout` seconds. XCTest's `waitForExistence(timeout:)` checks
+    /// once a second, starting a second in, so it takes a second even for an element already on screen: with some 900
+    /// waits, a quarter of each CI job (2026-11-12). Reading `exists` first takes a fraction of that.
+    @MainActor
+    func appears(within timeout: TimeInterval) -> Bool {
+        exists || waitForExistence(timeout: timeout)
+    }
+
+    /// Whether the element is gone, or goes within `timeout` seconds, reading `exists` first as `appears(within:)` does.
+    @MainActor
+    func disappears(within timeout: TimeInterval) -> Bool {
+        !exists || waitForNonExistence(timeout: timeout)
     }
 }
