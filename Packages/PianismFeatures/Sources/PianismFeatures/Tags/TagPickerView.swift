@@ -200,6 +200,7 @@ struct TagPickerView: View {
                 }
             }
         }
+        .disabled(!model.canPick(tag))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         // A parent's fold can show its name twice, so tests find the row by this and its label.
         .accessibilityIdentifier(AccessibilityID.tagsTag)
@@ -264,6 +265,8 @@ struct TagPickerView: View {
 struct TagLabel: View {
     let tag: Tag
     let name: String
+    /// Off for a row that can't be chosen, which then reads as dimmed.
+    @Environment(\.isEnabled) private var isEnabled
 
     init(tag: Tag, name: String? = nil) {
         self.tag = tag
@@ -275,11 +278,17 @@ struct TagLabel: View {
         VStack(alignment: .leading) {
             HStack {
                 Text(name)
-                    .foregroundStyle(Color.primary)
+                    .foregroundStyle(isEnabled ? AnyShapeStyle(Color.primary) : AnyShapeStyle(.secondaryText))
                 if tag.isArchived {
                     Text("Archived", bundle: .module)
                         .foregroundStyle(.secondaryText)
                 }
+            }
+            // This version can't bring it back, so it can't be chosen (#132).
+            if tag.isArchived && tag.isReadOnly {
+                Text("Archived by a newer version of Pianism. Update to use it.", bundle: .module)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondaryText)
             }
             if let details = tag.details {
                 Text(details)

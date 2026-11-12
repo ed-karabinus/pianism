@@ -124,6 +124,7 @@ public final class TagPickerModel {
     /// Adds `tag` to the session, or removes it with any tag merged into it. Choosing an archived tag
     /// brings it back.
     func toggle(_ tag: Tag) {
+        guard canPick(tag) else { return }
         let ids = target.tagIDs
         if selected.contains(where: { $0.id == tag.id }) {
             target.setTags(ids.filter { index[$0]?.id != tag.id })
@@ -133,6 +134,12 @@ public final class TagPickerModel {
             perform { try library.setArchived(false, id: tag.id) }
         }
         target.setTags(ids + [tag.id])
+    }
+
+    /// Whether `tag` can be chosen: not one a newer version archived, which this one can't bring back, as its record is
+    /// read-only (ADR 0006, #132). One already on the session can still be taken off.
+    func canPick(_ tag: Tag) -> Bool {
+        !(tag.isArchived && tag.isReadOnly) || selected.contains { $0.id == tag.id }
     }
 
     /// Adds the query as a new tag of `kind`, and tags the session with it.
