@@ -21,25 +21,25 @@ final class ScreenshotTests: UITestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.buttons["practice.stop"].waitForExistence(timeout: 30), "The piano session isn't running")
+        XCTAssertTrue(app.buttons["practice.stop"].appears(within: 30), "The piano session isn't running")
         attachScreenshot(of: app, named: "2 Practice")
         app.buttons["practice.tags"].tap()
-        XCTAssertTrue(app.buttons["tags.done"].waitForExistence(timeout: 5), "The tags didn't open")
+        XCTAssertTrue(app.buttons["tags.done"].appears(within: 5), "The tags didn't open")
         attachScreenshot(of: app, named: "5 Tags")
         app.buttons["tags.done"].tap()
 
         // A second tap if needed, as on iOS 26 a tap while the tab bar is still moving doesn't switch tabs.
-        for _ in 0..<2 where !app.navigationBars["History"].waitForExistence(timeout: 3) {
+        for _ in 0..<2 where !app.navigationBars["History"].appears(within: 3) {
             app.buttons["History"].firstMatch.tap()
         }
-        XCTAssertTrue(app.descendants(matching: .any)["history.weeks-met"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["history.weeks-met"].appears(within: 5))
         attachScreenshot(of: app, named: "1 Week")
         // Today's header dragged to just under the bar: first far enough to shrink the title, then the rest, measured
         // from the bar as it is then.
         let list = app.collectionViews.firstMatch
         drag(list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7)), up: 60)
         let today = app.descendants(matching: .any)["history.day"].firstMatch
-        XCTAssertTrue(today.waitForExistence(timeout: 5), "Today's sessions aren't on screen")
+        XCTAssertTrue(today.appears(within: 5), "Today's sessions aren't on screen")
         let bar = app.navigationBars["History"]
         let top = today.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0))
         drag(top, up: today.frame.minY - bar.frame.maxY - 12)
@@ -47,7 +47,7 @@ final class ScreenshotTests: UITestCase {
         attachScreenshot(of: app, named: "3 History")
         app.buttons["History"].firstMatch.tap()
         app.buttons["history.piece-stats"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["piece-stats.piece"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["piece-stats.piece"].appears(within: 5))
         attachScreenshot(of: app, named: "4 Pieces")
     }
 

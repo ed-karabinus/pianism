@@ -12,7 +12,7 @@ final class LaunchTests: UITestCase {
         app.launchEnvironment["PIANISM_SKIP_WELCOME"] = "1"
         app.launch()
 
-        XCTAssertTrue(app.descendants(matching: .any)["root"].firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any)["root"].firstMatch.appears(within: 10))
         attachScreenshot(of: app, named: "Root screen")
     }
 
