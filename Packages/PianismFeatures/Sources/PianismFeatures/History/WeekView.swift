@@ -16,6 +16,8 @@ struct WeekView: View {
     @ScaledMetric private var iconWidth: CGFloat = 24
     /// Closed at first, so the sessions stay on screen, then as it was left (decided with Ed, 2026-10-29).
     @AppStorage("showsWeekByTag") private var showsByTag = false
+    /// The pieces and skills whose tags inside them show.
+    @State private var unfolded: Set<Tag.ID> = []
     @AppStorage(SettingsKey.weeklyGoalDays) private var goalDays = WeeklyGoal.defaultDays
     @AppStorage(SettingsKey.dailyMinimum) private var dailyMinimum: TimeInterval = 0
     @Environment(\.layoutDirection) private var layoutDirection
@@ -70,7 +72,18 @@ struct WeekView: View {
             // Untagged time alone would only repeat the week's total.
             if tagTimes.contains(where: { $0.tag != nil }) {
                 DisclosureGroup(isExpanded: $showsByTag) {
-                    ForEach(tagTimes, content: row)
+                    ForEach(tagTimes) { tagTime in
+                        if tagTime.inside.isEmpty {
+                            row(tagTime)
+                        } else {
+                            // Folded at first, like the tag picker's, so the week stays as short as before nesting.
+                            DisclosureGroup(isExpanded: isUnfolded(tagTime)) {
+                                ForEach(tagTime.inside) { row($0, isInside: true) }
+                            } label: {
+                                row(tagTime)
+                            }
+                        }
+                    }
                 } label: {
                     // The identifier goes on the label: set on the group, it would reach every row.
                     Text("By piece and skill", bundle: .module).accessibilityIdentifier(
@@ -135,9 +148,20 @@ struct WeekView: View {
     }
     private var tagTimes: [PracticeWeek.TagTime] { week.timeByTag(in: model.tagIndex) }
 
-    /// A tag's time, marked as a piece or a skill, as a piece and a skill can share a name.
-    private func row(_ tagTime: PracticeWeek.TagTime) -> some View {
-        let title = Text(tagNames: tagTime.tag.map { [model.tagIndex.name(of: $0)] } ?? [])
+    private func isUnfolded(_ tagTime: PracticeWeek.TagTime) -> Binding<Bool> {
+        Binding {
+            tagTime.id.map(unfolded.contains) ?? false
+        } set: { isUnfolded in
+            guard let id = tagTime.id else { return }
+            if isUnfolded { unfolded.insert(id) } else { unfolded.remove(id) }
+        }
+    }
+
+    /// A tag's time, marked as a piece or a skill, as a piece and a skill can share a name. One inside its parent's
+    /// fold has its own name, as the parent is right above it.
+    private func row(_ tagTime: PracticeWeek.TagTime, isInside: Bool = false) -> some View {
+        let name = tagTime.tag.map { isInside ? $0.name : model.tagIndex.name(of: $0) }
+        let title = Text(tagNames: name.map { [$0] } ?? [])
         let kind: (icon: String, name: Text)? =
             switch tagTime.tag?.kind {
             case .piece: ("music.note", Text("Piece", bundle: .module))
