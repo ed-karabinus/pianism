@@ -97,7 +97,7 @@ the product: check the status above, the product ID, and, in a Debug build, the 
 
 ## Before submitting: the checklist
 
-In order, once the device checks are done. The owner archives, uploads and submits; an agent can do steps 1, 2 and 6.
+In order, once the device checks are done. The owner archives, uploads and submits; an agent can do steps 1 and 2, and read the report from step 6.
 Record each result here with its date, so the submitted build's checks are written down.
 
 1. **Main is green:** the CI run on main's last merge passed, and so did the nightly run after it, which runs every
