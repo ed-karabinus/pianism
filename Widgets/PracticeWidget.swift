@@ -84,6 +84,9 @@ struct PracticeWidgetView: View {
                 time
                     .font(.title.bold())
                     .minimumScaleFactor(0.5)
+                    // Dims while Start runs, which takes a few seconds as iOS launches the app in the background,
+                    // so the widget shows it's working rather than seeming to ignore the tap (device check L4).
+                    .invalidatableContent()
                 if entry.session == nil {
                     Spacer()
                     Button(intent: StartPracticeIntent()) {
@@ -91,6 +94,9 @@ struct PracticeWidgetView: View {
                     }
                     .labelStyle(.iconOnly)
                     .buttonBorderShape(.circle)
+                    // WidgetKit tints a widget's button the system blue, not the extension's accent color (device check
+                    // L12, 2026-11-12), so the app's darker blue is set here, as it passes the contrast check (#169).
+                    .tint(Color("AccentColor"))
                 }
             }
         }
