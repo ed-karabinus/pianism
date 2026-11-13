@@ -128,15 +128,16 @@ final class SwiftDataTagLibraryTests {
         #expect(try library.tags().map(\.name) == ["Étude"])
     }
 
-    @Test("TAG-1 (#240): the end-to-end tests' archived piece reads as a newer version's, which this one can't change")
+    @Test("TAG-1: the end-to-end tests' archived piece reads as a newer version's, which this one can't change")
     func addedArchivedNewerPiece() throws {
-        // Given the piece the end-to-end tests add
-        try HistoryStore(url: storeURL).addArchivedNewerPiece(named: "Étude")
+        // Given an empty store
+        let store = HistoryStore(url: storeURL)
 
-        // When the library reads it
+        // When the end-to-end tests' piece is added to it
+        try store.addArchivedNewerPiece(named: "Étude")
+
+        // Then the library reads it as an archived piece, read-only, with an ID as this version writes them
         let tag = try #require(try library.tags().first)
-
-        // Then it's an archived piece, read-only, with an ID as this version writes them
         #expect(tag == Tag(id: tag.id, kind: .piece, name: "Étude", isArchived: true, isReadOnly: true))
         #expect(UUID(uuidString: tag.id) != nil && tag.id == tag.id.lowercased())
     }
