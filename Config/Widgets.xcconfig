@@ -12,7 +12,8 @@ INFOPLIST_KEY_CFBundleDisplayName = Pianism
 SKIP_INSTALL = YES
 APPLICATION_EXTENSION_API_ONLY = YES
 ENABLE_PREVIEWS = YES
-// The app's darker blue, for the Live Activity's buttons, to pass the contrast check the app's own buttons are held
-// to (#165). WidgetKit doesn't use it for the widget's button, so `PracticeWidgetView` sets it there.
+// The app's darker blue as the extension's accent. WidgetKit doesn't use it for the widget's button (device check L12,
+// 2026-11-12), so `PracticeWidgetView` sets it there. The Live Activity's card is dark, where the darker blue's
+// dark-mode variant is the system blue anyway.
 ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor
 LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks @executable_path/../../Frameworks
