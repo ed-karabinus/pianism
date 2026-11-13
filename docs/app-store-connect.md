@@ -95,6 +95,36 @@ If the Pro screen says "The price isn't available right now." with a working net
 the product: check the status above, the product ID, and, in a Debug build, the Sandbox account (S1 in
 `docs/device-checklist.md`).
 
+## Before submitting: the checklist
+
+In order, once the device checks are done. The owner archives, uploads and submits; an agent can do steps 1, 2 and 6.
+Record each result here with its date, so the submitted build's checks are written down.
+
+1. **Main is green:** the CI run on main's last merge passed, and so did the nightly run after it, which runs every
+   device and iOS pair in full.
+2. **The version:** one PR sets `MARKETING_VERSION = 1.0` in `Config/Shared.xcconfig`. `CURRENT_PROJECT_VERSION` can
+   stay 1 for a new version. A second upload of 1.0 needs a higher one, which Xcode's upload offers to set.
+3. **Archive** main at that PR's merge in Xcode (Product › Archive, which builds Release), and write the commit here.
+   TestFlight 0.1.0 (2)'s commit wasn't recorded, so nobody can tell what it contains (final audit, 2026-11-12).
+4. **The entitlements Apple gets:** `Config/Pianism.entitlements` says `aps-environment` is `development`, and the
+   App Store signing is meant to change it. To check, in the Organizer choose Distribute App › Custom › App Store
+   Connect › Export, unzip the `.ipa`, and run `codesign -d --entitlements - Payload/Pianism.app`. It must show
+   `aps-environment` as `production` and `com.apple.developer.icloud-container-environment` as `Production`. If
+   either is wrong, iCloud's pushes or sync won't reach people's devices.
+5. **iCloud's schema:** in the CloudKit Console, the container's Production schema has no changes waiting to deploy
+   from Development (schema v2 went to Production on 2026-11-10).
+6. **The privacy report:** in the Organizer, right-click the archive › Generate Privacy Report. It lists **Device
+   ID** and **Product Interaction**, for analytics, not linked to the person and not used for tracking, as
+   `App/PrivacyInfo.xcprivacy` declares, and nothing else. The App Privacy answers must say the same.
+7. **"While Pianism is open":** the promotional text, the description, Pro's review notes, the welcome screen and
+   the Pro screen all say piano sessions start themselves only while Pianism is open (CLAUDE.md). No line promises
+   more than the submitted build does.
+8. **Pro without a piano:** on the archived build, Settings › Pianism Pro shows the price and Restore Purchases with
+   no piano connected, as the review notes say.
+9. **Upload,** then do the "Still to do" rows below: the listing, the screenshots from this build, the new Pro
+   review screenshot, the privacy answers, the age rating, attaching Pianism Pro to 1.0, and the app's review
+   notes. Then submit.
+
 ## Still to do
 
 | What | When |
