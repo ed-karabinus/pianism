@@ -24,6 +24,12 @@ struct PracticeEntry: TimelineEntry {
     let session: PracticeSession?
     /// What the session's clock counts over today (GLN-2), as the core works it out.
     let timer: ClosedRange<Date>?
+    /// When a timer session ends itself at the cap (SES-4), which the app saves only once it next runs. A piano
+    /// session's clock stops at its last note instead, and the widget isn't told its save timeout.
+    let endsItselfAt: Date?
+    /// Whether the session has ended itself by `date`, so the widget says "Ended", as the Live Activity does, rather
+    /// than "Practicing" above a stopped clock (device check W9, 2026-11-13).
+    var hasEndedItself: Bool { endsItselfAt.map { $0 <= date } ?? false }
 
     init(
         date: Date, finished: TimeInterval, session: PracticeSession?, cap: TimeInterval? = nil,
@@ -34,6 +40,7 @@ struct PracticeEntry: TimelineEntry {
         self.session = session
         self.timer = session?.todaysClock(
             finished: finished, dayStart: dayStart ?? Calendar.autoupdatingCurrent.startOfDay(for: date), cap: cap)
+        self.endsItselfAt = session.flatMap { $0.source == .midi ? nil : cap.flatMap($0.whenPracticeReaches) }
     }
 }
 
@@ -48,16 +55,18 @@ struct PracticeProvider: TimelineProvider {
         completion(entry(at: .now))
     }
 
-    /// Now, and the next local midnight, when the total starts over at 0 with no process running. A running
-    /// session's clock counts by itself, and the app reloads the widget when the session changes.
+    /// Now, the moment a running session ends itself at the cap, and the next local midnight, when the total starts
+    /// over at 0, all with no process running. A running session's clock counts by itself, and the app reloads the
+    /// widget when the session changes.
     func getTimeline(in context: Context, completion: @escaping (Timeline<PracticeEntry>) -> Void) {
         let now = Date.now
         let calendar = Calendar.autoupdatingCurrent
-        var entries = [entry(at: now)]
+        let current = entry(at: now)
+        var later = [current.endsItselfAt].compactMap { $0 }.filter { $0 > now }
         if let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) {
-            entries.append(entry(at: midnight))
+            later.append(midnight)
         }
-        completion(Timeline(entries: entries, policy: .atEnd))
+        completion(Timeline(entries: [current] + later.sorted().map(entry(at:)), policy: .atEnd))
     }
 
     private func entry(at date: Date) -> PracticeEntry {
@@ -105,7 +114,8 @@ struct PracticeWidgetView: View {
     }
 
     private var title: LocalizedStringKey {
-        switch entry.session?.state {
+        if entry.hasEndedItself { return "Ended" }
+        return switch entry.session?.state {
         case nil, .ended: "Today"
         case .running: entry.session?.countsOnlyInApp == true ? "Paused" : "Practicing"
         case .paused: "Paused"
@@ -162,6 +172,12 @@ func previewPianoSession() -> PracticeSession {
     PracticeWidget()
 } timeline: {
     PracticeEntry(date: .now, finished: 20 * 60, session: previewSession(paused: false))
+}
+
+#Preview("Ended at a 1-hour cap, 20 minutes done before", as: .systemSmall) {
+    PracticeWidget()
+} timeline: {
+    PracticeEntry(date: .now, finished: 20 * 60, session: previewSession(paused: false), cap: 60 * 60)
 }
 
 #Preview("Paused at 25 minutes", as: .systemSmall) {
