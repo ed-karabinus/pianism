@@ -149,6 +149,18 @@ On a build with PRO-2, a piano starts sessions on the owner's iPhone only with P
 | --- | --- | --- |
 | S10 | **The exported file opens in Numbers:** with Pro, add a note with a comma and an accented letter, such as "left hand, then tempo é", to a session. In Settings, tap Export sessions, then Save to Files, and open the file in Numbers, and in Excel if you have it. Every session is there, oldest first, with its times in the zone it was played in, its tags by name, and the note exactly as typed | Not run yet |
 
+## Speed and offline (SES-1, NFR-5, NFR-3)
+
+**Why these are manual:** the limits are for a phone, and CI's simulators run on Macs of other speeds, so a time
+there says nothing about a phone. A simulator has no airplane mode either. The owner's iPhone is quicker than the
+iPhone 12 the spec names, so note each time, not only whether it passed.
+
+| # | Check | Last result |
+| --- | --- | --- |
+| T1 | **Start within 200 ms (SES-1):** start a screen recording from Control Center, open Pianism, wait a few seconds, tap Start, then stop the recording and AirDrop it to the Mac, where its frames are counted. From the frame Start lets go under your finger (a tap counts when the finger lifts) to the first with "Practicing" and the clock is 200 ms or less, which is 12 frames at the recording's 60 a second | Not run yet. |
+| T2 | **Cold launch under 1 s (NFR-5):** restart the phone, so nothing of Pianism is in memory, and wait a minute. Start a screen recording, tap Pianism's icon, and stop once Practice shows. AirDrop it to the Mac: from the first frame the icon starts to open to the first with Start showing is under 1 s | Not run yet. |
+| O1 | **Everything but buying works offline (NFR-3):** turn on airplane mode and turn Wi-Fi off too, as airplane mode keeps it on if it was. Force-quit Pianism and open it. Start, pause, resume and stop a session, from Practice and from the Lock Screen; tag it, adding a new piece; edit a session and delete one in History; read the week's figures; with Pro, export. Each works as it does online, with no error and no waiting. Buying isn't expected to work offline, and S3 covers Pro offline; sync rows 5, 7 and 8 cover sync catching up afterwards | Not run yet. |
+
 ## iCloud sync (SYN-1, issue #15)
 
 | # | Check | Last result |
