@@ -148,6 +148,7 @@ On a build with PRO-2, a piano starts sessions on the owner's iPhone only with P
 | # | Check | Last result |
 | --- | --- | --- |
 | S10 | **The exported file opens in Numbers:** with Pro, add a note with a comma and an accented letter, such as "left hand, then tempo é", to a session. In Settings, tap Export sessions, then Save to Files, and open the file in Numbers, and in Excel if you have it. Every session is there, oldest first, with its times in the zone it was played in, its tags by name, and the note exactly as typed | Not run yet |
+| S11 | **The export keeps its name over AirDrop:** with Pro, tap Export sessions in Settings and AirDrop the file to a Mac: it arrives as "Pianism sessions.csv", not "comma-separated values-….csv" (found 2026-11-13). Mail or Messages too, if handy: the attachment has the same name. On a Mac the system keeps the suggested name either way, so no test there tells the two apart; only the iPhone's share sheet does | Not run yet |
 
 ## Speed and offline (SES-1, NFR-5, NFR-3, issue #250)
 
