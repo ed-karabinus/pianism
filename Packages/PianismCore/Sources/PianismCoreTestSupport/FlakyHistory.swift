@@ -23,9 +23,9 @@ public final class FlakyHistory: SessionHistory {
         return saved.sessions()
     }
 
-    public func unshowableCount() throws -> Int {
+    public func sessionsAndUnshowableCount() throws -> (sessions: [PracticeSession], unshowable: Int) {
         try failIfUnreachable()
-        return saved.unshowableCount()
+        return saved.sessionsAndUnshowableCount()
     }
 
     public func autoLoggedIDs() throws -> Set<UUID> {

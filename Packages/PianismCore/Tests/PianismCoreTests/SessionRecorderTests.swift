@@ -540,7 +540,7 @@ struct RefusingHistory: SessionHistory {
         saved.sessions()
     }
 
-    func unshowableCount() -> Int { 0 }
+    func sessionsAndUnshowableCount() -> (sessions: [PracticeSession], unshowable: Int) { (sessions(), 0) }
 
     func autoLoggedIDs() -> Set<UUID> { saved.autoLoggedIDs() }
 

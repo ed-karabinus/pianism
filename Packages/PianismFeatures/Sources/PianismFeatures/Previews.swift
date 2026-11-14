@@ -163,7 +163,7 @@ private struct PreviewUnavailableHistory: SessionHistory {
     struct Unavailable: Error {}
 
     func sessions() throws -> [PracticeSession] { throw Unavailable() }
-    func unshowableCount() throws -> Int { throw Unavailable() }
+    func sessionsAndUnshowableCount() throws -> (sessions: [PracticeSession], unshowable: Int) { throw Unavailable() }
     func autoLoggedIDs() throws -> Set<UUID> { throw Unavailable() }
     func save(_: PracticeSession) throws { throw Unavailable() }
     func canEdit(id _: UUID) throws -> Bool { throw Unavailable() }

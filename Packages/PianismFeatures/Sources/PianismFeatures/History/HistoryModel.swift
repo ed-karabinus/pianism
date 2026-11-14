@@ -97,8 +97,7 @@ public final class HistoryModel {
         let waiting = (try? outbox.sessions()) ?? []
         var saved: [PracticeSession] = []
         do {
-            saved = try history.sessions()
-            unshowableCount = try history.unshowableCount()
+            (saved, unshowableCount) = try history.sessionsAndUnshowableCount()
             tagIndex = TagIndex(try tags.allTags())
             loadFailed = false
         } catch {
