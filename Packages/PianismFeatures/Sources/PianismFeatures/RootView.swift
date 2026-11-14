@@ -145,6 +145,7 @@ enum AccessibilityID {
     static let practiceStopAt = "practice.stop-at"
     static let practiceCapped = "practice.capped"
     static let practiceCappedEdit = "practice.capped-edit"
+    static let practiceCappedKeep = "practice.capped-keep"
     static let pianosPair = "pianos.pair"
     static let pianosMissing = "pianos.missing"
     static let pianosReconnect = "pianos.reconnect"

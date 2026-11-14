@@ -136,21 +136,20 @@ struct PracticeView: View {
             if let session = model.session, model.isAskingStillPracticing {
                 stillPracticingBanner(session)
             }
+            if let capped = model.cappedSession {
+                capBanner(capped)
+            }
             if model.session == nil, let notSaved = model.notSaved {
                 Text(notSaved.message)
                     .font(.callout)
                     .foregroundStyle(.secondaryText)
                     .accessibilityIdentifier(AccessibilityID.practiceTooShort)
-            } else if model.session == nil, let last = model.lastSession {
-                if model.lastSessionReachedCap {
-                    capBanner(last)
-                } else {
-                    let duration = ElapsedTime.display(last.elapsed(at: model.clock.now))
-                    Text("Last session: \(duration)", bundle: .module)
-                        .font(.callout)
-                        .foregroundStyle(.secondaryText)
-                        .accessibilityIdentifier(AccessibilityID.practiceLastSession)
-                }
+            } else if model.session == nil, model.cappedSession == nil, let last = model.lastSession {
+                let duration = ElapsedTime.display(last.elapsed(at: model.clock.now))
+                Text("Last session: \(duration)", bundle: .module)
+                    .font(.callout)
+                    .foregroundStyle(.secondaryText)
+                    .accessibilityIdentifier(AccessibilityID.practiceLastSession)
             }
             if model.waitingCount > 0 {
                 Text("^[\(model.waitingCount) session](inflect: true) waiting to be saved", bundle: .module)
@@ -299,24 +298,36 @@ struct PracticeView: View {
         pickingEndOf = session
     }
 
-    /// Says the last session ended itself at the cap, and offers to fix it in History (SES-4). The cap is the
-    /// session's practice time, as Settings may have changed the cap since (SET-1).
-    private func capBanner(_ last: PracticeSession) -> some View {
+    /// Says a session ended itself at the cap, and offers to fix it in History or keep it as it is (SES-4). An
+    /// earlier one once another has started since, as from the widget with the app away. The cap is the session's
+    /// practice time, as Settings may have changed the cap since (SET-1).
+    private func capBanner(_ capped: CappedSession) -> some View {
         VStack(alignment: .trailing, spacing: 12) {
-            let cap = ElapsedTime.spoken(last.elapsed(at: model.clock.now))
-            Text(
-                "Pianism stopped your session at \(cap) of practice, in case the timer was left running.",
-                bundle: .module
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityIdentifier(AccessibilityID.practiceCapped)
-            Button(LocalizedStringResource("Edit", bundle: .module)) {
-                model.dismissCapBanner()
-                edit(last.id)
+            let cap = ElapsedTime.spoken(capped.practiced)
+            (capped.hasLaterSession
+                ? Text(
+                    "Pianism stopped an earlier session at \(cap) of practice, in case the timer was left running.",
+                    bundle: .module)
+                : Text(
+                    "Pianism stopped your session at \(cap) of practice, in case the timer was left running.",
+                    bundle: .module))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier(AccessibilityID.practiceCapped)
+            HStack(spacing: 16) {
+                // The hour was practice after all (decided with Ed, 2026-11-13).
+                Button(LocalizedStringResource("Keep", bundle: .module)) {
+                    model.dismissCapBanner()
+                }
+                .accessibilityLabel(Text("Keep session", bundle: .module))
+                .accessibilityIdentifier(AccessibilityID.practiceCappedKeep)
+                Button(LocalizedStringResource("Edit", bundle: .module)) {
+                    model.dismissCapBanner()
+                    edit(capped.id)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel(Text("Edit session", bundle: .module))
+                .accessibilityIdentifier(AccessibilityID.practiceCappedEdit)
             }
-            .buttonStyle(.bordered)
-            .accessibilityLabel(Text("Edit session", bundle: .module))
-            .accessibilityIdentifier(AccessibilityID.practiceCappedEdit)
         }
         .bannerStyle()
     }
