@@ -9,6 +9,22 @@ import Foundation
 struct PracticeLogFile: Sendable {
     let make: @Sendable () async throws -> Data
 
+    /// Why an export couldn't be written, which decides what Settings says.
+    enum Failure: Equatable {
+        /// The device is out of space: freeing some is the fix.
+        case outOfSpace
+        /// Anything else, such as history that couldn't be read: trying again later may work.
+        case storage
+
+        init(_ error: any Error) {
+            let error = error as NSError
+            let outOfSpace =
+                (error.domain == NSCocoaErrorDomain && error.code == NSFileWriteOutOfSpaceError)
+                || (error.domain == NSPOSIXErrorDomain && error.code == Int(ENOSPC))
+            self = outOfSpace ? .outOfSpace : .storage
+        }
+    }
+
     /// Makes the CSV and writes it, ready to share.
     func written() async throws -> URL {
         try Self.write(try await make())

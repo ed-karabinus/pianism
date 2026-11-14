@@ -24,4 +24,18 @@ struct PracticeLogFileTests {
         #expect(try Data(contentsOf: first) == data)
         #expect(first.deletingLastPathComponent() != second.deletingLastPathComponent())
     }
+
+    @Test("EXP-1: an export that fails for want of space says so, and any other failure says storage")
+    func failureSaysWhy() {
+        // Given the errors a full disk gives, from Foundation and from the system, and another
+        let foundation = CocoaError(.fileWriteOutOfSpace)
+        let system = POSIXError(.ENOSPC)
+        let other = CocoaError(.fileReadNoPermission)
+
+        // When each becomes a failure
+        // Then a full disk is out of space, and the other is storage
+        #expect(PracticeLogFile.Failure(foundation) == .outOfSpace)
+        #expect(PracticeLogFile.Failure(system) == .outOfSpace)
+        #expect(PracticeLogFile.Failure(other) == .storage)
+    }
 }

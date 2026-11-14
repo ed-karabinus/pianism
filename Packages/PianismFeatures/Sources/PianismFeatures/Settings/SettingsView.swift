@@ -21,6 +21,8 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.dailyMinimum) private var dailyMinimum: TimeInterval = 0
     /// Whether Export is writing the file, so a second tap doesn't open a second sheet.
     @State private var exporting = false
+    /// Why the last export couldn't be written, shown in an alert until dismissed.
+    @State private var exportFailure: PracticeLogFile.Failure?
 
     var body: some View {
         NavigationStack {
@@ -195,6 +197,20 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle(Text("Settings", bundle: .module))
+            .alert(
+                Text("Couldn't export your sessions", bundle: .module),
+                isPresented: showsExportFailure
+            ) {
+            } message: {
+                switch exportFailure {
+                case .outOfSpace:
+                    Text(
+                        "There isn't enough storage on this device. Free up some space, then try again.",
+                        bundle: .module)
+                case .storage, nil:
+                    Text("Pianism couldn't reach its storage. Try again in a moment.", bundle: .module)
+                }
+            }
         }
     }
 
@@ -219,7 +235,13 @@ struct SettingsView: View {
         }
     }
 
-    /// Writes the file, then opens the share sheet with it. If it can't be written, the sheet doesn't open.
+    /// Whether the export failure alert shows; dismissing it forgets the failure.
+    private var showsExportFailure: Binding<Bool> {
+        Binding(get: { exportFailure != nil }, set: { if !$0 { exportFailure = nil } })
+    }
+
+    /// Writes the file, then opens the share sheet with it. If it can't be written, an alert says why instead, as
+    /// Apple's apps do when an action fails (decided with Ed, 2026-11-14).
     private func export() {
         guard !exporting else { return }
         exporting = true
@@ -232,6 +254,7 @@ struct SettingsView: View {
                 #endif
             } catch {
                 Self.logger.error("Couldn't write the export: \(error, privacy: .public)")
+                exportFailure = PracticeLogFile.Failure(error)
             }
         }
     }
