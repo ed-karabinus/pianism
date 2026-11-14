@@ -72,6 +72,32 @@ final class SwiftDataSessionHistoryTests {
         #expect(!HistoryStore.isChange(saved(nil), to: storeURL))
     }
 
+    @Test(
+        "SYN-1: saves made while a change waits to be taken come as one change, as an iCloud import's burst does",
+        .timeLimit(.minutes(1)))
+    func aBurstOfSavesComesAsOneChange() async throws {
+        // Given the store's changes, not yet read
+        let changes = HistoryStore(url: storeURL).changes
+
+        // When 50 saves come before they're read
+        for _ in 1...50 {
+            NotificationCenter.default.post(
+                name: .NSPersistentStoreRemoteChange, object: nil, userInfo: [NSPersistentStoreURLKey: storeURL])
+        }
+        try await Task.sleep(for: .milliseconds(500))
+        let reader = Task {
+            var count = 0
+            for await _ in changes { count += 1 }
+            return count
+        }
+        try await Task.sleep(for: .milliseconds(500))
+        reader.cancel()
+
+        // Then they're read as one, or a few on a slow machine, not as 50
+        let count = await reader.value
+        #expect((1...3).contains(count), "\(count) changes")
+    }
+
     @Test("ADR 0006: a session stopped while paused comes back exactly, even at a fraction of a second")
     func stoppedWhilePausedSurvivesExactly() throws {
         // The pause ends at the same instant as the session. If the store moved either time by
@@ -194,6 +220,9 @@ final class SwiftDataSessionHistoryTests {
 
         #expect(try history.sessions() == [session])
         #expect(try history.unshowableCount() == 3)
+        let both = try history.sessionsAndUnshowableCount()
+        #expect(both.sessions == [session])
+        #expect(both.unshowable == 3)
     }
 
     @Test("HIS-1: the end-to-end tests' unshowable sessions are skipped and counted, as a newer version's would be")

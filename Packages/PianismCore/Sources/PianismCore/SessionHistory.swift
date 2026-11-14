@@ -21,6 +21,10 @@ public protocol SessionHistory: Sendable {
     /// newer version wrote (ADR 0006). A deleted session isn't counted.
     func unshowableCount() throws -> Int
 
+    /// ``sessions()`` and ``unshowableCount()`` together, which History shows on each refresh, from one read of the
+    /// store, which reads every record for each.
+    func sessionsAndUnshowableCount() throws -> (sessions: [PracticeSession], unshowable: Int)
+
     /// The IDs of every session a piano started that was saved, deleted ones included, which the free piano sessions
     /// count (PRO-2, ADR 0012).
     func autoLoggedIDs() throws -> Set<UUID>
@@ -42,4 +46,11 @@ public protocol SessionHistory: Sendable {
     /// (SES-5, ADR 0006). Changes nothing if it was never saved or was already deleted. Throws
     /// ``RecordFromNewerVersion`` if a newer version wrote it.
     func delete(id: UUID) throws
+}
+
+extension SessionHistory {
+    /// The two reads one after the other, for a history that holds its sessions in memory.
+    public func sessionsAndUnshowableCount() throws -> (sessions: [PracticeSession], unshowable: Int) {
+        (try sessions(), try unshowableCount())
+    }
 }

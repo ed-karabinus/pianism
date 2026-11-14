@@ -32,13 +32,23 @@ public final class HistoryStore: Sendable {
         _ = try? container()
     }
 
-    /// Fires after each save to this store once it has opened, by this app or by an iCloud import (SYN-1).
-    /// Whatever runs on it must only read, or each change would cause another.
-    public var changes: some AsyncSequence<Void, Never> {
+    /// Fires after each save to this store once it has opened, by this app or by an iCloud import (SYN-1). Saves made
+    /// while the last change is still waiting to be taken come as one, so an import's burst of saves, each of which
+    /// reads the whole history again, is handled once or twice rather than once each. Whatever runs on it must only
+    /// read, or each change would cause another.
+    public var changes: AsyncStream<Void> {
         let url = url
-        return NotificationCenter.default.notifications(named: .NSPersistentStoreRemoteChange)
-            .filter { Self.isChange($0, to: url) }
-            .map { _ in () }
+        // An observer added now, as the stream is made, so a save before it's first read isn't missed: the
+        // notifications sequence only listens once read, which a task does a moment later. The observer's token isn't
+        // marked Sendable, but it's only handed back to `removeObserver`, which any thread may call.
+        return AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
+            nonisolated(unsafe) let observer = NotificationCenter.default.addObserver(
+                forName: .NSPersistentStoreRemoteChange, object: nil, queue: nil
+            ) { save in
+                if Self.isChange(save, to: url) { continuation.yield() }
+            }
+            continuation.onTermination = { _ in NotificationCenter.default.removeObserver(observer) }
+        }
     }
 
     /// Whether `notification` reports a save to the store at `url`, rather than to another store.

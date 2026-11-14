@@ -13,6 +13,23 @@ struct HistoryModelTests {
     let running = InMemoryRunningSessionStore()
     let glance = InMemoryPracticeGlance()
 
+    @Test("HIS-1, NFR-5: a refresh reads the history once, as the store reads every record for each read")
+    func refreshReadsTheHistoryOnce() throws {
+        // Given a history that counts its reads, with a session in it
+        let history = CountingHistory()
+        history.saved.save(try endedSession(startingAfter: 0))
+        let model = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: outbox, running: running, clock: clock, glance: glance
+        )
+
+        // When History refreshes
+        model.refresh()
+
+        // Then it read the history once, and shows the session
+        #expect(history.reads.withLock { $0 } == 1)
+        #expect(model.days.flatMap(\.sessions).count == 1)
+    }
+
     @Test("ADR 0007: a session both saved and waiting shows once, as saved; one only waiting is marked")
     func savedAndWaitingShowOnce() throws {
         let history = InMemorySessionHistory()
@@ -1009,6 +1026,30 @@ private final class SettableClock: WallClock {
     }
 
     init(now: Date) { current = Mutex(now) }
+}
+
+/// A history that counts its reads of every session, each of which a store pays for with every record.
+private final class CountingHistory: SessionHistory {
+    let saved = InMemorySessionHistory()
+    let reads = Mutex(0)
+
+    func sessions() -> [PracticeSession] {
+        reads.withLock { $0 += 1 }
+        return saved.sessions()
+    }
+    func unshowableCount() -> Int {
+        reads.withLock { $0 += 1 }
+        return 0
+    }
+    func sessionsAndUnshowableCount() -> (sessions: [PracticeSession], unshowable: Int) {
+        reads.withLock { $0 += 1 }
+        return (saved.sessions(), 0)
+    }
+    func autoLoggedIDs() -> Set<UUID> { saved.autoLoggedIDs() }
+    func save(_ session: PracticeSession) { saved.save(session) }
+    func canEdit(id: UUID) -> Bool { saved.canEdit(id: id) }
+    func edit(_ session: PracticeSession) throws { try saved.edit(session) }
+    func delete(id: UUID) throws { try saved.delete(id: id) }
 }
 
 /// A history that works except that it can't delete, as when its store fails to save.

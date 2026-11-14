@@ -26,6 +26,10 @@ public final class SwiftDataSessionHistory: SessionHistory {
         try read().unshowable
     }
 
+    public func sessionsAndUnshowableCount() throws -> (sessions: [PracticeSession], unshowable: Int) {
+        try read()
+    }
+
     /// From every record, deleted ones included, as a delete keeps the record and its source (ADR 0006), and each ID
     /// once, as a synced session can have copies.
     public func autoLoggedIDs() throws -> Set<UUID> {
