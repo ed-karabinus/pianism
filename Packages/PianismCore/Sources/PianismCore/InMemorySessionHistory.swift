@@ -75,4 +75,7 @@ extension InMemorySessionHistory: SessionOutbox {
     public func remove(id: UUID) {
         saved.withLock { $0.removeAll { $0.id == id } }
     }
+
+    /// None: a session in memory is always readable.
+    public func unreadableCount() -> Int { 0 }
 }

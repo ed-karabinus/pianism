@@ -50,8 +50,10 @@ Amended 2026-10-16, after the owner asked how to reduce the downsides below:
   sessions still stops at any other error, so an outage costs one failed save per archive, not one
   per waiting session.
 - A waiting file whose contents aren't a session, as after an update changed the format, moves to
-  `Outbox/Unreadable/` and is logged. A later fix release must look there to recover it. A file
-  that only can't be read for now stays put and is retried.
+  `Outbox/Unreadable/` and is logged. A file that only can't be read for now stays put and is retried.
+  - Amended 2026-11-14 (#87): History counts the files in `Unreadable/`, and each read of the outbox moves back any
+    this version can now read, so an update recovers them. See
+    docs/decisions/2026-11-14-unreadable-waiting-sessions-are-counted.md.
 
 ## Consequences
 

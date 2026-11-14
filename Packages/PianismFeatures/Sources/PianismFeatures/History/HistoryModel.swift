@@ -23,7 +23,8 @@ public final class HistoryModel {
     private(set) var now: Date
     /// Whether the last refresh couldn't read the history. Waiting sessions still show.
     private(set) var loadFailed = false
-    /// How many saved sessions this version can't show, such as ones a newer version wrote (ADR 0006).
+    /// How many sessions this version can't show: saved ones, such as a newer version wrote (ADR 0006), and waiting
+    /// ones the outbox can't read (#87).
     private(set) var unshowableCount = 0
     /// The tags sessions show, each merged tag as the tag it was merged into (ADR 0004).
     private(set) var tagIndex = TagIndex([])
@@ -97,7 +98,10 @@ public final class HistoryModel {
         let waiting = (try? outbox.sessions()) ?? []
         var saved: [PracticeSession] = []
         do {
-            (saved, unshowableCount) = try history.sessionsAndUnshowableCount()
+            let unshowable: Int
+            (saved, unshowable) = try history.sessionsAndUnshowableCount()
+            // After reading the outbox, which brings back any it can now read. Updating is the fix for both (#87).
+            unshowableCount = unshowable + outbox.unreadableCount()
             tagIndex = TagIndex(try tags.allTags())
             loadFailed = false
         } catch {
