@@ -214,6 +214,26 @@ struct PracticeModelTests {
         #expect(shown.endsByItself(cap: nil, saveAfter: 600, appOnScreen: false) == first + 790)
     }
 
+    @Test("SES-4, GLN-2: Start after the cap, as from the widget with the app suspended, saves that session and starts")
+    func startAfterTheCapStartsANewSession() {
+        // Given a session left running past the cap, with the app suspended rather than relaunched
+        let history = InMemorySessionHistory()
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
+        model.start()
+        let start = clock.now
+        clock.advance(by: 1_000)
+
+        // When Start is tapped
+        model.start()
+
+        // Then the capped session is in history, ended at the cap, and a new one runs from now
+        #expect(history.sessions().map(\.endedAt) == [start + 600])
+        #expect(model.session?.startedAt == clock.now)
+        #expect(model.isCounting)
+    }
+
     @Test(
         "SES-4, GLN-1: a Pause, Stop or tag change after the cap ends the session at the cap instead, dropping the tag",
         arguments: ["pause", "stop", "setTags"])

@@ -27,9 +27,15 @@ struct PracticeEntry: TimelineEntry {
     /// When a timer session ends itself at the cap (SES-4), which the app saves only once it next runs. A piano
     /// session's clock stops at its last note instead, and the widget isn't told its save timeout.
     let endsItselfAt: Date?
-    /// Whether the session has ended itself by `date`, so the widget says "Ended", as the Live Activity does, rather
-    /// than "Practicing" above a stopped clock (device check W9, 2026-11-13).
+    /// The start of `date`'s day.
+    let dayStart: Date
+    /// Whether the session has ended itself by `date`, so the widget offers Start again, which saves it first.
     var hasEndedItself: Bool { endsItselfAt.map { $0 <= date } ?? false }
+    /// Whether it ended itself today, so the widget says "Ended", as the Live Activity does, rather than "Practicing"
+    /// above a stopped clock (device check W9, 2026-11-13). From midnight on, the widget shows a fresh day.
+    var endedItselfToday: Bool { hasEndedItself && endsItselfAt.map { $0 >= dayStart } ?? false }
+    /// The session the widget counts: none once it has ended itself before today.
+    var shownSession: PracticeSession? { hasEndedItself && !endedItselfToday ? nil : session }
 
     init(
         date: Date, finished: TimeInterval, session: PracticeSession?, cap: TimeInterval? = nil,
@@ -38,8 +44,9 @@ struct PracticeEntry: TimelineEntry {
         self.date = date
         self.finished = finished
         self.session = session
-        self.timer = session?.todaysClock(
-            finished: finished, dayStart: dayStart ?? Calendar.autoupdatingCurrent.startOfDay(for: date), cap: cap)
+        let dayStart = dayStart ?? Calendar.autoupdatingCurrent.startOfDay(for: date)
+        self.dayStart = dayStart
+        self.timer = session?.todaysClock(finished: finished, dayStart: dayStart, cap: cap)
         self.endsItselfAt = session.flatMap { $0.source == .midi ? nil : cap.flatMap($0.whenPracticeReaches) }
     }
 }
@@ -96,7 +103,7 @@ struct PracticeWidgetView: View {
                     // Dims while Start runs, which takes a few seconds as iOS launches the app in the background,
                     // so the widget shows it's working rather than seeming to ignore the tap (device check L4).
                     .invalidatableContent()
-                if entry.session == nil {
+                if entry.shownSession == nil || entry.hasEndedItself {
                     Spacer()
                     Button(intent: StartPracticeIntent()) {
                         Label("Start", systemImage: "play.fill")
@@ -114,8 +121,8 @@ struct PracticeWidgetView: View {
     }
 
     private var title: LocalizedStringKey {
-        if entry.hasEndedItself { return "Ended" }
-        return switch entry.session?.state {
+        if entry.endedItselfToday { return "Ended" }
+        return switch entry.shownSession?.state {
         case nil, .ended: "Today"
         case .running: entry.session?.countsOnlyInApp == true ? "Paused" : "Practicing"
         case .paused: "Paused"
@@ -127,7 +134,7 @@ struct PracticeWidgetView: View {
     /// practice started, stopped at the pause while it's paused and at the cap, where the session ends itself, so
     /// no process needs to run (#164). A MIDI session stops at its last note, as only the open app hears the piano.
     @ViewBuilder private var time: some View {
-        if let session = entry.session, let timer = entry.timer {
+        if let session = entry.shownSession, let timer = entry.timer {
             Text(
                 timerInterval: timer,
                 pauseTime: session.pausedAwayAt, countsDown: false)
@@ -178,6 +185,14 @@ func previewPianoSession() -> PracticeSession {
     PracticeWidget()
 } timeline: {
     PracticeEntry(date: .now, finished: 20 * 60, session: previewSession(paused: false), cap: 60 * 60)
+}
+
+// As just past midnight (faked as 4 minutes ago), after the session ended itself at the cap 35 minutes ago.
+#Preview("Ended at the cap before midnight, the app not opened since", as: .systemSmall) {
+    PracticeWidget()
+} timeline: {
+    PracticeEntry(
+        date: .now, finished: 0, session: previewSession(paused: false), cap: 60 * 60, dayStart: .now - 4 * 60)
 }
 
 #Preview("Paused at 25 minutes", as: .systemSmall) {

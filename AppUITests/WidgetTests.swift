@@ -46,7 +46,9 @@ final class WidgetTests: UITestCase {
     }
 
     /// GLN-2, SES-4: once a session reaches the cap with the app closed, the widget says "Ended", as the Live Activity
-    /// does, not "Practicing" above its stopped clock (device check W9, 2026-11-13).
+    /// does, not "Practicing" above its stopped clock, and offers Start again (device check W9, 2026-11-13; the owner
+    /// picked "Ended" with Start the same day). Start itself can't be tapped on a simulator (ADR 0010); a model test
+    /// covers what it does after the cap.
     @MainActor
     func testTheWidgetSaysEndedOnceASessionReachesTheCap() throws {
         try skipUnlessSoaking("it waits out a cap on real time, and drives SpringBoard's own screens to add the widget")
@@ -73,10 +75,11 @@ final class WidgetTests: UITestCase {
         // When the cap passes, with a margin for a slow reload
         let ended = springboard.staticTexts["Ended"].appears(within: 60)
 
-        // Then the widget says the session ended
+        // Then the widget says the session ended, and offers Start
         attachScreenshot(of: springboard, named: "The widget past the cap")
         XCTAssertTrue(ended, "The widget didn't say \"Ended\" past the cap")
         XCTAssertFalse(practicing.exists, "The widget still said \"Practicing\" past the cap")
+        XCTAssertTrue(springboard.buttons["Start"].exists, "The widget didn't offer Start past the cap")
     }
 
     /// Adds the small Practice widget through the Home Screen's edit mode and its widget gallery.
