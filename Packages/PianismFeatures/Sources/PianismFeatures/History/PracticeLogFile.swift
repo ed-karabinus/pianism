@@ -1,19 +1,17 @@
-import CoreTransferable
 import Foundation
-import UniformTypeIdentifiers
 
-/// EXP-1's CSV file, made only once it's shared, so it holds history as it is then, not when Settings opened.
-struct PracticeLogFile: Transferable {
+/// EXP-1's CSV file, written when Export is tapped, so it holds history as it is then, not when Settings opened.
+///
+/// It's written before the share sheet opens and shared as that file, which keeps its name everywhere, AirDrop
+/// included. Shared as data, AirDrop called it "comma-separated values-….csv" (device check S10, 2026-11-13). Shared
+/// as a file made when the sheet asked for it (#253), the sheet waited 2 s trying to open it in place, and AirDrop
+/// sent it as text, "text-….txt" (device check S11, 2026-11-14).
+struct PracticeLogFile: Sendable {
     let make: @Sendable () async throws -> Data
 
-    /// A file rather than data, as AirDrop ignored the suggested name of data and called the file
-    /// "comma-separated values-….csv" (device check S10, 2026-11-13), where Save to Files kept it. A shared file
-    /// keeps its own name wherever it goes (device check S11).
-    static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(exportedContentType: .commaSeparatedText) { file in
-            SentTransferredFile(try write(try await file.make()))
-        }
-        .suggestedFileName(fileName)
+    /// Makes the CSV and writes it, ready to share.
+    func written() async throws -> URL {
+        try Self.write(try await make())
     }
 
     static var fileName: String { String(localized: "Pianism sessions", bundle: .module) + ".csv" }

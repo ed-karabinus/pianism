@@ -1,5 +1,10 @@
 import PianismCore
 import SwiftUI
+import os
+
+#if canImport(UIKit)
+    import UIKit
+#endif
 
 /// The Settings tab: connecting a piano (MIDI-2) and how it starts, pauses and saves a session (MIDI-1), when Practice
 /// asks "Still practicing?" and stops a session (SES-3, SES-4), and the overlap warning (SES-5) for now; SET-1's other
@@ -14,6 +19,8 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.showsOverlapWarning) private var showsOverlapWarning = true
     @AppStorage(SettingsKey.weeklyGoalDays) private var goalDays = WeeklyGoal.defaultDays
     @AppStorage(SettingsKey.dailyMinimum) private var dailyMinimum: TimeInterval = 0
+    /// Whether Export is writing the file, so a second tap doesn't open a second sheet.
+    @State private var exporting = false
 
     var body: some View {
         NavigationStack {
@@ -195,9 +202,12 @@ struct SettingsView: View {
     /// screen, as time per piece does (EXP-1, D9).
     @ViewBuilder private var exportRow: some View {
         if pro.isPro {
-            ShareLink(item: log, preview: SharePreview(Text("Pianism sessions", bundle: .module))) {
+            Button {
+                export()
+            } label: {
                 Label(LocalizedStringResource("Export sessions", bundle: .module), systemImage: "square.and.arrow.up")
             }
+            .disabled(exporting)
             .accessibilityIdentifier(AccessibilityID.settingsExport)
         } else {
             Button {
@@ -209,6 +219,41 @@ struct SettingsView: View {
             .accessibilityIdentifier(AccessibilityID.settingsExport)
         }
     }
+
+    /// Writes the file, then opens the share sheet with it. If it can't be written, the sheet doesn't open.
+    private func export() {
+        exporting = true
+        Task {
+            defer { exporting = false }
+            do {
+                let file = try await log.written()
+                #if canImport(UIKit)
+                    Self.share(file)
+                #endif
+            } catch {
+                Logger(subsystem: "com.edkarabinus.Pianism", category: "export").error(
+                    "Couldn't write the export: \(error, privacy: .public)")
+            }
+        }
+    }
+
+    #if canImport(UIKit)
+        /// Opens the share sheet with `file` over whatever is on screen; on an iPad, as a popover from the middle of
+        /// the screen, as SwiftUI gives this row no view to point at.
+        private static func share(_ file: URL) {
+            let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+                .first { $0.activationState == .foregroundActive }
+            guard var top = scene?.keyWindow?.rootViewController else { return }
+            while let presented = top.presentedViewController { top = presented }
+            let sheet = UIActivityViewController(activityItems: [file], applicationActivities: nil)
+            if let popover = sheet.popoverPresentationController {
+                popover.sourceView = top.view
+                popover.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
+            top.present(sheet, animated: true)
+        }
+    #endif
 
     /// The locked row, read as its name first, then that it's part of Pro.
     private var lockedExportLabel: Text {
