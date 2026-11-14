@@ -12,6 +12,15 @@ extension PracticeModel {
         case ready, running, paused, pastNudge, capped, tooShort, midiPaused, lowBattery, bluetoothMissing
     }
 
+    /// Settings of the previews' own, emptied for each model, so what one stores, such as a cap banner or a piano,
+    /// stays out of the others.
+    private static func previewDefaults() -> UserDefaults {
+        let name = "Practice preview"
+        let defaults = UserDefaults(suiteName: name) ?? .standard
+        defaults.removePersistentDomain(forName: name)
+        return defaults
+    }
+
     /// A model over an in-memory store, 25 minutes into a session, 95 minutes into one past the 90-minute nudge,
     /// or 5 hours into one that ends itself at the 4-hour cap, just after a MIDI session too short to save, or with
     /// a MIDI session paused by a silence, also on a low battery, or ready with a Bluetooth piano gone, for previews.
@@ -27,7 +36,7 @@ extension PracticeModel {
         let model = PracticeModel(
             store: PreviewStore(nil), history: history, outbox: InMemorySessionHistory(),
             clock: PreviewClock(now: previewNow), nudges: PreviewNudges(allowed: .allowed), glance: PreviewGlance(),
-            defaults: .standard, nudge: 90 * 60, cap: 4 * 60 * 60, isPro: { false })
+            defaults: previewDefaults(), nudge: 90 * 60, cap: 4 * 60 * 60, isPro: { false })
         model.connectedPianos = ["MIDI KEYBOARD"]
         model.refresh()
         return model
@@ -45,12 +54,11 @@ extension PracticeModel {
             [.ready, .midiPaused, .lowBattery, .bluetoothMissing].contains(state)
                 ? nil : PracticeSession(startedAt: started, source: state == .tooShort ? .midi : .timer))
         let clock = PreviewClock(now: previewNow.addingTimeInterval(25 * 60 + 3))
-        // Its own suite, so the piano it remembers stays out of the other previews.
-        let defaults = state == .bluetoothMissing ? UserDefaults(suiteName: "Practice preview, Bluetooth") : nil
-        defaults?.set("CA59 Bluetooth", forKey: SettingsKey.bluetoothPiano)
+        let defaults = previewDefaults()
+        if state == .bluetoothMissing { defaults.set("CA59 Bluetooth", forKey: SettingsKey.bluetoothPiano) }
         let model = PracticeModel(
             store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
-            nudges: PreviewNudges(allowed: notifications), glance: PreviewGlance(), defaults: defaults ?? .standard,
+            nudges: PreviewNudges(allowed: notifications), glance: PreviewGlance(), defaults: defaults,
             nudge: 90 * 60, cap: 4 * 60 * 60)
         if state == .paused {
             model.pause()
