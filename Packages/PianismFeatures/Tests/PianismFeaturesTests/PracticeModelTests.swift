@@ -109,6 +109,32 @@ struct PracticeModelTests {
         #expect(reopened.cappedSession == nil)
     }
 
+    @Test("GLN-2: a widget's Start after the cap counts the capped session in today's total at once (W9)")
+    func aWidgetsStartCountsTheCappedSessionAtOnce() async {
+        // Given a session left running past the 10-minute cap, and the app launched for the widget's Start, where
+        // History hasn't run, as the app isn't in front
+        let store = InMemoryRunningSessionStore()
+        let history = InMemorySessionHistory()
+        PracticeModel(
+            store: store, history: history, outbox: InMemorySessionHistory(), clock: clock, nudges: nudges,
+            glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600
+        ).start()
+        clock.advance(by: 3_600)
+        let practice = PracticeModel(
+            store: store, history: history, outbox: InMemorySessionHistory(), clock: clock, nudges: nudges,
+            glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
+        let historyModel = HistoryModel(
+            history: history, tags: InMemoryTagLibrary(), outbox: InMemorySessionHistory(),
+            running: store, clock: clock, glance: glance)
+
+        // When the widget's Start runs
+        await practice.performForGlance({ $0.start() }, history: historyModel)
+
+        // Then the widget is shown today's total with the capped 10 minutes, and the new session
+        #expect(glance.shown.last?.finished == 600)
+        #expect(practice.session != nil)
+    }
+
     @Test("SES-4: a session stopped before the cap shows no banner, and Edit hides the banner but not the session")
     func capBannerOnlyForCappedSessions() {
         let model = PracticeModel(

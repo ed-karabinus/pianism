@@ -260,22 +260,17 @@ struct PianismApp: App {
         #endif
         self.history = history
         // The widget's and the Live Activity's buttons run in this process as intents, which find the model through
-        // this (ADR 0010). Each waits for the Live Activity to take the change before the intent returns, and for
-        // today's reminder to learn of it, as the app may never come to the front (SET-1). Each also reads History
-        // again, which writes today's total for the widget: a session the command saved, such as one Start saved at
-        // the cap, counts in it at once, where a launch for the widget's button would otherwise leave the total as it
-        // was until History next ran (device check W9, 2026-11-14).
-        func command(_ run: @escaping @MainActor @Sendable () -> Void) -> GlanceCommands.Command {
+        // this (ADR 0010). Each does what `performForGlance` says, then waits for the Live Activity to take the change
+        // before the intent returns, as the app may never come to the front.
+        func command(_ run: @escaping @MainActor @Sendable (PracticeModel) -> Void) -> GlanceCommands.Command {
             {
-                run()
-                history.refresh()
-                await practice.checkNudges()
+                await practice.performForGlance(run, history: history)
                 await glance.settle()
             }
         }
         let commands = GlanceCommands(
-            start: command { practice.start() }, pause: command { practice.pause() },
-            resume: command { practice.resume() }, stop: command { practice.stop() })
+            start: command { $0.start() }, pause: command { $0.pause() }, resume: command { $0.resume() },
+            stop: command { $0.stop() })
         AppDependencyManager.shared.add(dependency: commands)
         #if DEBUG
             // End-to-end tests play notes with PIANISM_MIDI_NOTES, as seconds after launch separated by commas, as the

@@ -66,6 +66,9 @@ extension, and the package stays out of `make test-adapters`, since ActivityKit 
   at launch (`GlanceCommands`, through App Intents' dependency manager), and the commands call
   `PracticeModel`'s start, pause, resume and stop, so a Stop from the Lock Screen takes the same
   path as a Stop on the Practice screen, cap and nudge included.
+  - Amended 2026-11-14 (device check W9): each command, through `PracticeModel.performForGlance`,
+    then reads History again, which writes today's total for the widget, as a launch for a button
+    never comes to the front, where History otherwise runs.
 - **Only the app starts, updates and ends a Live Activity.** `PracticeModel` shows the stored
   session through a port, `PracticeGlance`, after every change; the adapter,
   `SystemPracticeGlance`, reconciles the system's activities with the stored session, so an
