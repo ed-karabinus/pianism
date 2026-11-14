@@ -397,10 +397,11 @@ final class PracticeTests: UITestCase {
 
     /// SES-4: with the app left open, as on a music stand, the session ends itself when it reaches the cap,
     /// shortened to 12 seconds on the real clock, over the 10 s a session needs to be kept (SES-1). Nothing is
-    /// checked while it runs, so a slow simulator can't miss it.
+    /// checked while it runs, so a slow simulator can't miss it. The banner outlasts a relaunch, and its Keep puts it
+    /// away, leaving the session as it was (decided with Ed, 2026-11-13).
     @MainActor
     func testSessionStopsAtTheCapWhileOpen() throws {
-        let app = launch(at: nil, reset: true, capSeconds: 12)
+        var app = launch(at: nil, reset: true, capSeconds: 12)
         tap(app, "practice.start")
 
         XCTAssertTrue(app.staticTexts["practice.capped"].appears(within: 30), "It didn't stop at the cap")
@@ -408,6 +409,15 @@ final class PracticeTests: UITestCase {
         XCTAssertEqual(
             text(app, "practice.capped"),
             "Pianism stopped your session at 12 seconds of practice, in case the timer was left running.")
+        kill(app)
+
+        app = launch(at: nil, capSeconds: 12)
+        XCTAssertTrue(app.staticTexts["practice.capped"].appears(within: 5), "The banner didn't outlast a relaunch")
+        attachScreenshot(of: app, named: "The cap's banner, with Keep and Edit")
+        tap(app, "practice.capped-keep")
+        XCTAssertTrue(app.staticTexts["practice.capped"].disappears(within: 5), "Keep should hide the banner")
+        openHistory(app)
+        XCTAssertEqual(element(app, "history.session").value as? String, "12 seconds")
     }
 
     /// SES-3: once a running session passes 90 minutes of practice, Practice asks "Still practicing?".
