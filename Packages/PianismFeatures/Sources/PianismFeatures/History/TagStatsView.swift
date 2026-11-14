@@ -68,10 +68,6 @@ struct TagStatsView: View {
             Section {
                 TimedRow(title: Text("Total", bundle: .module), duration: tag.total)
                 TimedRow(title: Text("Last 30 days", bundle: .module), duration: tag.recent)
-                if tag.hasPianoTime {
-                    TimedRow(title: Text("Playing", bundle: .module), duration: tag.playing)
-                    TimedRow(title: Text("Paused", bundle: .module), duration: tag.paused)
-                }
                 // Only a top-level tag has a group, as tags nest one level (ADR 0013), so the screen this opens has
                 // no such row.
                 if let inside = groups[tag.id] {
@@ -89,9 +85,20 @@ struct TagStatsView: View {
                 Text(verbatim: tag.tag.name).textCase(nil)
                     .foregroundStyle(.secondaryText)
                     .accessibilityIdentifier(AccessibilityID.pieceStatsPiece)
-            } footer: {
-                if tag.hasPianoTime {
-                    Text("From sessions your piano started in the last 30 days.", bundle: .module)
+            }
+            // A card of its own, so the piano's split doesn't read as a split of the totals above: playing is part of
+            // them, and paused time is in no total (decided with Ed, 2026-11-13).
+            if tag.hasPianoTime {
+                Section {
+                    TimedRow(title: Text("Playing", bundle: .module), duration: tag.playing)
+                    TimedRow(title: Text("Paused", bundle: .module), duration: tag.paused)
+                } header: {
+                    // Smaller than the names above, so it reads as part of the piece, not as another one.
+                    Text("Started by your piano, last 30 days", bundle: .module)
+                        .font(.footnote)
+                        .foregroundStyle(.secondaryText)
+                } footer: {
+                    Text("Playing is part of the totals above; paused time isn't counted.", bundle: .module)
                         .foregroundStyle(.secondaryText)
                 }
             }
