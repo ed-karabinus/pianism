@@ -31,10 +31,15 @@ struct PracticeLiveActivity: Widget {
                 Image(systemName: "pianokeys")
             } compactTrailing: {
                 // A timer text reserves the width of its widest value and leads in it, which sat the spike's
-                // off-centre; a fixed width wide enough for "4:00:00" and a trailing alignment pin it.
+                // off-centre; a width just wide enough for "4:00:00" (drawn 47 points wide, iOS 27.2) and a trailing
+                // alignment pin it. With another app's activity beside it, the island cut a 56-point width off at
+                // "1:00:0" (device check 2026-11-13), so the width is no wider than the text, and the clock can
+                // shrink if the island offers less.
                 PracticeClock(state: context.state)
                     .font(.caption)
-                    .frame(width: 56, alignment: .trailing)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .frame(minWidth: 0, idealWidth: 50, maxWidth: 50, alignment: .trailing)
                     .multilineTextAlignment(.trailing)
             } minimal: {
                 Image(systemName: "pianokeys")

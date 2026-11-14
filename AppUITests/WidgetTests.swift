@@ -13,8 +13,9 @@ final class WidgetTests: UITestCase {
         try skipUnlessSoaking(
             "it drives SpringBoard's own screens to add the widget, which a pull request shouldn't wait on")
 
-        // Given the widget on the Home Screen, after a launch has registered it
+        // Given the widget on the Home Screen, after a launch has registered it, with no session left by another test
         let app = XCUIApplication()
+        app.launchEnvironment["PIANISM_RESET"] = "1"
         app.launchEnvironment["PIANISM_SKIP_WELCOME"] = "1"
         app.launch()
         kill(app)
@@ -42,6 +43,43 @@ final class WidgetTests: UITestCase {
         // Then the icon is the darker blue, read here as #0054C7, not the system blue, read as #0088FF without the fix
         // (iPhone simulator, iOS 27.2, 2026-11-12): their green parts are 84 and 136, so 110 splits them.
         XCTAssertLessThan(icon.green, 110.0 / 255, "Start is the system blue, not the app's darker blue: \(icon)")
+    }
+
+    /// GLN-2, SES-4: once a session reaches the cap with the app closed, the widget says "Ended", as the Live Activity
+    /// does, not "Practicing" above its stopped clock, and offers Start again (device check W9, 2026-11-13; the owner
+    /// picked "Ended" with Start the same day). Start itself can't be tapped on a simulator (ADR 0010); a model test
+    /// covers what it does after the cap.
+    @MainActor
+    func testTheWidgetSaysEndedOnceASessionReachesTheCap() throws {
+        try skipUnlessSoaking("it waits out a cap on real time, and drives SpringBoard's own screens to add the widget")
+
+        // Given the widget on the Home Screen, added first, as that can take longer than the cap, and then a session
+        // started with a 30-second cap and the app closed
+        let app = XCUIApplication()
+        app.launchEnvironment["PIANISM_RESET"] = "1"
+        app.launchEnvironment["PIANISM_SKIP_WELCOME"] = "1"
+        app.launch()
+        kill(app)
+        XCUIDevice.shared.press(.home)
+        if !springboard.buttons["Start"].appears(within: 5) { addTheWidget() }
+        XCTAssertTrue(springboard.buttons["Start"].appears(within: 10), "The widget's Start didn't show")
+        app.launchEnvironment["PIANISM_RESET"] = nil
+        app.launchEnvironment["PIANISM_CAP_SECONDS"] = "30"
+        app.launch()
+        app.buttons["practice.start"].tap()
+        kill(app)
+        XCUIDevice.shared.press(.home)
+        let practicing = springboard.staticTexts["Practicing"]
+        XCTAssertTrue(practicing.appears(within: 10), "The widget didn't show the session")
+
+        // When the cap passes, with a margin for a slow reload
+        let ended = springboard.staticTexts["Ended"].appears(within: 60)
+
+        // Then the widget says the session ended, and offers Start
+        attachScreenshot(of: springboard, named: "The widget past the cap")
+        XCTAssertTrue(ended, "The widget didn't say \"Ended\" past the cap")
+        XCTAssertFalse(practicing.exists, "The widget still said \"Practicing\" past the cap")
+        XCTAssertTrue(springboard.buttons["Start"].exists, "The widget didn't offer Start past the cap")
     }
 
     /// Adds the small Practice widget through the Home Screen's edit mode and its widget gallery.

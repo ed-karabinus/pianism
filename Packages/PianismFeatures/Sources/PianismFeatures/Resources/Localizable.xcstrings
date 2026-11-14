@@ -211,9 +211,6 @@
     "Forget This Piano" : {
       "comment" : "Stops offering to reconnect the Bluetooth piano paired last"
     },
-    "From sessions your piano started in the last 30 days." : {
-
-    },
     "History" : {
 
     },
@@ -394,6 +391,9 @@
     "Playing" : {
 
     },
+    "Playing is part of the totals above; paused time isn't counted." : {
+
+    },
     "Practice" : {
 
     },
@@ -491,6 +491,9 @@
 
     },
     "Start your first session" : {
+
+    },
+    "Started by your piano, last 30 days" : {
 
     },
     "Still practicing" : {

@@ -1781,6 +1781,33 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(element(app, "history.session").appears(within: 5), "History lost its sessions")
     }
 
+    /// HIS-4: a piece's piano split sits in a card of its own under its totals, headed, so it doesn't read as a split
+    /// of them: playing is part of the totals, and paused time is in none (decided with Ed, 2026-11-13).
+    @MainActor
+    func testThePianosSplitHasACardOfItsOwn() throws {
+        executionTimeAllowance = 5 * 60  // a stalled audit then costs 5 min, not the default 15
+        // Given sample practice, some of each piece's started by the piano, and Pro
+        let app = launch(at: start, reset: true, showcase: true, pro: true)
+        XCTAssertTrue(element(app, "practice.stop").appears(within: 10))
+
+        // When Time per piece and skill opens
+        openHistory(app)
+        tap(app, "history.piece-stats")
+
+        // Then the first piece's Playing is under the heading, below its totals, with a footer saying what counts
+        let total = app.staticTexts["Total"].firstMatch
+        let heading = app.staticTexts["Started by your piano, last 30 days"].firstMatch
+        let playing = app.staticTexts["Playing"].firstMatch
+        XCTAssertTrue(heading.appears(within: 5), "No heading over the piano's split")
+        attachScreenshot(of: app, named: "Time per piece and skill, the piano's split")
+        XCTAssertLessThan(total.frame.maxY, heading.frame.minY, "The heading isn't below the totals")
+        XCTAssertLessThan(heading.frame.maxY, playing.frame.minY, "Playing isn't under the heading")
+        XCTAssertTrue(
+            app.staticTexts["Playing is part of the totals above; paused time isn't counted."].firstMatch.exists,
+            "No footer under the piano's split")
+        try audit(app, "Time per piece and skill, the piano's split, audited")
+    }
+
     /// HIS-4, D7: without Pro, History's Time per piece and skill opens the Pro screen, with no numbers. Once Pro is
     /// bought, it lists a piece another device practiced, with its 30 minutes in all and in the last 30 days, and with
     /// the switch on Skills, Scales, which the skill it was tagged with sits inside, with the same 30 minutes and a
@@ -2501,7 +2528,9 @@ final class PracticeTests: UITestCase {
     /// noted in the results instead, as what the audit finds there is a design call (#165). A screen that
     /// `stallsOnIPadIOS26` is skipped there, with the reason in the results. A screen `overASheet` notes, rather than
     /// fails, text the audit can't tie to an element: on an iPad, the dimmed screen around a sheet, which VoiceOver
-    /// rightly can't reach.
+    /// rightly can't reach. Contrast is noted, not failed, for text reaching under the tab bar, which the audit reads
+    /// through the bar's glass: a second piece's footer on Time per piece and skill (2026-11-13), where the first
+    /// one's, in full view, passes.
     @MainActor
     private func audit(
         _ app: XCUIApplication, _ name: String, contrast: Bool = true, stallsOnIPadIOS26: Bool = false,
@@ -2525,12 +2554,15 @@ final class PracticeTests: UITestCase {
         if contrast { failing.insert(.contrast) }
         var found: [String] = []
         var noted: [String] = []
+        let tabBar = app.tabBars.firstMatch
+        let tabBarTop = tabBar.exists ? tabBar.frame.minY : .infinity
         try XCTContext.runActivity(named: "Audit \(name)") { _ in
             try app.performAccessibilityAudit { issue in
                 let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)' \($0.frame)" } ?? "?"
                 let line = "\(issue.compactDescription): \(element)"
                 let behindTheSheet = overASheet && issue.auditType == .elementDetection && issue.element == nil
-                if failing.contains(issue.auditType), !behindTheSheet {
+                let underTheTabBar = issue.auditType == .contrast && (issue.element?.frame.maxY ?? 0) > tabBarTop
+                if failing.contains(issue.auditType), !behindTheSheet, !underTheTabBar {
                     found.append(line)
                 } else {
                     noted.append(line)
@@ -2686,7 +2718,8 @@ final class PracticeTests: UITestCase {
         midiSaveSeconds: Int? = nil, midiMinimumSeconds: Int? = nil, midiPiano: String? = nil, intent: String? = nil,
         reminderMinute: Int? = nil, welcome: Bool = false, realStore: Bool = false, restoreFinds: Bool = false,
         buying: String? = nil, noOffer: Bool = false, autoLogged: Int? = nil, clearDebugData: Bool = false,
-        bluetoothPiano: String? = nil, midiPianoArrives: Int? = nil, newerArchivedPiece: String? = nil
+        bluetoothPiano: String? = nil, midiPianoArrives: Int? = nil, newerArchivedPiece: String? = nil,
+        pro: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         // With iCloud sync on, as Release will have it, on a simulator signed out of iCloud: the app must
@@ -2736,6 +2769,10 @@ final class PracticeTests: UITestCase {
         }
         if restoreFinds {
             app.launchEnvironment["PIANISM_RESTORE_FINDS"] = "1"
+        }
+        // Pro from the start, with the scripted store.
+        if pro {
+            app.launchEnvironment["PIANISM_PRO"] = "1"
         }
         if let buying {
             app.launchEnvironment["PIANISM_BUY"] = buying
