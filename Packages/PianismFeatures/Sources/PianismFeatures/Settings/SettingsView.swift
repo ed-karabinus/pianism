@@ -207,7 +207,6 @@ struct SettingsView: View {
             } label: {
                 Label(LocalizedStringResource("Export sessions", bundle: .module), systemImage: "square.and.arrow.up")
             }
-            .disabled(exporting)
             .accessibilityIdentifier(AccessibilityID.settingsExport)
         } else {
             Button {
@@ -222,6 +221,7 @@ struct SettingsView: View {
 
     /// Writes the file, then opens the share sheet with it. If it can't be written, the sheet doesn't open.
     private func export() {
+        guard !exporting else { return }
         exporting = true
         Task {
             defer { exporting = false }
@@ -231,20 +231,26 @@ struct SettingsView: View {
                     Self.share(file)
                 #endif
             } catch {
-                Logger(subsystem: "com.edkarabinus.Pianism", category: "export").error(
-                    "Couldn't write the export: \(error, privacy: .public)")
+                Self.logger.error("Couldn't write the export: \(error, privacy: .public)")
             }
         }
     }
 
+    private static let logger = Logger(subsystem: "com.edkarabinus.Pianism", category: "export")
+
     #if canImport(UIKit)
-        /// Opens the share sheet with `file` over whatever is on screen; on an iPad, as a popover from the middle of
-        /// the screen, as SwiftUI gives this row no view to point at.
+        /// Opens the share sheet with `file` over whatever is on screen in the window just tapped, the key one, as an
+        /// iPad can show two of Pianism's; on an iPad, as a popover from the middle of the screen, as SwiftUI gives
+        /// this row no view to point at.
         private static func share(_ file: URL) {
-            let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-                .first { $0.activationState == .foregroundActive }
-            guard var top = scene?.keyWindow?.rootViewController else { return }
-            while let presented = top.presentedViewController { top = presented }
+            let window = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+                .flatMap(\.windows).first(where: \.isKeyWindow)
+            guard var top = window?.rootViewController else {
+                logger.error("No window to share the export from")
+                return
+            }
+            // Not over a sheet that's closing, which would refuse it.
+            while let presented = top.presentedViewController, !presented.isBeingDismissed { top = presented }
             let sheet = UIActivityViewController(activityItems: [file], applicationActivities: nil)
             if let popover = sheet.popoverPresentationController {
                 popover.sourceView = top.view

@@ -1610,9 +1610,10 @@ final class PracticeTests: UITestCase {
         app.buttons["paywall.close"].tap()
 
         proRow("settings.export", in: app).tap()
-        // The sheet's header shows the file's title, which also says the file was handed over; the system's own name
-        // for the sheet only as a fallback, as it's private and could change.
-        let title = app.staticTexts["Pianism sessions"]
+        // The sheet's header shows the file's name, "Pianism sessions" with or without ".csv" by iOS version, which also
+        // says the file was handed over; the system's own name for the sheet only as a fallback, as it's private and
+        // could change.
+        let title = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Pianism sessions")).firstMatch
         let sheet = app.otherElements["ActivityListView"]
         XCTAssertTrue(title.appears(within: 10) || sheet.exists, "The share sheet didn't open")
         attachScreenshot(of: app, named: "Export, share sheet")

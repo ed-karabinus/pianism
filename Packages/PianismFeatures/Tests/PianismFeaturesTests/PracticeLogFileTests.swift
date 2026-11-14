@@ -7,7 +7,7 @@ import Testing
 /// keeps the suggested name of shared data too (device check S11).
 struct PracticeLogFileTests {
     @Test("EXP-1: each export writes \"Pianism sessions.csv\" in a folder of its own")
-    func eachShareHasItsOwnFolder() throws {
+    func eachExportHasItsOwnFolder() throws {
         // Given the CSV's bytes
         let data = Data("started_at,ended_at\n".utf8)
 

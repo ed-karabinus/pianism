@@ -14,5 +14,5 @@ holds history as it is at the tap.
 A file written first opens at once and keeps its name and type everywhere tried: AirDrop, a draft message and Save to
 Files.
 
-**Accepted:** the history is read before the sheet opens, on the tap. That's a few milliseconds at today's sizes. Each
+**Accepted:** the history is read before the sheet opens, on the tap. That's quick at today's sizes, though not measured. Each
 export leaves a copy in the app's temporary folder, which iOS clears.

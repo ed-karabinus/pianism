@@ -16,7 +16,7 @@ struct PracticeLogFile: Sendable {
 
     static var fileName: String { String(localized: "Pianism sessions", bundle: .module) + ".csv" }
 
-    /// Writes `data` as "Pianism sessions.csv" in a folder of its own in the temporary directory, so two shares
+    /// Writes `data` as "Pianism sessions.csv" in a folder of its own in the temporary directory, so two exports
     /// never write the same file.
     static func write(_ data: Data) throws -> URL {
         let folder = FileManager.default.temporaryDirectory.appending(path: "Export-\(UUID())")
