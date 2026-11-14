@@ -48,9 +48,9 @@ final class SystemPracticeGlance: PracticeGlance {
         let session = session?.state == .ended ? nil : session
         // The cap lives in the app, so the widget learns it from here: the totals file carries it (#164). The widget
         // reads it only with a session, so the cap is kept while none runs, and a change is written only on the
-        // first session of a launch, or when a session with another cap starts. A launch for the widget's Start
-        // runs no History, so the file on disk is what the cap goes into then, or, with none readable, a day with
-        // nothing finished yet, which History corrects when it next runs.
+        // first session of a launch, or when a session with another cap starts. In a launch for the widget's Start,
+        // the session starts before History has read anything, so the file on disk is what the cap goes into then, or,
+        // with none readable, a day with nothing finished yet; History, read just after (ADR 0010), corrects it.
         let capChanged =
             session != nil
             && lastCap.withLock { last in

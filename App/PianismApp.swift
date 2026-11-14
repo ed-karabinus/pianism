@@ -249,12 +249,26 @@ struct PianismApp: App {
             analytics: analytics, isPro: { pro.isPro })
         answering.practice = practice
         self.practice = practice
+        let history = HistoryModel(
+            history: sessions, tags: library, outbox: outbox, running: store, clock: clock, glance: glance,
+            analytics: analytics)
+        #if DEBUG
+            // End-to-end tests lengthen Undo with PIANISM_UNDO_SECONDS. Release builds ignore it.
+            if let seconds = ProcessInfo.processInfo.environment["PIANISM_UNDO_SECONDS"].flatMap(Int.init) {
+                history.undoDuration = .seconds(seconds)
+            }
+        #endif
+        self.history = history
         // The widget's and the Live Activity's buttons run in this process as intents, which find the model through
         // this (ADR 0010). Each waits for the Live Activity to take the change before the intent returns, and for
-        // today's reminder to learn of it, as the app may never come to the front (SET-1).
+        // today's reminder to learn of it, as the app may never come to the front (SET-1). Each also reads History
+        // again, which writes today's total for the widget: a session the command saved, such as one Start saved at
+        // the cap, counts in it at once, where a launch for the widget's button would otherwise leave the total as it
+        // was until History next ran (device check W9, 2026-11-14).
         func command(_ run: @escaping @MainActor @Sendable () -> Void) -> GlanceCommands.Command {
             {
                 run()
+                history.refresh()
                 await practice.checkNudges()
                 await glance.settle()
             }
@@ -322,16 +336,6 @@ struct PianismApp: App {
             midi = CoreMIDINotes(clock: clock)
         #endif
         tags = TagPickerModel(practice: practice, library: library)
-        let history = HistoryModel(
-            history: sessions, tags: library, outbox: outbox, running: store, clock: clock, glance: glance,
-            analytics: analytics)
-        #if DEBUG
-            // End-to-end tests lengthen Undo with PIANISM_UNDO_SECONDS. Release builds ignore it.
-            if let seconds = ProcessInfo.processInfo.environment["PIANISM_UNDO_SECONDS"].flatMap(Int.init) {
-                history.undoDuration = .seconds(seconds)
-            }
-        #endif
-        self.history = history
     }
 
     var body: some Scene {
