@@ -22,10 +22,6 @@ public final class SwiftDataSessionHistory: SessionHistory {
         try read().sessions
     }
 
-    public func unshowableCount() throws -> Int {
-        try read().unshowable
-    }
-
     public func sessionsAndUnshowableCount() throws -> (sessions: [PracticeSession], unshowable: Int) {
         try read()
     }

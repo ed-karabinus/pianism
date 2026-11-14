@@ -345,7 +345,7 @@ struct PianismApp: App {
                     for await _ in historyStore.changes {
                         history.refresh()
                         tags.refresh()
-                        try? await Task.sleep(for: .seconds(1))
+                        guard (try? await Task.sleep(for: .seconds(1))) != nil else { break }
                     }
                 }
                 // Checked at launch rather than when History opens, so its rows don't move under the user (SYN-1).

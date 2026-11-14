@@ -17,12 +17,9 @@ public protocol SessionHistory: Sendable {
     /// Every saved session, in no particular order.
     func sessions() throws -> [PracticeSession]
 
-    /// How many saved sessions ``sessions()`` leaves out because this version can't rebuild them, such as ones a
-    /// newer version wrote (ADR 0006). A deleted session isn't counted.
-    func unshowableCount() throws -> Int
-
-    /// ``sessions()`` and ``unshowableCount()`` together, which History shows on each refresh, from one read of the
-    /// store, which reads every record for each.
+    /// ``sessions()``, and how many saved sessions it leaves out because this version can't rebuild them, such as ones
+    /// a newer version wrote (ADR 0006), which History shows together on each refresh. One call, as a store reads
+    /// every record for either. A deleted session isn't counted.
     func sessionsAndUnshowableCount() throws -> (sessions: [PracticeSession], unshowable: Int)
 
     /// The IDs of every session a piano started that was saved, deleted ones included, which the free piano sessions
@@ -46,11 +43,4 @@ public protocol SessionHistory: Sendable {
     /// (SES-5, ADR 0006). Changes nothing if it was never saved or was already deleted. Throws
     /// ``RecordFromNewerVersion`` if a newer version wrote it.
     func delete(id: UUID) throws
-}
-
-extension SessionHistory {
-    /// The two reads one after the other, for a history that holds its sessions in memory.
-    public func sessionsAndUnshowableCount() throws -> (sessions: [PracticeSession], unshowable: Int) {
-        (try sessions(), try unshowableCount())
-    }
 }

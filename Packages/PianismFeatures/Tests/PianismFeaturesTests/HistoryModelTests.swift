@@ -1037,10 +1037,6 @@ private final class CountingHistory: SessionHistory {
         reads.withLock { $0 += 1 }
         return saved.sessions()
     }
-    func unshowableCount() -> Int {
-        reads.withLock { $0 += 1 }
-        return 0
-    }
     func sessionsAndUnshowableCount() -> (sessions: [PracticeSession], unshowable: Int) {
         reads.withLock { $0 += 1 }
         return (saved.sessions(), 0)
@@ -1057,7 +1053,7 @@ private struct UndeletableHistory: SessionHistory {
     let saved = InMemorySessionHistory()
 
     func sessions() -> [PracticeSession] { saved.sessions() }
-    func unshowableCount() -> Int { 0 }
+    func sessionsAndUnshowableCount() -> (sessions: [PracticeSession], unshowable: Int) { (saved.sessions(), 0) }
     func autoLoggedIDs() -> Set<UUID> { saved.autoLoggedIDs() }
     func save(_ session: PracticeSession) { saved.save(session) }
     func canEdit(id: UUID) -> Bool { saved.canEdit(id: id) }
