@@ -245,6 +245,9 @@ public final class PracticeModel: TagTarget {
 
     /// Starts a session (SES-1). Public for the widget's Start, which the app runs through this model (ADR 0010).
     public func start() {
+        // A session the cap ended while the app sat suspended is saved first, as opening the app would, so the
+        // widget's Start, which shows once the session has ended, starts a new one rather than only saving it.
+        refresh()
         perform {
             try recorder.start()
             lastSession = nil
