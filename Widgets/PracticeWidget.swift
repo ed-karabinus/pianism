@@ -33,7 +33,7 @@ struct PracticeEntry: TimelineEntry {
     var hasEndedItself: Bool { endsItselfAt.map { $0 <= date } ?? false }
     /// Whether it ended itself today, so the widget says "Ended", as the Live Activity does, rather than "Practicing"
     /// above a stopped clock (device check W9, 2026-11-13). From midnight on, the widget shows a fresh day.
-    var endedItselfToday: Bool { hasEndedItself && endsItselfAt.map { $0 >= dayStart } ?? false }
+    var endedItselfToday: Bool { hasEndedItself && endsItselfAt.map { $0 > dayStart } ?? false }
     /// The session the widget counts: none once it has ended itself before today.
     var shownSession: PracticeSession? { hasEndedItself && !endedItselfToday ? nil : session }
 
@@ -187,7 +187,7 @@ func previewPianoSession() -> PracticeSession {
     PracticeEntry(date: .now, finished: 20 * 60, session: previewSession(paused: false), cap: 60 * 60)
 }
 
-// As just past midnight (faked as 4 minutes ago), after the session ended itself at the cap 35 minutes ago.
+// As just past midnight (faked as 4 minutes ago), after the session ended itself at the cap 25 minutes ago.
 #Preview("Ended at the cap before midnight, the app not opened since", as: .systemSmall) {
     PracticeWidget()
 } timeline: {
