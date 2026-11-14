@@ -6,25 +6,12 @@ import UniformTypeIdentifiers
 struct PracticeLogFile: Transferable {
     let make: @Sendable () async throws -> Data
 
-    /// A file rather than data, as AirDrop ignored the suggested name of data and called the file
-    /// "comma-separated values-….csv" (device check S10, 2026-11-13), where Save to Files kept it. A shared file
-    /// keeps its own name wherever it goes (device check S11).
+    /// Data, not a file, though AirDrop then names it "comma-separated values-….csv" (Save to Files keeps the name).
+    /// Shared as a file made on demand (#253), the sheet took about 2 s longer to open, as iOS waited to open it in
+    /// place, and AirDrop sent it as text, "text-….txt" (device check S11, 2026-11-14). See
+    /// docs/decisions/2026-11-14-the-export-is-shared-as-data.md.
     static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(exportedContentType: .commaSeparatedText) { file in
-            SentTransferredFile(try write(try await file.make()))
-        }
-        .suggestedFileName(fileName)
-    }
-
-    static var fileName: String { String(localized: "Pianism sessions", bundle: .module) + ".csv" }
-
-    /// Writes `data` as "Pianism sessions.csv" in a folder of its own in the temporary directory, so two shares
-    /// never write the same file.
-    static func write(_ data: Data) throws -> URL {
-        let folder = FileManager.default.temporaryDirectory.appending(path: "Export-\(UUID())")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let url = folder.appending(path: fileName)
-        try data.write(to: url)
-        return url
+        DataRepresentation(exportedContentType: .commaSeparatedText) { file in try await file.make() }
+            .suggestedFileName(String(localized: "Pianism sessions", bundle: .module) + ".csv")
     }
 }
