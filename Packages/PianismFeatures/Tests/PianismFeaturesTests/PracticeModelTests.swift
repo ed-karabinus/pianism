@@ -312,6 +312,26 @@ struct PracticeModelTests {
         #expect(model.cappedSession == nil)
     }
 
+    @Test("SES-4, MIDI-1: a piano session started in the open app hides the cap's banner, as a tapped Start does")
+    func aPianoStartHidesTheCapBanner() {
+        // Given a session that reached the cap while the app was on screen
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
+        model.cameToFront()
+        model.start()
+        clock.advance(by: 1_000)
+        model.refresh()
+        #expect(model.cappedSession != nil)
+
+        // When three notes start a piano session
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+
+        // Then the banner goes
+        #expect(model.session?.source == .midi)
+        #expect(model.cappedSession == nil)
+    }
+
     @Test("SES-4, GLN-2: a later session that also reaches the cap before the app opens takes over the banner")
     func aLaterCapTakesOverTheBanner() throws {
         // Given a capped session's banner kept by a Start with the app away

@@ -84,16 +84,12 @@ public final class PracticeModel: TagTarget {
     }
     /// What the notification opened Practice to show, until it's shown: the question, or the end being picked.
     var nudgeOpened: NudgeOpening?
-    /// The session that ended itself at the cap, until the banner explaining it is acted on: its Edit, or a Start in
-    /// the open app, where the banner shows (SES-4). A Start with the app away, as the widget's, comes before the
-    /// banner could be seen, so it stays. Stored, as a background launch can cap the session and iOS end the app
+    /// The session that ended itself at the cap, until the banner explaining it is acted on: its Keep or Edit, or a
+    /// start in the open app, where the banner shows (SES-4). A Start with the app away, as the widget's, comes before
+    /// the banner could be seen, so it stays. Stored, as a background launch can cap the session and iOS end the app
     /// before it's opened (decided with Ed, 2026-11-13).
     private(set) var cappedSession: CappedSession? {
-        didSet {
-            defaults.set(cappedSession?.id.uuidString, forKey: Self.cappedKey)
-            defaults.set(cappedSession?.practiced, forKey: Self.cappedPracticedKey)
-            defaults.set(cappedSession?.hasLaterSession, forKey: Self.cappedHasLaterKey)
-        }
+        didSet { defaults.set(cappedSession.flatMap { try? JSONEncoder().encode($0) }, forKey: Self.cappedKey) }
     }
     /// Why the last session wasn't saved, until the next start: a piano's with under a minute played (MIDI-1), or a
     /// tapped one under 10 s (SES-1).
@@ -206,8 +202,6 @@ public final class PracticeModel: TagTarget {
     /// The key under which the banner's `@AppStorage` kept the answer, so answers given before stay given.
     private static let answeredKey = "stillPracticingAnswered"
     private static let cappedKey = "cappedSession"
-    private static let cappedPracticedKey = "cappedSessionPracticed"
-    private static let cappedHasLaterKey = "cappedSessionHasLater"
 
     public init(
         store: any RunningSessionStore, history: any SessionHistory, outbox: any SessionOutbox, clock: any WallClock,
@@ -238,10 +232,8 @@ public final class PracticeModel: TagTarget {
         dailyReminderMinute =
             defaults.object(forKey: SettingsKey.dailyReminderMinute) as? Int ?? DailyReminder.defaultMinute
         bluetoothPiano = defaults.string(forKey: SettingsKey.bluetoothPiano)
-        if let id = defaults.string(forKey: Self.cappedKey).flatMap(UUID.init(uuidString:)) {
-            cappedSession = CappedSession(
-                id: id, practiced: defaults.double(forKey: Self.cappedPracticedKey),
-                hasLaterSession: defaults.bool(forKey: Self.cappedHasLaterKey))
+        cappedSession = defaults.data(forKey: Self.cappedKey).flatMap {
+            try? JSONDecoder().decode(CappedSession.self, from: $0)
         }
         // Loads the stored session now, so the first frame after a relaunch already shows it, with the silence
         // since its last change applied. As `cameToFront()`, but not yet on screen: a Live Activity's button can
@@ -269,8 +261,7 @@ public final class PracticeModel: TagTarget {
             try recorder.start()
             lastSession = nil
             notSaved = nil
-            // In the open app the cap's banner was there to see; away from it, it stays for when the app opens.
-            if isOnScreen { cappedSession = nil } else { cappedSession?.hasLaterSession = true }
+            noteStarted()
         }
     }
 
@@ -437,6 +428,7 @@ public final class PracticeModel: TagTarget {
                 case .start(let date):
                     try recorder.start(at: date)
                     notSaved = nil
+                    noteStarted()
                 case .pause(let date):
                     try recorder.pause(at: date)
                 case .resume(let date):
@@ -603,6 +595,12 @@ public final class PracticeModel: TagTarget {
         cappedSession = nil
     }
 
+    /// After a session starts, tapped or played: in the open app the cap's banner was there to see, so it goes; away
+    /// from it, it stays for when the app opens, about an earlier session now.
+    private func noteStarted() {
+        if isOnScreen { cappedSession = nil } else { cappedSession?.hasLaterSession = true }
+    }
+
     /// Notes a session that `end(atCap:)` ended, for the banner.
     private func noteCapped(_ capped: PracticeSession?) {
         guard let capped else { return }
@@ -687,7 +685,7 @@ public final class PracticeModel: TagTarget {
 }
 
 /// A session that ended itself at the cap, and its practice time, which its banner names (SES-4).
-struct CappedSession: Equatable {
+struct CappedSession: Equatable, Codable {
     let id: UUID
     let practiced: TimeInterval
     /// Whether a session was started after it, so the banner calls it an earlier one.

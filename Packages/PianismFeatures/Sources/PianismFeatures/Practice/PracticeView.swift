@@ -144,7 +144,7 @@ struct PracticeView: View {
                     .font(.callout)
                     .foregroundStyle(.secondaryText)
                     .accessibilityIdentifier(AccessibilityID.practiceTooShort)
-            } else if model.session == nil, model.cappedSession == nil, let last = model.lastSession {
+            } else if model.session == nil, let last = model.lastSession, last.id != model.cappedSession?.id {
                 let duration = ElapsedTime.display(last.elapsed(at: model.clock.now))
                 Text("Last session: \(duration)", bundle: .module)
                     .font(.callout)
