@@ -101,11 +101,12 @@ struct PracticeModelTests {
         #expect(reopened.session == nil)
         #expect(history.sessions().map(\.endedAt) == [start + 600])
         #expect(reopened.lastSession?.endedAt == start + 600)
-        #expect(reopened.lastSessionReachedCap)
+        #expect(reopened.cappedSession != nil)
 
+        reopened.cameToFront()
         reopened.start()
 
-        #expect(!reopened.lastSessionReachedCap)
+        #expect(reopened.cappedSession == nil)
     }
 
     @Test("SES-4: a session stopped before the cap shows no banner, and Edit hides the banner but not the session")
@@ -113,22 +114,22 @@ struct PracticeModelTests {
         let model = PracticeModel(
             store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
             clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
-        #expect(!model.lastSessionReachedCap)
+        #expect(model.cappedSession == nil)
         model.start()
         clock.advance(by: 599)
         model.stop()
 
         #expect(model.lastSession != nil)
-        #expect(!model.lastSessionReachedCap)
+        #expect(model.cappedSession == nil)
 
         model.start()
         clock.advance(by: 600)
         model.refresh()
-        #expect(model.lastSessionReachedCap)
+        #expect(model.cappedSession != nil)
 
         model.dismissCapBanner()
 
-        #expect(!model.lastSessionReachedCap)
+        #expect(model.cappedSession == nil)
         #expect(model.lastSession?.endedAt == clock.now)
     }
 
@@ -234,6 +235,124 @@ struct PracticeModelTests {
         #expect(model.isCounting)
     }
 
+    @Test("SES-4, GLN-2: the cap's banner outlives the launch that capped the session, and a Start with the app away")
+    func theCapBannerOutlivesALaunchAndAStartAway() throws {
+        // Given a session left running past the cap, then saved by a background launch that iOS ended
+        let store = InMemoryRunningSessionStore()
+        let history = InMemorySessionHistory()
+        func launch() -> PracticeModel {
+            PracticeModel(
+                store: store, history: history, outbox: InMemorySessionHistory(), clock: clock, nudges: nudges,
+                glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
+        }
+        launch().start()
+        clock.advance(by: 1_000)
+        _ = launch()
+        let capped = try #require(history.sessions().first)
+
+        // When the widget's Start launches the app again, away from the screen, and then the app is opened
+        launch().start()
+        let opened = launch()
+        opened.cameToFront()
+
+        // Then the banner names the capped session as an earlier one, beside the new session
+        #expect(opened.cappedSession == CappedSession(id: capped.id, practiced: 600, hasLaterSession: true))
+        #expect(opened.session != nil)
+    }
+
+    @Test("SES-4, GLN-2: the cap's banner stays when a later session ends, as from the Lock Screen, until Keep or Edit")
+    func theCapBannerStaysUntilKeepOrEdit() {
+        // Given a capped session's banner kept by a Start with the app away
+        let store = InMemoryRunningSessionStore()
+        let model = PracticeModel(
+            store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
+        model.start()
+        clock.advance(by: 1_000)
+        model.start()
+        let kept = model.cappedSession
+
+        // When the new session is stopped before the app is opened
+        clock.advance(by: 60)
+        model.stop()
+
+        // Then the banner stays, after a relaunch too
+        let relaunched = PracticeModel(
+            store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
+        #expect(kept?.hasLaterSession == true)
+        #expect(model.cappedSession == kept)
+        #expect(relaunched.cappedSession == kept)
+
+        // When Keep or Edit is tapped, both of which dismiss it, Then it goes for good
+        relaunched.dismissCapBanner()
+        let reopened = PracticeModel(
+            store: store, history: InMemorySessionHistory(), outbox: InMemorySessionHistory(), clock: clock,
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
+        #expect(relaunched.cappedSession == nil)
+        #expect(reopened.cappedSession == nil)
+    }
+
+    @Test("SES-4: a Start in the open app, where the cap's banner showed, hides the banner as before")
+    func startOnScreenHidesTheCapBanner() {
+        // Given a session that reached the cap while the app was on screen
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
+        model.cameToFront()
+        model.start()
+        clock.advance(by: 1_000)
+        model.refresh()
+        #expect(model.cappedSession != nil)
+
+        // When Start is tapped
+        model.start()
+
+        // Then the banner goes
+        #expect(model.cappedSession == nil)
+    }
+
+    @Test("SES-4, MIDI-1: a piano session started in the open app hides the cap's banner, as a tapped Start does")
+    func aPianoStartHidesTheCapBanner() {
+        // Given a session that reached the cap while the app was on screen
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: InMemorySessionHistory(), outbox: InMemorySessionHistory(),
+            clock: clock, nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
+        model.cameToFront()
+        model.start()
+        clock.advance(by: 1_000)
+        model.refresh()
+        #expect(model.cappedSession != nil)
+
+        // When three notes start a piano session
+        for _ in 1...3 { model.noteOn(at: clock.now) }
+
+        // Then the banner goes
+        #expect(model.session?.source == .midi)
+        #expect(model.cappedSession == nil)
+    }
+
+    @Test("SES-4, GLN-2: a later session that also reaches the cap before the app opens takes over the banner")
+    func aLaterCapTakesOverTheBanner() throws {
+        // Given a capped session's banner kept by a Start with the app away
+        let history = InMemorySessionHistory()
+        let model = PracticeModel(
+            store: InMemoryRunningSessionStore(), history: history, outbox: InMemorySessionHistory(), clock: clock,
+            nudges: nudges, glance: glance, defaults: defaults, nudge: 90 * 60, cap: 600)
+        model.start()
+        clock.advance(by: 1_000)
+        model.start()
+
+        // When the new session reaches the cap too
+        clock.advance(by: 1_000)
+        model.refresh()
+
+        // Then the banner is the newer session's, as the last one
+        let newer = try #require(history.sessions().last)
+        #expect(history.sessions().count == 2)
+        #expect(model.cappedSession == CappedSession(id: newer.id, practiced: 600))
+    }
+
     @Test(
         "SES-4, GLN-1: a Pause, Stop or tag change after the cap ends the session at the cap instead, dropping the tag",
         arguments: ["pause", "stop", "setTags"])
@@ -255,7 +374,7 @@ struct PracticeModelTests {
         #expect(model.session == nil)
         #expect(history.sessions().map(\.endedAt) == [start + 600])
         #expect(history.sessions().map(\.tagIDs) == [[]])
-        #expect(model.lastSessionReachedCap)
+        #expect(model.cappedSession != nil)
         #expect(glance.shownSessions.suffix(1) == [nil])
     }
 
@@ -284,7 +403,7 @@ struct PracticeModelTests {
         clock.advance(by: 20_000)
         model.refresh()
 
-        #expect(model.lastSessionReachedCap)
+        #expect(model.cappedSession != nil)
         #expect(glance.shownSessions.suffix(1) == [nil])
         #expect(store.current() == nil)
     }
