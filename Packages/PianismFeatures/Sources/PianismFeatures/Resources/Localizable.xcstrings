@@ -139,6 +139,9 @@
     "Couldn't delete that session" : {
 
     },
+    "Couldn't export your sessions" : {
+
+    },
     "Couldn't load your earlier history. Sessions waiting to be saved are shown." : {
 
     },
@@ -542,6 +545,9 @@
 
     },
     "The purchase didn't go through. Try again." : {
+
+    },
+    "There isn't enough storage on this device. Free up some space, then try again." : {
 
     },
     "This session runs past midnight, so History lists it on each day it touches. Changes here change every row." : {
