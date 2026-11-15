@@ -19,8 +19,8 @@ public final class InMemorySessionHistory: SessionHistory {
         saved.withLock { $0 }
     }
 
-    public func unshowableCount() -> Int {
-        unshowable
+    public func sessionsAndUnshowableCount() -> (sessions: [PracticeSession], unshowable: Int) {
+        (sessions(), unshowable)
     }
 
     public func autoLoggedIDs() -> Set<UUID> {

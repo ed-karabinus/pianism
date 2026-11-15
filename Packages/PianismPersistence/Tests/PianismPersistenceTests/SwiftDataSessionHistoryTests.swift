@@ -72,6 +72,30 @@ final class SwiftDataSessionHistoryTests {
         #expect(!HistoryStore.isChange(saved(nil), to: storeURL))
     }
 
+    @Test(
+        "SYN-1: saves made while a change waits to be taken come as one change, as an iCloud import's burst does",
+        .timeLimit(.minutes(1)))
+    func aBurstOfSavesComesAsOneChange() async throws {
+        // Given the store's changes, not yet read
+        let changes = HistoryStore(url: storeURL).changes
+
+        // When 50 saves come before they're read, each reaching the stream as it's posted
+        for _ in 1...50 {
+            NotificationCenter.default.post(
+                name: .NSPersistentStoreRemoteChange, object: nil, userInfo: [NSPersistentStoreURLKey: storeURL])
+        }
+        // A reader stopped at once still takes what waits, then ends.
+        let reader = Task {
+            var count = 0
+            for await _ in changes { count += 1 }
+            return count
+        }
+        reader.cancel()
+
+        // Then they're read as one change, not as 50
+        #expect(await reader.value == 1)
+    }
+
     @Test("ADR 0006: a session stopped while paused comes back exactly, even at a fraction of a second")
     func stoppedWhilePausedSurvivesExactly() throws {
         // The pause ends at the same instant as the session. If the store moved either time by
@@ -192,8 +216,10 @@ final class SwiftDataSessionHistoryTests {
         try insertRecord(
             in: history, id: UUID(), endingAfter: 600, modifiedAfter: 1, isDeleted: true, pauses: unreadable)
 
+        let read = try history.sessionsAndUnshowableCount()
+        #expect(read.sessions == [session])
+        #expect(read.unshowable == 3)
         #expect(try history.sessions() == [session])
-        #expect(try history.unshowableCount() == 3)
     }
 
     @Test("HIS-1: the end-to-end tests' unshowable sessions are skipped and counted, as a newer version's would be")
@@ -202,8 +228,9 @@ final class SwiftDataSessionHistoryTests {
         try store.addUnshowableSessions(2)
         let history = SwiftDataSessionHistory(store: store, clock: clock)
 
-        #expect(try history.sessions().isEmpty)
-        #expect(try history.unshowableCount() == 2)
+        let read = try history.sessionsAndUnshowableCount()
+        #expect(read.sessions.isEmpty)
+        #expect(read.unshowable == 2)
         let records = try ModelContext(store.container()).fetch(FetchDescriptor<SessionRecord>())
         #expect(records.allSatisfy { $0.version > HistoryStore.recordVersion })
     }
