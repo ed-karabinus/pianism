@@ -249,19 +249,28 @@ struct PianismApp: App {
             analytics: analytics, isPro: { pro.isPro })
         answering.practice = practice
         self.practice = practice
+        let history = HistoryModel(
+            history: sessions, tags: library, outbox: outbox, running: store, clock: clock, glance: glance,
+            analytics: analytics)
+        #if DEBUG
+            // End-to-end tests lengthen Undo with PIANISM_UNDO_SECONDS. Release builds ignore it.
+            if let seconds = ProcessInfo.processInfo.environment["PIANISM_UNDO_SECONDS"].flatMap(Int.init) {
+                history.undoDuration = .seconds(seconds)
+            }
+        #endif
+        self.history = history
         // The widget's and the Live Activity's buttons run in this process as intents, which find the model through
-        // this (ADR 0010). Each waits for the Live Activity to take the change before the intent returns, and for
-        // today's reminder to learn of it, as the app may never come to the front (SET-1).
-        func command(_ run: @escaping @MainActor @Sendable () -> Void) -> GlanceCommands.Command {
+        // this (ADR 0010). Each does what `performForGlance` says, then waits for the Live Activity to take the change
+        // before the intent returns, as the app may never come to the front.
+        func command(_ run: @escaping @MainActor @Sendable (PracticeModel) -> Void) -> GlanceCommands.Command {
             {
-                run()
-                await practice.checkNudges()
+                await practice.performForGlance(run, history: history)
                 await glance.settle()
             }
         }
         let commands = GlanceCommands(
-            start: command { practice.start() }, pause: command { practice.pause() },
-            resume: command { practice.resume() }, stop: command { practice.stop() })
+            start: command { $0.start() }, pause: command { $0.pause() }, resume: command { $0.resume() },
+            stop: command { $0.stop() })
         AppDependencyManager.shared.add(dependency: commands)
         #if DEBUG
             // End-to-end tests play notes with PIANISM_MIDI_NOTES, as seconds after launch separated by commas, as the
@@ -322,16 +331,6 @@ struct PianismApp: App {
             midi = CoreMIDINotes(clock: clock)
         #endif
         tags = TagPickerModel(practice: practice, library: library)
-        let history = HistoryModel(
-            history: sessions, tags: library, outbox: outbox, running: store, clock: clock, glance: glance,
-            analytics: analytics)
-        #if DEBUG
-            // End-to-end tests lengthen Undo with PIANISM_UNDO_SECONDS. Release builds ignore it.
-            if let seconds = ProcessInfo.processInfo.environment["PIANISM_UNDO_SECONDS"].flatMap(Int.init) {
-                history.undoDuration = .seconds(seconds)
-            }
-        #endif
-        self.history = history
     }
 
     var body: some Scene {

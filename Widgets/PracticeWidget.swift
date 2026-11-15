@@ -96,7 +96,9 @@ struct PracticeWidgetView: View {
             Label(title, systemImage: "pianokeys")
                 .font(.headline)
             Spacer()
-            HStack(alignment: .lastTextBaseline) {
+            // Centred, as the play button's icon has no text to share a baseline with: on its baseline it sat below the
+            // time (device check W9, 2026-11-14).
+            HStack {
                 time
                     .font(.title.bold())
                     .minimumScaleFactor(0.5)

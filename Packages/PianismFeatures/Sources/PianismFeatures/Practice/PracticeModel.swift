@@ -329,8 +329,18 @@ public final class PracticeModel: TagTarget {
         nudgeOpened = NudgeOpening(sessionID: nil, pickingEnd: false)
     }
 
+    /// Does what a widget or Live Activity button asks, `command`, as the app does without coming to the front
+    /// (ADR 0010). Then it reads `history` again, which writes today's total for the widget, so a session saved at
+    /// launch or by the command, such as the capped hour at Start or one stopped from the Lock Screen, counts at once:
+    /// History otherwise runs only when the app comes to the front (device check W9, 2026-11-14). Last, it tops up
+    /// today's reminder, which the change may have answered (SET-1).
+    public func performForGlance(_ command: (PracticeModel) -> Void, history: HistoryModel) async {
+        command(self)
+        history.refresh()
+        await checkNudges()
+    }
+
     /// Reads what the system allows, and tops the reminders up, as they run out unless the app is opened (SET-1).
-    /// Public for the widget's and the Live Activity's buttons, which change a session without opening the app.
     public func checkNudges() async {
         notificationPermission = await nudges.permission()
         planReminders()
