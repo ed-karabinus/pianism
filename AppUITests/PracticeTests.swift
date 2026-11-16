@@ -2824,7 +2824,7 @@ final class PracticeTests: UITestCase {
         if let intent {
             app.launchEnvironment["PIANISM_INTENT"] = intent
         }
-        app.launch()
+        launchUntilReached(app)
         XCTAssertTrue(app.staticTexts["practice.status"].appears(within: 10))
         return app
     }

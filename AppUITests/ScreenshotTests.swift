@@ -19,7 +19,7 @@ final class ScreenshotTests: UITestCase {
             "PIANISM_NOW": "1794540600", "TZ": "America/Los_Angeles",
             "PIANISM_STORE": "free", "PIANISM_PRO": "1", "PIANISM_MIDI_PIANO": "Digital piano",
         ]
-        app.launch()
+        launchUntilReached(app)
 
         XCTAssertTrue(app.buttons["practice.stop"].appears(within: 30), "The piano session isn't running")
         attachScreenshot(of: app, named: "2 Practice")

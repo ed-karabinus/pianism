@@ -28,14 +28,35 @@ class UITestCase: XCTestCase {
         guard !hasWarmedUp else { return }
         hasWarmedUp = true
         let app = XCUIApplication()
+        launchUntilReached(app, for: 600, named: "Warm-up launch")
+        _ = Self.kill(app)
+    }
+
+    /// Launches the app as `XCUIApplication.launch()` does, waiting out a simulator that stops answering. On CI an
+    /// iOS 27 simulator sometimes ignores launches and exits for 2 to 3 minutes, at any point in a run: XCTest loses
+    /// the app it launched ("does not have a process ID", "Failed to get background assertion"), and the test's retry,
+    /// starting inside the same stall, fails too (nightly runs, 2026-11-09 and 15). So, as in `warmUp()`, what XCTest
+    /// reports while the app launches is dropped, and it launches again until XCTest can reach its window, for up to
+    /// 5 minutes. A launch XCTest never reached tested nothing, and an app that can't launch still fails the test, at
+    /// its first check.
+    @MainActor
+    func launchUntilReached(_ app: XCUIApplication) {
+        isDroppingIssues = true
+        Self.launchUntilReached(app, for: 300, named: "Lost launch")
+        isDroppingIssues = false
+    }
+
+    /// Launches the app until XCTest can reach its window or `limit` seconds have passed, noting each launch it
+    /// couldn't reach, so a run's results count them.
+    @MainActor
+    private static func launchUntilReached(_ app: XCUIApplication, for limit: TimeInterval, named name: String) {
         let start = Date.now
         for attempt in 1... {
             app.launch()
-            let reachable = app.windows.firstMatch.appears(within: 10)
-            XCTContext.runActivity(named: "Warm-up launch \(attempt): \(reachable ? "reached" : "not reached")") { _ in
-            }
-            _ = Self.kill(app)
-            if reachable || Date.now.timeIntervalSince(start) > 600 { break }
+            if app.windows.firstMatch.appears(within: 10) { return }
+            XCTContext.runActivity(named: "\(name) \(attempt): not reached") { _ in }
+            guard Date.now.timeIntervalSince(start) < limit else { return }
+            _ = kill(app)
         }
     }
 

@@ -10,7 +10,7 @@ final class LaunchTests: UITestCase {
     func testAppLaunchesToRootScreen() throws {
         let app = XCUIApplication()
         app.launchEnvironment["PIANISM_SKIP_WELCOME"] = "1"
-        app.launch()
+        launchUntilReached(app)
 
         XCTAssertTrue(app.descendants(matching: .any)["root"].firstMatch.appears(within: 10))
         attachScreenshot(of: app, named: "Root screen")
@@ -19,7 +19,7 @@ final class LaunchTests: UITestCase {
     /// Fails on purpose, and passes only if the failure kept what `UITestCase` attaches.
     @MainActor
     func testAFailureKeepsTheScreenAndUITree() throws {
-        XCUIApplication().launch()
+        launchUntilReached(XCUIApplication())
 
         XCTExpectFailure(
             "Deliberate: checks what UITestCase keeps",
