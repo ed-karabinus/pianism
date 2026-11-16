@@ -17,7 +17,7 @@ final class WidgetTests: UITestCase {
         let app = XCUIApplication()
         app.launchEnvironment["PIANISM_RESET"] = "1"
         app.launchEnvironment["PIANISM_SKIP_WELCOME"] = "1"
-        app.launch()
+        launchUntilReached(app)
         kill(app)
         XCUIDevice.shared.press(.home)
         let start = springboard.buttons["Start"]
@@ -58,14 +58,14 @@ final class WidgetTests: UITestCase {
         let app = XCUIApplication()
         app.launchEnvironment["PIANISM_RESET"] = "1"
         app.launchEnvironment["PIANISM_SKIP_WELCOME"] = "1"
-        app.launch()
+        launchUntilReached(app)
         kill(app)
         XCUIDevice.shared.press(.home)
         if !springboard.buttons["Start"].appears(within: 5) { addTheWidget() }
         XCTAssertTrue(springboard.buttons["Start"].appears(within: 10), "The widget's Start didn't show")
         app.launchEnvironment["PIANISM_RESET"] = nil
         app.launchEnvironment["PIANISM_CAP_SECONDS"] = "30"
-        app.launch()
+        launchUntilReached(app)
         app.buttons["practice.start"].tap()
         kill(app)
         XCUIDevice.shared.press(.home)

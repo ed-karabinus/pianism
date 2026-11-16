@@ -6,7 +6,9 @@ import notify
 /// so the next test's launch has no app to terminate.
 class UITestCase: XCTestCase {
     private var isDroppingIssues = false
+    private var lastDroppedIssue: XCTIssue?
     @MainActor private static var hasWarmedUp = false
+    @MainActor private static var hasGivenUpALaunch = false
 
     override func setUp() {
         super.setUp()
@@ -28,14 +30,50 @@ class UITestCase: XCTestCase {
         guard !hasWarmedUp else { return }
         hasWarmedUp = true
         let app = XCUIApplication()
-        let start = Date.now
-        for attempt in 1... {
+        // Ten minutes without reaching the app is more than a slow simulator: the tests then launch without waiting.
+        if !launchUntilReached(app, for: 600, named: "Warm-up launch") { hasGivenUpALaunch = true }
+        _ = Self.kill(app)
+    }
+
+    /// Launches the app as `XCUIApplication.launch()` does, waiting out a simulator that stops answering. On CI a
+    /// simulator sometimes stops answering launch and exit requests for 2 to 3 minutes, at any point in a run: XCTest
+    /// loses the app it launched ("does not have a process ID", "Failed to get background assertion"), and the test's
+    /// retry, starting inside the same stall, fails too (the iPad iOS 27 job of the 2026-11-09 and 2026-11-15
+    /// nightlies). So, as in `warmUp()`, what XCTest reports while the app launches is dropped, and it launches again
+    /// until XCTest can reach its window, for about 5 minutes (the time is checked between launches, and a lost launch
+    /// can take 2 minutes to fail). A launch XCTest never reached tested nothing. If the app still can't be reached,
+    /// which a stall doesn't explain, the test fails with XCTest's last launch error, and the run's later launches
+    /// don't wait, so a build that can't launch fails each test at once rather than after 5 minutes.
+    @MainActor
+    func launchUntilReached(_ app: XCUIApplication) {
+        guard !Self.hasGivenUpALaunch else {
             app.launch()
-            let reachable = app.windows.firstMatch.appears(within: 10)
-            XCTContext.runActivity(named: "Warm-up launch \(attempt): \(reachable ? "reached" : "not reached")") { _ in
-            }
-            _ = Self.kill(app)
-            if reachable || Date.now.timeIntervalSince(start) > 600 { break }
+            return
+        }
+        isDroppingIssues = true
+        lastDroppedIssue = nil
+        let reached = Self.launchUntilReached(app, for: 300, named: "Lost launch")
+        isDroppingIssues = false
+        guard !reached else { return }
+        Self.hasGivenUpALaunch = true
+        if let lastDroppedIssue { record(lastDroppedIssue) }
+    }
+
+    /// Launches the app until XCTest can reach its window, or until `limit` seconds have passed, and says whether it
+    /// did. Each launch it couldn't reach is noted, so a run's results count them.
+    @MainActor
+    private static func launchUntilReached(
+        _ app: XCUIApplication, for limit: TimeInterval, named name: String
+    ) -> Bool {
+        let start = Date.now
+        var attempt = 0
+        while true {
+            attempt += 1
+            app.launch()
+            if app.windows.firstMatch.appears(within: 10) { return true }
+            XCTContext.runActivity(named: "\(name) \(attempt): not reached") { _ in }
+            _ = kill(app)
+            if Date.now.timeIntervalSince(start) >= limit { return false }
         }
     }
 
@@ -77,8 +115,12 @@ class UITestCase: XCTestCase {
 
     override func record(_ issue: XCTIssue) {
         // A failure while taking the diagnostics is dropped: recording it would stop the test
-        // before the failure it was taken for. So is one while the simulator settles (`warmUp()`).
-        guard !isDroppingIssues else { return }
+        // before the failure it was taken for. So is one while the simulator settles (`warmUp()`) or the app launches
+        // (`launchUntilReached(_:)`), which keeps the last in case the launch gives up.
+        guard !isDroppingIssues else {
+            lastDroppedIssue = issue
+            return
+        }
         var issue = issue
         // UI tests fail on the main thread; skipping the diagnostics elsewhere beats trapping.
         if Thread.isMainThread {
