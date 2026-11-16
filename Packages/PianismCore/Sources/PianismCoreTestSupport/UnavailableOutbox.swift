@@ -18,4 +18,6 @@ public struct UnavailableOutbox: SessionOutbox {
     public func remove(id _: UUID) throws {
         throw Failure()
     }
+
+    public func unreadableCount() -> Int { 0 }
 }

@@ -207,6 +207,39 @@ struct HistoryModelTests {
         #expect(model.unshowableCount == 2)
     }
 
+    @Test("#87: History counts waiting sessions the outbox can't read with the saved ones it can't show")
+    func countsUnreadableWaiting() throws {
+        // Given 2 saved sessions History can't show, and 1 waiting one the outbox can't read
+        let model = HistoryModel(
+            history: InMemorySessionHistory(unshowable: 2), tags: InMemoryTagLibrary(),
+            outbox: OutboxWithUnreadable(unreadable: 1), running: running, clock: clock, glance: glance)
+
+        // When History loads
+        model.refresh()
+
+        // Then it says 3 couldn't be shown, so it isn't empty
+        #expect(model.unshowableCount == 3)
+        #expect(model.isEmpty == false)
+    }
+
+    @Test("#87: a waiting session the outbox can read again shows as waiting, and isn't counted as well")
+    func readableAgainIsntCounted() throws {
+        // Given a waiting session the outbox couldn't read, which an update now can
+        let session = try endedSession(startingAfter: 0)
+        let model = HistoryModel(
+            history: InMemorySessionHistory(), tags: InMemoryTagLibrary(),
+            outbox: OutboxWithUnreadable(unreadable: 1, readableNow: [session]), running: running, clock: clock,
+            glance: glance)
+
+        // When History loads
+        model.refresh()
+
+        // Then it shows, waiting, and nothing is counted as unshowable
+        #expect(model.days.flatMap(\.sessions) == [session])
+        #expect(model.waitingIDs == [session.id])
+        #expect(model.unshowableCount == 0)
+    }
+
     @Test("ADR 0007: an outbox that can't be read doesn't hide the saved history")
     func unreadableOutboxKeepsHistory() throws {
         let history = InMemorySessionHistory()
@@ -1046,6 +1079,29 @@ private final class CountingHistory: SessionHistory {
     func canEdit(id: UUID) -> Bool { saved.canEdit(id: id) }
     func edit(_ session: PracticeSession) throws { try saved.edit(session) }
     func delete(id: UUID) throws { try saved.delete(id: id) }
+}
+
+/// An outbox holding `unreadable` waiting sessions it can't read, whose next read brings back `readableNow` of them,
+/// as after an update (#87).
+private final class OutboxWithUnreadable: SessionOutbox {
+    private let state: Mutex<(unreadable: Int, readableNow: [PracticeSession], waiting: [PracticeSession])>
+
+    init(unreadable: Int, readableNow: [PracticeSession] = []) {
+        state = Mutex((unreadable, readableNow, []))
+    }
+
+    func sessions() -> [PracticeSession] {
+        state.withLock { state in
+            state.waiting += state.readableNow
+            state.unreadable -= state.readableNow.count
+            state.readableNow = []
+            return state.waiting
+        }
+    }
+
+    func add(_: PracticeSession) {}
+    func remove(id _: UUID) {}
+    func unreadableCount() -> Int { state.withLock { $0.unreadable } }
 }
 
 /// A history that works except that it can't delete, as when its store fails to save.

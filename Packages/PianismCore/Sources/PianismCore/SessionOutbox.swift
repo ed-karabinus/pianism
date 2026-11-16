@@ -11,4 +11,8 @@ public protocol SessionOutbox: Sendable {
 
     /// Removes the waiting session with this ID, if there is one.
     func remove(id: UUID) throws
+
+    /// How many waiting sessions this version can't read, as a newer one wrote them or the format broke, which
+    /// ``sessions()`` leaves out until a version that can read them comes (#87). None if it can't tell.
+    func unreadableCount() -> Int
 }
