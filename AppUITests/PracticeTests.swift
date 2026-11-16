@@ -1531,7 +1531,7 @@ final class PracticeTests: UITestCase {
         attachScreenshot(of: app, named: "Welcome")
         tap(app, "welcome.start")
         XCTAssertTrue(element(app, "practice.stop").appears(within: 5))
-        XCTAssertFalse(element(app, "welcome.start").exists)
+        XCTAssertTrue(element(app, "welcome.start").disappears(within: 5), "The welcome didn't close")
     }
 
     /// ADR 0008, step 2: before a CloudKit deploy, PIANISM_CLEAR_DEBUG_DATA=1 empties Debug's history but keeps the
@@ -1571,7 +1571,7 @@ final class PracticeTests: UITestCase {
         XCTAssertTrue(words.label.contains("Your first 5 are free. After that, it's part of Pro."), words.label)
         tap(app, "welcome.close")
         XCTAssertTrue(element(app, "practice.start").appears(within: 5))
-        XCTAssertFalse(element(app, "welcome.start").exists)
+        XCTAssertTrue(element(app, "welcome.start").disappears(within: 5), "The welcome didn't close")
         kill(app)
 
         app = launch(at: start + 60, welcome: true)
