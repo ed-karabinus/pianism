@@ -80,6 +80,20 @@ struct FreePianoSessionsTests {
         #expect(model.freePianoSessionsLeft == 0)
     }
 
+    @Test("PRO-2: when iCloud brings sessions back after a reinstall, the line counts them without a refresh")
+    func syncedSessionsCountWithoutARefresh() {
+        // Given a reinstall, with History not yet synced: 5 left
+        let model = makeModel(used: 0)
+        #expect(model.freePianoSessionsLeft == 5)
+
+        // When iCloud brings back 4 piano sessions
+        for _ in 1...4 { history.save(ended(.midi)) }
+        model.recountFreePianoSessions()
+
+        // Then the line says 1 is left
+        #expect(model.freePianoSessionsLeft == 1)
+    }
+
     @Test("PRO-2: with Pro, a piano starts any session, and nothing about free ones shows; buying it lifts the limit")
     func proLiftsTheLimit() {
         let model = makeModel(used: 5)

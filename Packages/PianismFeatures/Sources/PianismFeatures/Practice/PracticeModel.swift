@@ -511,6 +511,12 @@ public final class PracticeModel: TagTarget {
         return pianoCanStart
     }
 
+    /// Counts the free piano sessions used again (PRO-2), as at each refresh, and when iCloud brings sessions in: from
+    /// another device, or back after a reinstall, when Practice said 5 were left until History synced. Pro needs none.
+    public func recountFreePianoSessions() {
+        freePianoSessionsUsed = isPro() ? nil : try? FreePianoSessions.used(history: history, outbox: outbox)
+    }
+
     /// The battery, read only while the screen is kept on.
     var battery: BatteryReading?
 
@@ -649,8 +655,8 @@ public final class PracticeModel: TagTarget {
             logger.error("Couldn't move the session out of the running-session file: \(error, privacy: .public)")
             isShowingStorageError = true
         }
-        // For Practice's line and the screen, so after a save they show the session it used. Pro needs neither.
-        freePianoSessionsUsed = isPro() ? nil : try? FreePianoSessions.used(history: history, outbox: outbox)
+        // For Practice's line and the screen, so after a save they show the session it used.
+        recountFreePianoSessions()
         do {
             session = try recorder.current()
             if session != nil { isShowingWelcome = false }
