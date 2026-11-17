@@ -338,12 +338,14 @@ struct PianismApp: App {
             RootView(practice: practice, analytics: analytics, pro: pro, tags: tags, history: history)
                 .task { await pro.keepUpToDate() }
                 // Shows what iCloud brings from the user's other devices while the app is open (SYN-1). Practice
-                // shows nothing synced but tag names, which the picker refreshes. At most once a second, as each
-                // refresh reads the whole history: the saves of a second, as an import makes, come as one change.
+                // shows nothing synced but tag names, which the picker refreshes, and the free piano sessions left,
+                // which it recounts. At most once a second, as each refresh reads the whole history: the saves of a
+                // second, as an import makes, come as one change.
                 .task {
                     for await _ in historyStore.changes {
                         history.refresh()
                         tags.refresh()
+                        practice.recountFreePianoSessions()
                         guard (try? await Task.sleep(for: .seconds(1))) != nil else { break }
                     }
                 }
