@@ -511,8 +511,8 @@ public final class PracticeModel: TagTarget {
         return pianoCanStart
     }
 
-    /// Counts the free piano sessions used again (PRO-2), as at each refresh, and when iCloud brings sessions in: from
-    /// another device, or back after a reinstall, when Practice said 5 were left until History synced. Pro needs none.
+    /// Counts the free piano sessions used again (PRO-2), as each refresh does. The app calls it when iCloud brings
+    /// sessions in, from another device or back after a reinstall. Pro needs none.
     public func recountFreePianoSessions() {
         freePianoSessionsUsed = isPro() ? nil : try? FreePianoSessions.used(history: history, outbox: outbox)
     }
